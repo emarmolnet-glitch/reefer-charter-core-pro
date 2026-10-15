@@ -73,14 +73,16 @@ test('method base-rate dictionary drives automatic POL and POD rates', () => {
 });
 
 test('cargo dictionary contains SF and lifting requirements', () => {
-  assert.match(indexSource, /"Minerales y Construcción": \[/);
-  assert.match(indexSource, /"Biomasa y Combustibles Sólidos": \[/);
-  assert.match(indexSource, /"Biomasa \(Grignon, Astillas, Pellets\)", sf: 1\.85, requiresPieceWeight: false/);
-  assert.match(indexSource, /"Carga Unitizada \/ Envasada": \[/);
-  assert.match(indexSource, /"Carga de Proyecto \(Breakbulk\)": \[/);
-  assert.match(indexSource, /"Cemento a granel", sf: 0\.70, requiresPieceWeight: false/);
-  assert.match(indexSource, /"Bobinas de Acero \(Steel Coils\)", sf: 0\.35, requiresPieceWeight: true/);
-  assert.match(indexSource, /"Piezas Especiales \/ Maquinaria", sf: 2\.00, requiresPieceWeight: true/);
+  assert.match(indexSource, /"Frutas Cítricas": \[/);
+  assert.match(indexSource, /"Frutas Tropicales y Exóticas": \[/);
+  assert.match(indexSource, /"Fruta de Hueso y Pepita": \[/);
+  assert.match(indexSource, /"Carnes y Pescados Congelados": \[/);
+  assert.match(indexSource, /"Productos Farmacéuticos": \[/);
+  assert.match(indexSource, /"Naranjas", sf: 0\.85/);
+  assert.match(indexSource, /"Bananas\/Plátanos \(requiere 13°C\)", sf: 0\.75/);
+  assert.match(indexSource, /"Manzanas \(alto etileno\)", sf: 0\.85/);
+  assert.match(indexSource, /"Pescado Congelado", sf: 0\.65/);
+  assert.match(indexSource, /"Vacunas\/Medicinas \(alto valor, estiba ligera\)", sf: 1\.20/);
   assert.match(indexSource, /input\.required = requiresPieceWeight/);
   assert.match(indexSource, /if \(!requiresPieceWeight\) input\.value = '0'/);
 });
