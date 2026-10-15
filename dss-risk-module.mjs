@@ -88,6 +88,8 @@ function createZod() {
 
 export const z = createZod();
 
+export const REEFER_BREAKBULK_OPERATIONAL_WARNING = "Aviso Operativo: Exigir confirmación de Side Doors o Cunas multipallet en puerto. La estiba requiere bloque compacto con Dunnage bags y sistema Gratings libre de obstrucciones para flujo vertical a 13.5ºC";
+
 export const defaultDSSState = {
   ballastDays: 0,
   jwlaRiskActive: false,

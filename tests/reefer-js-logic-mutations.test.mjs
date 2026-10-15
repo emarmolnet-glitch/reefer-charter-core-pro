@@ -10,7 +10,10 @@ import {
   normalizeNlpVoyagePayload,
 } from '../shared/cargo-mapper.mjs';
 
-function createSandboxVoyageStore(storeSource) {
+async function createSandboxVoyageStore(storeSource) {
+  if (!storeSource) {
+    storeSource = await readFile(new URL('../src/stores/voyage-store.js', import.meta.url), 'utf8');
+  }
   const sandbox = {
     console,
     Date,
@@ -28,8 +31,10 @@ function createSandboxVoyageStore(storeSource) {
   const strippedSource = storeSource
     .replace(/import\s*\{[^}]*\}\s*from\s*['"][^'"]*['"];?/g, '')
     .replace(/export\s+function/g, 'function')
+    .replace(/export\s+const\s+REEFER_BREAKBULK_OPERATIONAL_WARNING\s*=/g, 'const REEFER_BREAKBULK_OPERATIONAL_WARNING =')
     .replace(/export\s+const\s+voyageStore\s*=/g, 'const voyageStore =')
-    .replace(/export\s+const\s+useVoyageStore\s*=\s*voyageStore;?/g, '');
+    .replace(/export\s+const\s+useVoyageStore\s*=\s*voyageStore;?/g, '')
+    .replace(/export\s*\{[^}]*\};?/g, '');
 
   const mockZustand = `
     function createStore(fn) {
@@ -92,7 +97,7 @@ test('1. Category & Product Mapping: category "Carga Refrigerada (Reefer)" or pr
 
 test('2. Voyage Store Payload Mutation: detects "Reefer", "Plátanos", "Fruta" or target temperature and enforces 17.5 knots and "Paletizado - Grúa Portuaria"', async () => {
   const storeSource = await readFile(new URL('../src/stores/voyage-store.js', import.meta.url), 'utf8');
-  const store = createSandboxVoyageStore(storeSource);
+  const store = await createSandboxVoyageStore(storeSource);
 
   // Test case A: "Plátanos" product
   store.getState().applyNlpScenario({
@@ -179,3 +184,53 @@ test('4. Strict Restriction: index.html has not been modified in git worktree', 
   const gitDiff = execSync('git diff --name-only index.html', { encoding: 'utf8' }).trim();
   assert.equal(gitDiff, '', 'index.html must not be modified!');
 });
+
+test('5. Operational Insights: automatically injects literal operational warning when Reefer in hold (Breakbulk) is detected', async () => {
+  const expectedWarning = "Aviso Operativo: Exigir confirmación de Side Doors o Cunas multipallet en puerto. La estiba requiere bloque compacto con Dunnage bags y sistema Gratings libre de obstrucciones para flujo vertical a 13.5ºC";
+
+  // A. cargo-mapper.mjs
+  const mapped = normalizeNlpVoyagePayload({
+    category: 'Carga Refrigerada (Reefer)',
+    product: 'Plátanos'
+  });
+  assert.ok(Array.isArray(mapped.operationalWarnings));
+  assert.ok(mapped.operationalWarnings.includes(expectedWarning));
+  assert.ok(mapped.warnings.includes(expectedWarning));
+
+  // B. voyage-store.js in sandbox
+  const store = await createSandboxVoyageStore();
+
+  store.getState().applyNlpScenario({
+    category: 'Carga Refrigerada (Reefer)',
+    product: 'Plátanos',
+    palletQuantity: 2500,
+    cargo_type: 'Plátanos en bodega',
+  });
+  const state = store.getState();
+  assert.ok(state.draft.operationalWarnings.includes(expectedWarning));
+  assert.ok(state.draft.warnings.includes(expectedWarning));
+  assert.ok(state.operationalWarnings.includes(expectedWarning));
+
+  // C. voyage-cost-engine.js
+  const costEngine = await import('../voyage-cost-engine.js');
+  const api = costEngine.default || costEngine;
+  assert.equal(api.REEFER_BREAKBULK_OPERATIONAL_WARNING, expectedWarning);
+
+  const costStateResult = api.calculateVoyageCostState({
+    tipo_carga: 'Carga Refrigerada (Reefer)',
+    product: 'Plátanos',
+    capacidad_dwt: 10000,
+    tonelaje_neto: 6000,
+    calado_actual: 7.5,
+    crane_swl_mt: 25,
+  });
+  assert.ok(costStateResult.operationalWarnings.includes(expectedWarning));
+  assert.ok(costStateResult.warnings.includes(expectedWarning));
+
+  const opRisk = api.calculateOperationalRisk(12000, '2026-10-20', 2, 'ES', {
+    isReefer: true,
+    cargo: 'Plátanos en bodega'
+  });
+  assert.ok(opRisk.operationalWarnings.includes(expectedWarning));
+});
+

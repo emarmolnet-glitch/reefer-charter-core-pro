@@ -27,6 +27,8 @@ export const CARGO_PRODUCT_TREE = Object.freeze({
 
 export const CARGO_PRODUCTS = Object.freeze([...new Set(Object.values(CARGO_PRODUCT_TREE).flat())]);
 
+export const REEFER_BREAKBULK_OPERATIONAL_WARNING = "Aviso Operativo: Exigir confirmación de Side Doors o Cunas multipallet en puerto. La estiba requiere bloque compacto con Dunnage bags y sistema Gratings libre de obstrucciones para flujo vertical a 13.5ºC";
+
 export const CARGO_SPECIFICATION_IDS = Object.freeze(["10", "20", "30", "40", "50", "60", "70", "80", "90", "100"]);
 
 export const CARGO_SPECIFICATIONS = Object.freeze({
@@ -509,6 +511,13 @@ export function normalizeNlpVoyagePayload(payload = {}, sourceText = "") {
       speed_ballast: 17.5,
       speedLaden: 17.5,
       speedBallast: 17.5,
+      operationalWarnings: [REEFER_BREAKBULK_OPERATIONAL_WARNING],
+      warnings: Array.isArray(source.warnings) && !source.warnings.includes(REEFER_BREAKBULK_OPERATIONAL_WARNING)
+        ? [...source.warnings, REEFER_BREAKBULK_OPERATIONAL_WARNING]
+        : [REEFER_BREAKBULK_OPERATIONAL_WARNING],
+      observacionesOperativas: [REEFER_BREAKBULK_OPERATIONAL_WARNING],
+      observaciones: [REEFER_BREAKBULK_OPERATIONAL_WARNING],
+      operationalNotes: [REEFER_BREAKBULK_OPERATIONAL_WARNING],
     } : {}),
     packaging: hasDetectedPackaging ? "Big Bags" : (source.packaging || ""),
     packingType: hasDetectedPackaging ? "Big Bags" : (source.packingType || ""),

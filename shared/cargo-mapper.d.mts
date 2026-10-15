@@ -9,6 +9,7 @@ export type NormalizedCargoMapping = {
 
 export const CARGO_CATEGORIES: readonly string[];
 export const CARGO_PRODUCTS: readonly string[];
+export const REEFER_BREAKBULK_OPERATIONAL_WARNING: string;
 export const CARGO_SPECIFICATION_IDS: readonly string[];
 export const CARGO_SPECIFICATIONS: Readonly<Record<string, string>>;
 export const CARGO_METHODS: readonly string[];

@@ -1,6 +1,8 @@
 import { createStore } from 'zustand/vanilla';
 import { subscribeWithSelector } from 'zustand/middleware';
 
+export const REEFER_BREAKBULK_OPERATIONAL_WARNING = "Aviso Operativo: Exigir confirmación de Side Doors o Cunas multipallet en puerto. La estiba requiere bloque compacto con Dunnage bags y sistema Gratings libre de obstrucciones para flujo vertical a 13.5ºC";
+
 const EMPTY_DRAFT = Object.freeze({
     pol: null,
     pod: null,
@@ -11,6 +13,11 @@ const EMPTY_DRAFT = Object.freeze({
     targetTemperatureCelsius: 13.0,
     requiresControlledAtmosphere: false,
     auxiliaryGensetDailyCost: 0,
+    operationalWarnings: [],
+    warnings: [],
+    observacionesOperativas: [],
+    operationalNotes: [],
+    observaciones: [],
     cargo: { description: '' },
     projectCargo: {
         unitWeightMT: 0,
@@ -210,6 +217,11 @@ export const voyageStore = createStore(subscribeWithSelector((set, get) => ({
     targetTemperatureCelsius: 13.0,
     requiresControlledAtmosphere: false,
     auxiliaryGensetDailyCost: 0,
+    operationalWarnings: [],
+    warnings: [],
+    observacionesOperativas: [],
+    operationalNotes: [],
+    observaciones: [],
     draft: { ...EMPTY_DRAFT, laycan: { ...EMPTY_DRAFT.laycan }, cargo: { ...EMPTY_DRAFT.cargo }, projectCargo: { ...EMPTY_DRAFT.projectCargo, dimensions: { ...EMPTY_DRAFT.projectCargo.dimensions } } },
     setCargoDetails: (details = {}) => set((current) => {
         const payload = details && typeof details === 'object' ? details : {};
@@ -232,6 +244,12 @@ export const voyageStore = createStore(subscribeWithSelector((set, get) => ({
             ? cleanNonNegativeNumber(payload.auxiliaryGensetDailyCost) ?? 0
             : (current.draft.auxiliaryGensetDailyCost ?? current.auxiliaryGensetDailyCost ?? 0);
 
+        const isReeferDetails = palletQuantity > 0 || cargoVolumeCBM > 0 || requiresControlledAtmosphere || targetTemperatureCelsius !== undefined;
+        let nextOperationalWarnings = Array.isArray(current.draft.operationalWarnings) ? [...current.draft.operationalWarnings] : [];
+        if (isReeferDetails && !nextOperationalWarnings.includes(REEFER_BREAKBULK_OPERATIONAL_WARNING)) {
+            nextOperationalWarnings.push(REEFER_BREAKBULK_OPERATIONAL_WARNING);
+        }
+
         const nextDraft = {
             ...current.draft,
             cargoVolumeCBM,
@@ -240,6 +258,17 @@ export const voyageStore = createStore(subscribeWithSelector((set, get) => ({
             targetTemperatureCelsius,
             requiresControlledAtmosphere,
             auxiliaryGensetDailyCost,
+            ...(isReeferDetails ? {
+                speed_laden: 17.5,
+                speed_ballast: 17.5,
+                methodPOL: 'Paletizado - Grúa Portuaria',
+                methodPOD: 'Paletizado - Grúa Portuaria',
+                operationalWarnings: nextOperationalWarnings,
+                warnings: nextOperationalWarnings,
+                observacionesOperativas: nextOperationalWarnings,
+                operationalNotes: nextOperationalWarnings,
+                observaciones: nextOperationalWarnings,
+            } : {}),
             updatedAt: new Date().toISOString(),
             lastSource: 'setCargoDetails',
         };
@@ -258,6 +287,11 @@ export const voyageStore = createStore(subscribeWithSelector((set, get) => ({
             targetTemperatureCelsius,
             requiresControlledAtmosphere,
             auxiliaryGensetDailyCost,
+            operationalWarnings: nextDraft.operationalWarnings || current.operationalWarnings || [],
+            warnings: nextDraft.warnings || current.warnings || [],
+            observacionesOperativas: nextDraft.observacionesOperativas || current.observacionesOperativas || [],
+            operationalNotes: nextDraft.operationalNotes || current.operationalNotes || [],
+            observaciones: nextDraft.observaciones || current.observaciones || [],
             draft: nextDraft,
         };
     }),
@@ -388,6 +422,17 @@ export const voyageStore = createStore(subscribeWithSelector((set, get) => ({
             ? 'Bananas/Plátanos'
             : (cleanText(scenario.cargo_type || scenario.cargoType || payload.cargo_type || payload.cargoType) || current.draft.cargo.description);
 
+        const reeferBreakbulkWarning = REEFER_BREAKBULK_OPERATIONAL_WARNING;
+        const isBreakbulk = !/container|fcl|contenedor/i.test(cargoTextToInspect) || /breakbulk|bodega|palet|suelt/i.test(cargoTextToInspect);
+        const isReeferBreakbulk = isReeferCargo && isBreakbulk;
+
+        const currentWarnings = Array.isArray(current.draft.operationalWarnings)
+            ? [...current.draft.operationalWarnings]
+            : (Array.isArray(current.draft.warnings) ? [...current.draft.warnings] : []);
+        const nextOperationalWarnings = isReeferBreakbulk
+            ? (currentWarnings.includes(reeferBreakbulkWarning) ? currentWarnings : [...currentWarnings, reeferBreakbulkWarning])
+            : currentWarnings;
+
         const nextDraft = {
             pol: normalizeNlpPort(scenario.pol_port || scenario.pol, cleanText(scenario.pol)) || current.draft.pol,
             pod: normalizeNlpPort(scenario.pod_port || scenario.pod, cleanText(scenario.pod)) || current.draft.pod,
@@ -414,6 +459,11 @@ export const voyageStore = createStore(subscribeWithSelector((set, get) => ({
             auxiliaryGensetDailyCost,
             speed_laden,
             speed_ballast,
+            operationalWarnings: nextOperationalWarnings,
+            warnings: nextOperationalWarnings,
+            observacionesOperativas: nextOperationalWarnings,
+            operationalNotes: nextOperationalWarnings,
+            observaciones: nextOperationalWarnings,
             loadingRate: scenario.ratePOL !== undefined || scenario.loading_rate !== undefined || scenario.loadingRate !== undefined
                 ? cleanNumber(scenario.ratePOL ?? scenario.loading_rate ?? scenario.loadingRate) || current.draft.loadingRate
                 : current.draft.loadingRate,
@@ -449,6 +499,11 @@ export const voyageStore = createStore(subscribeWithSelector((set, get) => ({
             targetTemperatureCelsius,
             requiresControlledAtmosphere,
             auxiliaryGensetDailyCost,
+            operationalWarnings: nextOperationalWarnings,
+            warnings: nextOperationalWarnings,
+            observacionesOperativas: nextOperationalWarnings,
+            operationalNotes: nextOperationalWarnings,
+            observaciones: nextOperationalWarnings,
             draft: {
                 ...current.draft,
                 ...nextDraft,
@@ -577,11 +632,23 @@ export const voyageStore = createStore(subscribeWithSelector((set, get) => ({
             (state.targetTemperatureCelsius !== undefined && state.targetTemperatureCelsius !== null && !isNaN(Number(state.targetTemperatureCelsius))) ||
             /reefer|pl[aá]tano|fruta/i.test(calculatorReeferText)
         );
+        const isCalculatorBreakbulk = isCalculatorReefer && (!/container|fcl|contenedor/i.test(calculatorReeferText) || /breakbulk|bodega|palet|suelt/i.test(calculatorReeferText));
+        let nextOperationalWarnings = Array.isArray(current.draft.operationalWarnings) ? [...current.draft.operationalWarnings] : [];
         if (isCalculatorReefer) {
             nextDraft.speed_laden = 17.5;
             nextDraft.speed_ballast = 17.5;
             nextDraft.methodPOL = 'Paletizado - Grúa Portuaria';
             nextDraft.methodPOD = 'Paletizado - Grúa Portuaria';
+        }
+        if (isCalculatorBreakbulk) {
+            if (!nextOperationalWarnings.includes(REEFER_BREAKBULK_OPERATIONAL_WARNING)) {
+                nextOperationalWarnings.push(REEFER_BREAKBULK_OPERATIONAL_WARNING);
+            }
+            nextDraft.operationalWarnings = nextOperationalWarnings;
+            nextDraft.warnings = nextOperationalWarnings;
+            nextDraft.observacionesOperativas = nextOperationalWarnings;
+            nextDraft.operationalNotes = nextOperationalWarnings;
+            nextDraft.observaciones = nextOperationalWarnings;
         }
 
         const currentComparable = { ...current.draft, updatedAt: null, lastSource: 'calculator' };
@@ -598,6 +665,11 @@ export const voyageStore = createStore(subscribeWithSelector((set, get) => ({
             targetTemperatureCelsius: nextDraft.targetTemperatureCelsius,
             requiresControlledAtmosphere: nextDraft.requiresControlledAtmosphere,
             auxiliaryGensetDailyCost: nextDraft.auxiliaryGensetDailyCost,
+            operationalWarnings: nextDraft.operationalWarnings || current.operationalWarnings || [],
+            warnings: nextDraft.warnings || current.warnings || [],
+            observacionesOperativas: nextDraft.observacionesOperativas || current.observacionesOperativas || [],
+            operationalNotes: nextDraft.operationalNotes || current.operationalNotes || [],
+            observaciones: nextDraft.observaciones || current.observaciones || [],
             draft: {
                 ...nextDraft,
                 updatedAt: new Date().toISOString(),
@@ -797,6 +869,11 @@ export const voyageStore = createStore(subscribeWithSelector((set, get) => ({
         targetTemperatureCelsius: 13.0,
         requiresControlledAtmosphere: false,
         auxiliaryGensetDailyCost: 0,
+        operationalWarnings: [],
+        warnings: [],
+        observacionesOperativas: [],
+        operationalNotes: [],
+        observaciones: [],
         draft: { ...EMPTY_DRAFT, laycan: { ...EMPTY_DRAFT.laycan }, cargo: { ...EMPTY_DRAFT.cargo }, projectCargo: { ...EMPTY_DRAFT.projectCargo, dimensions: { ...EMPTY_DRAFT.projectCargo.dimensions } } },
     }),
     hasOperationalDraft: () => hasOperationalDraft(get().draft),

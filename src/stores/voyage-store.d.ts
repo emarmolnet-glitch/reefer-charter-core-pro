@@ -69,6 +69,11 @@ export type DraftVoyage = {
   targetTemperatureCelsius: number;
   requiresControlledAtmosphere: boolean;
   auxiliaryGensetDailyCost: number;
+  operationalWarnings?: string[];
+  warnings?: string[];
+  observacionesOperativas?: string[];
+  operationalNotes?: string[];
+  observaciones?: string[];
   cargo: { description: string; quantityMt?: number };
   projectCargo?: ProjectCargoDraft | null;
   loadingRate: number;
@@ -93,6 +98,11 @@ export type VoyageStoreState = {
   targetTemperatureCelsius: number;
   requiresControlledAtmosphere: boolean;
   auxiliaryGensetDailyCost: number;
+  operationalWarnings?: string[];
+  warnings?: string[];
+  observacionesOperativas?: string[];
+  operationalNotes?: string[];
+  observaciones?: string[];
   draft: DraftVoyage;
   setCargoDetails: (details?: Partial<{
     cargoVolumeCBM: number;
@@ -116,5 +126,6 @@ export type VoyageStoreState = {
 };
 
 export function hasOperationalDraft(draft: DraftVoyage): boolean;
+export const REEFER_BREAKBULK_OPERATIONAL_WARNING: string;
 export const voyageStore: StoreApi<VoyageStoreState>;
 export const useVoyageStore: StoreApi<VoyageStoreState>;
