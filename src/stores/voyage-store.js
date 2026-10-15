@@ -713,6 +713,22 @@ export const voyageStore = createStore(subscribeWithSelector((set, get) => ({
             longitude: normalizedVessel.longitude ?? existingVessel.longitude ?? null,
             positionUpdatedAt: normalizedVessel.positionUpdatedAt || existingVessel.positionUpdatedAt || new Date().toISOString(),
         };
+        const isReeferOperationActive = Boolean(
+            (typeof window !== 'undefined' && typeof window.isReeferOperation === 'function' && window.isReeferOperation()) ||
+            Number(current.draft.palletQuantity) > 0 ||
+            Number(current.draft.cargoVolumeCBM) > 0 ||
+            current.draft.requiresControlledAtmosphere ||
+            (current.draft.targetTemperatureCelsius !== undefined && current.draft.targetTemperatureCelsius !== null && Number(current.draft.targetTemperatureCelsius) <= 15) ||
+            /reefer|frigor|pl[aá]tano|fruta/i.test(String(current.draft.cargo?.description || current.draft.cargoProduct || current.draft.cargoCategory || ''))
+        );
+
+        if (isReeferOperationActive) {
+            updatedVessel.speed_laden = 17.5;
+            updatedVessel.speed_ballast = 17.5;
+            updatedVessel.speedKnots = 17.5;
+            updatedVessel.service_speed_knots = 17.5;
+        }
+
         const nextDwt = updatedVessel.dwt || current.draft.dwt;
         const nextDraft = {
             ...current.draft,
@@ -724,9 +740,9 @@ export const voyageStore = createStore(subscribeWithSelector((set, get) => ({
             fuel_consumption_laden: updatedVessel.fuel_consumption_laden ?? current.draft.fuel_consumption_laden,
             fuel_consumption_ballast: updatedVessel.fuel_consumption_ballast ?? current.draft.fuel_consumption_ballast,
             fuel_consumption_port: updatedVessel.fuel_consumption_port ?? current.draft.fuel_consumption_port,
-            service_speed_knots: updatedVessel.service_speed_knots ?? updatedVessel.speedKnots ?? current.draft.service_speed_knots,
-            speed_laden: updatedVessel.speed_laden ?? current.draft.speed_laden,
-            speed_ballast: updatedVessel.speed_ballast ?? current.draft.speed_ballast,
+            service_speed_knots: isReeferOperationActive ? 17.5 : (updatedVessel.service_speed_knots ?? updatedVessel.speedKnots ?? current.draft.service_speed_knots),
+            speed_laden: isReeferOperationActive ? 17.5 : (updatedVessel.speed_laden ?? current.draft.speed_laden),
+            speed_ballast: isReeferOperationActive ? 17.5 : (updatedVessel.speed_ballast ?? current.draft.speed_ballast),
             gross_tonnage: updatedVessel.gross_tonnage ?? updatedVessel.gt ?? current.draft.gross_tonnage,
             year_built: updatedVessel.year_built ?? updatedVessel.yearBuilt ?? current.draft.year_built,
             owner_manager: updatedVessel.owner_manager || current.draft.owner_manager,
