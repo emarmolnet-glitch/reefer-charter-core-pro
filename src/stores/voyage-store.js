@@ -56,6 +56,12 @@ const EMPTY_DRAFT = Object.freeze({
     routeGeometry: null,
     weather: null,
     vessel: null,
+    cargoVolumeCBM: 0,
+    palletQuantity: 0,
+    deckHeight: 2.2,
+    targetTemperatureCelsius: 13.0,
+    requiresControlledAtmosphere: false,
+    auxiliaryGensetDailyCost: 0,
     updatedAt: null,
     lastSource: '',
 });
@@ -281,6 +287,53 @@ export const voyageStore = createStore(subscribeWithSelector((set, get) => ({
             },
         };
 
+        const rawPalletQuantity = payload.palletQuantity ?? payload.pallet_quantity ?? payload.pallets ?? scenario.palletQuantity ?? scenario.pallet_quantity ?? scenario.pallets;
+        const palletQuantity = rawPalletQuantity !== undefined && rawPalletQuantity !== null
+            ? cleanNonNegativeNumber(rawPalletQuantity) ?? (current.draft.palletQuantity ?? current.palletQuantity ?? 0)
+            : (current.draft.palletQuantity ?? current.palletQuantity ?? 0);
+
+        const rawCargoVolumeCBM = payload.cargoVolumeCBM ?? payload.cargo_volume_cbm ?? payload.cargoVolume ?? scenario.cargoVolumeCBM ?? scenario.cargo_volume_cbm ?? scenario.cargoVolume;
+        const cargoVolumeCBM = rawCargoVolumeCBM !== undefined && rawCargoVolumeCBM !== null
+            ? cleanNonNegativeNumber(rawCargoVolumeCBM) ?? (current.draft.cargoVolumeCBM ?? current.cargoVolumeCBM ?? 0)
+            : (current.draft.cargoVolumeCBM ?? current.cargoVolumeCBM ?? 0);
+
+        const rawDeckHeight = payload.deckHeight ?? payload.deck_height ?? scenario.deckHeight ?? scenario.deck_height;
+        const deckHeight = rawDeckHeight !== undefined && rawDeckHeight !== null
+            ? cleanNonNegativeNumber(rawDeckHeight) ?? (current.draft.deckHeight ?? current.deckHeight ?? 2.2)
+            : (current.draft.deckHeight ?? current.deckHeight ?? 2.2);
+
+        const rawTargetTemp = payload.targetTemperatureCelsius ?? payload.target_temperature_celsius ?? payload.target_temperature ?? payload.targetTemperature ?? scenario.targetTemperatureCelsius ?? scenario.target_temperature_celsius ?? scenario.target_temperature ?? scenario.targetTemperature;
+        const targetTemperatureCelsius = rawTargetTemp !== undefined && rawTargetTemp !== null && !isNaN(Number(rawTargetTemp))
+            ? Number(rawTargetTemp)
+            : (current.draft.targetTemperatureCelsius ?? current.targetTemperatureCelsius ?? 13.0);
+
+        const rawControlledAtmosphere = payload.requiresControlledAtmosphere ?? payload.requires_controlled_atmosphere ?? scenario.requiresControlledAtmosphere ?? scenario.requires_controlled_atmosphere;
+        const requiresControlledAtmosphere = rawControlledAtmosphere !== undefined && rawControlledAtmosphere !== null
+            ? Boolean(rawControlledAtmosphere)
+            : Boolean(current.draft.requiresControlledAtmosphere ?? current.requiresControlledAtmosphere);
+
+        const rawAuxGenset = payload.auxiliaryGensetDailyCost ?? payload.auxiliary_genset_daily_cost ?? payload.auxiliaryGensetCost ?? scenario.auxiliaryGensetDailyCost ?? scenario.auxiliary_genset_daily_cost ?? scenario.auxiliaryGensetCost;
+        const auxiliaryGensetDailyCost = rawAuxGenset !== undefined && rawAuxGenset !== null
+            ? cleanNonNegativeNumber(rawAuxGenset) ?? (current.draft.auxiliaryGensetDailyCost ?? current.auxiliaryGensetDailyCost ?? 0)
+            : (current.draft.auxiliaryGensetDailyCost ?? current.auxiliaryGensetDailyCost ?? 0);
+
+        const isReeferCargo = Boolean(
+            palletQuantity > 0 ||
+            cargoVolumeCBM > 0 ||
+            requiresControlledAtmosphere ||
+            (rawTargetTemp !== undefined && rawTargetTemp !== null) ||
+            /fruta|citric|pescad|carn|congelad|farmac|reefer/i.test(String(scenario.cargo_type || scenario.cargoType || payload.cargo_type || payload.cargoType || ''))
+        );
+
+        // Reefer Speed Profiling: 17.5 knots default for temperature controlled cargo (vs 10-13 for dry bulk)
+        const defaultReeferSpeed = isReeferCargo ? 17.5 : null;
+        const speed_laden = cleanNonNegativeNumber(scenario.speed_laden ?? scenario.speedLaden ?? payload.speed_laden ?? payload.speedLaden)
+            ?? defaultReeferSpeed
+            ?? current.draft.speed_laden;
+        const speed_ballast = cleanNonNegativeNumber(scenario.speed_ballast ?? scenario.speedBallast ?? payload.speed_ballast ?? payload.speedBallast)
+            ?? defaultReeferSpeed
+            ?? current.draft.speed_ballast;
+
         const nextDraft = {
             pol: normalizeNlpPort(scenario.pol_port || scenario.pol, cleanText(scenario.pol)) || current.draft.pol,
             pod: normalizeNlpPort(scenario.pod_port || scenario.pod, cleanText(scenario.pod)) || current.draft.pod,
@@ -295,6 +348,14 @@ export const voyageStore = createStore(subscribeWithSelector((set, get) => ({
                     : current.draft.cargo.quantityMt,
             },
             projectCargo,
+            cargoVolumeCBM,
+            palletQuantity,
+            deckHeight,
+            targetTemperatureCelsius,
+            requiresControlledAtmosphere,
+            auxiliaryGensetDailyCost,
+            speed_laden,
+            speed_ballast,
             loadingRate: scenario.ratePOL !== undefined || scenario.loading_rate !== undefined || scenario.loadingRate !== undefined
                 ? cleanNumber(scenario.ratePOL ?? scenario.loading_rate ?? scenario.loadingRate) || current.draft.loadingRate
                 : current.draft.loadingRate,
@@ -323,6 +384,13 @@ export const voyageStore = createStore(subscribeWithSelector((set, get) => ({
         }
 
         return {
+            ...current,
+            cargoVolumeCBM,
+            palletQuantity,
+            deckHeight,
+            targetTemperatureCelsius,
+            requiresControlledAtmosphere,
+            auxiliaryGensetDailyCost,
             draft: {
                 ...current.draft,
                 ...nextDraft,

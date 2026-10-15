@@ -10591,23 +10591,32 @@
                         </div>
 
                         <!-- Reefer Cargo Inputs (Reefer Charter Core PRO) -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 p-3 bg-slate-900/60 rounded-xl border border-teal-500/30">
-                            <div class="input-group">
-                                <label id="label-pallet-quantity" for="pallet-quantity" class="text-action-required flex items-center min-h-[24px] text-teal-300 font-bold">Cantidad de Palets</label>
-                                <input type="number" id="pallet-quantity" class="input-gc action-required-field required-use-highlight text-action-required font-bold" value="0" min="0" step="1" placeholder="0" oninput="handleReeferInputChange('palletQuantity', this.value)">
-                            </div>
-                            <div class="input-group">
-                                <label id="label-cargo-volume-cbm" for="cargo-volume-cbm" class="text-action-required flex items-center min-h-[24px] text-teal-300 font-bold">Volumen CBM</label>
-                                <input type="number" id="cargo-volume-cbm" class="input-gc action-required-field required-use-highlight text-action-required font-bold" value="0" min="0" step="any" placeholder="0" oninput="handleReeferInputChange('cargoVolumeCBM', this.value)">
-                            </div>
-                            <div class="input-group">
-                                <label id="label-target-temperature" for="target-temperature" class="text-action-required flex items-center min-h-[24px] text-teal-300 font-bold">Temperatura Objetivo °C</label>
-                                <input type="number" id="target-temperature" class="input-gc action-required-field required-use-highlight text-action-required font-bold" value="13.0" step="0.1" placeholder="13.0" oninput="handleReeferInputChange('targetTemperatureCelsius', this.value)">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-4 p-3 bg-slate-900/60 rounded-xl border border-teal-500/30 items-end">
+                            <div class="input-group flex flex-col justify-end">
+                                <label id="label-pallet-quantity" for="pallet-quantity" class="text-action-required flex items-center min-h-[24px] text-teal-300 font-bold text-xs">Cantidad de Palets</label>
+                                <input type="number" id="pallet-quantity" class="input-gc action-required-field required-use-highlight text-action-required font-bold h-9" value="0" min="0" step="1" placeholder="0" oninput="handleReeferInputChange('palletQuantity', this.value)">
                             </div>
                             <div class="input-group flex flex-col justify-end">
-                                <label id="label-controlled-atmosphere" for="controlled-atmosphere" class="flex items-center gap-2 p-2 rounded-lg border border-slate-700 bg-slate-800/90 hover:bg-slate-700 cursor-pointer min-h-[42px]">
-                                    <input type="checkbox" id="controlled-atmosphere" class="h-5 w-5 accent-teal-500 rounded" onchange="handleReeferInputChange('requiresControlledAtmosphere', this.checked)">
-                                    <span class="text-xs font-bold text-teal-200">Atmósfera Controlada (CA)</span>
+                                <label id="label-cargo-volume-cbm" for="cargo-volume-cbm" class="text-action-required flex items-center min-h-[24px] text-teal-300 font-bold text-xs">Volumen CBM</label>
+                                <input type="number" id="cargo-volume-cbm" class="input-gc action-required-field required-use-highlight text-action-required font-bold h-9" value="0" min="0" step="any" placeholder="0" oninput="handleReeferInputChange('cargoVolumeCBM', this.value)">
+                            </div>
+                            <div class="input-group flex flex-col justify-end">
+                                <label id="label-target-temperature" for="target-temperature" class="text-action-required flex items-center min-h-[24px] text-teal-300 font-bold text-xs">Temperatura Objetivo °C</label>
+                                <input type="number" id="target-temperature" class="input-gc action-required-field required-use-highlight text-action-required font-bold h-9" value="13.0" step="0.1" placeholder="13.0" oninput="handleReeferInputChange('targetTemperatureCelsius', this.value)">
+                            </div>
+                            <div class="input-group flex flex-col justify-end">
+                                <label id="label-deck-height" for="deck-height" class="text-action-required flex items-center min-h-[24px] text-teal-300 font-bold text-xs">Altura Cubierta (m)</label>
+                                <input type="number" id="deck-height" class="input-gc action-required-field required-use-highlight text-action-required font-bold h-9" value="2.2" min="0" step="0.01" placeholder="2.2" oninput="handleReeferInputChange('deckHeight', this.value)">
+                            </div>
+                            <div class="input-group flex flex-col justify-end">
+                                <label id="label-auxiliary-genset-cost" for="auxiliary-genset-cost" class="text-action-required flex items-center min-h-[24px] text-teal-300 font-bold text-xs">Genset Aux. ($/día)</label>
+                                <input type="number" id="auxiliary-genset-cost" class="input-gc action-required-field required-use-highlight text-action-required font-bold h-9" value="0" min="0" step="1" placeholder="0" oninput="handleReeferInputChange('auxiliaryGensetDailyCost', this.value)">
+                            </div>
+                            <div class="input-group flex flex-col justify-end">
+                                <label class="flex items-center min-h-[24px] text-teal-300 font-bold text-xs invisible sm:visible">Atmósfera</label>
+                                <label id="label-controlled-atmosphere" for="controlled-atmosphere" class="input-gc flex items-center justify-center gap-2 h-9 px-3 py-1 rounded-md border border-slate-700 bg-slate-800/90 hover:bg-slate-700 cursor-pointer transition select-none">
+                                    <input type="checkbox" id="controlled-atmosphere" class="h-4 w-4 accent-teal-500 rounded cursor-pointer" onchange="handleReeferInputChange('requiresControlledAtmosphere', this.checked)">
+                                    <span class="text-xs font-bold text-teal-200 whitespace-nowrap">Atmósfera Controlada (CA)</span>
                                 </label>
                             </div>
                             <input type="hidden" id="cargo-qty" value="0" oninput="updateSection2LocalState('cargo-qty', this.value)">
@@ -34208,6 +34217,20 @@ function createRouteAnchorElement(type) {
             return null;
         }
 
+        function isReeferOperation(state = (typeof State !== 'undefined' ? State : {})) {
+            const rawCategory = String(state?.cargoType || (typeof document !== 'undefined' ? document.getElementById('cargo-type')?.value : '') || '').toLowerCase();
+            const rawProduct = String(state?.cargoProduct || (typeof document !== 'undefined' ? document.getElementById('cargo-product')?.value : '') || '').toLowerCase();
+            const palletQty = Number(state?.palletQuantity || (typeof document !== 'undefined' ? document.getElementById('pallet-quantity')?.value : 0) || 0);
+            const cargoVol = Number(state?.cargoVolumeCBM || (typeof document !== 'undefined' ? document.getElementById('cargo-volume-cbm')?.value : 0) || 0);
+            const reqCA = Boolean(state?.requiresControlledAtmosphere || (typeof document !== 'undefined' ? document.getElementById('controlled-atmosphere')?.checked : false));
+            const targetTemp = state?.targetTemperatureCelsius !== undefined ? Number(state.targetTemperatureCelsius) : (typeof document !== 'undefined' && document.getElementById('target-temperature')?.value ? parseFloat(document.getElementById('target-temperature')?.value) : undefined);
+            const hasControlledTemp = targetTemp !== undefined && !isNaN(targetTemp) && targetTemp <= 15;
+            const isReeferCategory = /fruta|citric|pescad|carn|congelad|farmac|reefer/i.test(rawCategory) || /naranja|limon|mandarina|platano|banana|manzana|pera|uva|carne|pescado|farma|vacuna/i.test(rawProduct);
+            const isReeferVessel = /reefer|frigor/i.test(String(state?.vesselType || state?.class || (typeof document !== 'undefined' ? document.getElementById('vessel-name')?.value : '') || ''));
+            return Boolean(palletQty > 0 || cargoVol > 0 || reqCA || hasControlledTemp || isReeferCategory || isReeferVessel);
+        }
+        window.isReeferOperation = isReeferOperation;
+
         function calculateCrewCost(dwt, flag, psc) {
             const focList = ["panama", "liberia", "marshall islands"];
             const flagLower = (flag || '').toLowerCase().trim();
@@ -34238,6 +34261,7 @@ function createRouteAnchorElement(type) {
                 }
             }
 
+            const isReefer = isReeferOperation();
             const crewDaily = calculateCrewCost(dwt, finalFlag, finalPsc);
 
             const maintBase = dwt * 0.045;
@@ -34248,14 +34272,18 @@ function createRouteAnchorElement(type) {
             const insModifier = isHighRisk ? 1.05 : 1.00;
 
             const maintFinal = maintBase * maintModifier;
-            const insFinal = insBase * insModifier;
+            // Prima de riesgo Inherent Vice para cobertura de pérdida por rotura de cadena de frío
+            const reeferInsuranceRiskPremium = isReefer ? (dwt * 0.012) : 0;
+            const insFinal = (insBase * insModifier) + reeferInsuranceRiskPremium;
 
             const category = getOpexCategory(dwt, specialty, name);
             if (!category) {
                 // Fallback to current standard calculation
-                const estVesselValue = dwt * 450;
-                const capexDaily = (estVesselValue * 0.10) / 365;
-                return Math.round(capexDaily + crewDaily + insFinal + maintFinal);
+                const estVesselValue = dwt * (isReefer ? 570 : 450);
+                const capexMultiplier = isReefer ? 1.28 : 1.0;
+                const capexDaily = ((estVesselValue * 0.10) / 365) * capexMultiplier;
+                const rawTotal = capexDaily + crewDaily + insFinal + maintFinal;
+                return Math.round(isReefer ? rawTotal * 1.20 : rawTotal);
             }
 
             let minDwt, maxDwt, minOpex, maxOpex;
@@ -34288,7 +34316,9 @@ function createRouteAnchorElement(type) {
             const nonCrewOpex = Math.max(0, baseOpex - standardCrewDaily);
             
             const nonCrewOpexAdjusted = Math.max(0, nonCrewOpex + (maintFinal - maintBase) + (insFinal - insBase));
-            return Math.round(nonCrewOpexAdjusted + crewDaily);
+            const calculatedOpex = Math.round(nonCrewOpexAdjusted + crewDaily);
+            // OPEX Base: Incrementa los gastos operativos diarios en aprox. +20% para buques frigoríficos
+            return isReefer ? Math.round(calculatedOpex * 1.20) : calculatedOpex;
         }
 
         function handleFlagOrPscChange() {
@@ -34378,11 +34408,29 @@ function createRouteAnchorElement(type) {
         }));
 
         function detectVesselSegment(dwt) {
+            if (typeof isReeferOperation === 'function' && isReeferOperation()) {
+                return { segment: "Reefer Vessel", minDwt: 0, maxDwt: Infinity, speedBallast: 17.5, speedLaden: 17.5 };
+            }
             const numericDwt = Math.max(0, parseFloat(dwt) || 0);
             return VESSEL_SEGMENT_SPEEDS.find((row) => numericDwt >= row.minDwt && numericDwt <= row.maxDwt) || VESSEL_SEGMENT_SPEEDS[0];
         }
 
         function getSpeedConfigForDwt(dwt) {
+            if (typeof isReeferOperation === 'function' && isReeferOperation()) {
+                return {
+                    segment: "Reefer Vessel",
+                    minDwt: 0,
+                    maxDwt: Infinity,
+                    eco: {
+                        speedBallast: 17.5,
+                        speedLaden: 17.5
+                    },
+                    full: {
+                        speedBallast: 18.5,
+                        speedLaden: 18.5
+                    }
+                };
+            }
             const numericDwt = Math.max(0, parseFloat(dwt) || 0);
             return SPEED_CONFIG.find((row) => numericDwt >= row.minDwt && numericDwt <= row.maxDwt) || SPEED_CONFIG[0];
         }
@@ -34474,6 +34522,16 @@ function createRouteAnchorElement(type) {
         }
 
         function ensureDetectedSpeedsBeforeCalculation() {
+            if (typeof isReeferOperation === 'function' && isReeferOperation()) {
+                applyDetectedSpeedValues({
+                    segment: 'Reefer Vessel',
+                    speedBallast: 17.5,
+                    speedLaden: 17.5,
+                    source: 'Reefer speed profile',
+                    force: false
+                });
+                return;
+            }
             const dwt = getEffectiveDwtForSegmentDetection();
             if (dwt <= 0) return;
             const fallback = detectVesselSegment(dwt);
@@ -34581,11 +34639,129 @@ function createRouteAnchorElement(type) {
                 }
             }
 
+            if (isReeferOperation()) {
+                const spdLadenEl = document.getElementById('spd-laden');
+                const spdBallastEl = document.getElementById('spd-ballast');
+                if (spdLadenEl && (spdLadenEl.dataset?.manualOverride !== 'true' || Number(spdLadenEl.value) <= 13)) {
+                    spdLadenEl.value = '17.5';
+                    State.speedLaden = 17.5;
+                }
+                if (spdBallastEl && (spdBallastEl.dataset?.manualOverride !== 'true' || Number(spdBallastEl.value) <= 13)) {
+                    spdBallastEl.value = '17.5';
+                    State.speedBallast = 17.5;
+                }
+            }
+
+            if (typeof window !== 'undefined' && window.activeVoyage) {
+                Object.assign(window.activeVoyage, {
+                    palletQuantity: State.palletQuantity || 0,
+                    cargoVolumeCBM: State.cargoVolumeCBM || 0,
+                    deckHeight: State.deckHeight || 2.2,
+                    targetTemperatureCelsius: State.targetTemperatureCelsius ?? 13.0,
+                    requiresControlledAtmosphere: Boolean(State.requiresControlledAtmosphere),
+                    auxiliaryGensetDailyCost: State.auxiliaryGensetDailyCost || 0,
+                });
+            }
+
             if (typeof runEngine === 'function') {
                 runEngine();
             }
         }
         window.handleReeferInputChange = handleReeferInputChange;
+
+        function hydrateReeferFromDataBridge(payload = {}) {
+            if (!payload || typeof payload !== 'object') return;
+            const palletQuantity = payload.palletQuantity ?? payload.pallet_quantity ?? payload.pallets;
+            const cargoVolumeCBM = payload.cargoVolumeCBM ?? payload.cargo_volume_cbm ?? payload.cargoVolume;
+            const targetTemperatureCelsius = payload.targetTemperatureCelsius ?? payload.target_temperature_celsius ?? payload.target_temperature ?? payload.targetTemperature;
+            const deckHeight = payload.deckHeight ?? payload.deck_height;
+            const auxiliaryGensetDailyCost = payload.auxiliaryGensetDailyCost ?? payload.auxiliary_genset_daily_cost ?? payload.auxiliaryGensetCost;
+            const requiresControlledAtmosphere = payload.requiresControlledAtmosphere ?? payload.requires_controlled_atmosphere;
+
+            let hasChange = false;
+            if (palletQuantity !== undefined && palletQuantity !== null) {
+                const el = document.getElementById('pallet-quantity');
+                if (el) el.value = String(palletQuantity);
+                State.palletQuantity = Number(palletQuantity) || 0;
+                updateSection2LocalState('palletQuantity', State.palletQuantity);
+                hasChange = true;
+            }
+            if (cargoVolumeCBM !== undefined && cargoVolumeCBM !== null) {
+                const el = document.getElementById('cargo-volume-cbm');
+                if (el) el.value = String(cargoVolumeCBM);
+                State.cargoVolumeCBM = Number(cargoVolumeCBM) || 0;
+                updateSection2LocalState('cargoVolumeCBM', State.cargoVolumeCBM);
+                hasChange = true;
+            }
+            if (targetTemperatureCelsius !== undefined && targetTemperatureCelsius !== null) {
+                const el = document.getElementById('target-temperature');
+                if (el) el.value = String(targetTemperatureCelsius);
+                State.targetTemperatureCelsius = Number(targetTemperatureCelsius);
+                updateSection2LocalState('targetTemperatureCelsius', State.targetTemperatureCelsius);
+                hasChange = true;
+            }
+            if (deckHeight !== undefined && deckHeight !== null) {
+                const el = document.getElementById('deck-height');
+                if (el) el.value = String(deckHeight);
+                State.deckHeight = Number(deckHeight) || 2.2;
+                updateSection2LocalState('deckHeight', State.deckHeight);
+                hasChange = true;
+            }
+            if (auxiliaryGensetDailyCost !== undefined && auxiliaryGensetDailyCost !== null) {
+                const el = document.getElementById('auxiliary-genset-cost');
+                if (el) el.value = String(auxiliaryGensetDailyCost);
+                State.auxiliaryGensetDailyCost = Number(auxiliaryGensetDailyCost) || 0;
+                updateSection2LocalState('auxiliaryGensetDailyCost', State.auxiliaryGensetDailyCost);
+                hasChange = true;
+            }
+            if (requiresControlledAtmosphere !== undefined && requiresControlledAtmosphere !== null) {
+                const el = document.getElementById('controlled-atmosphere');
+                if (el) el.checked = Boolean(requiresControlledAtmosphere);
+                State.requiresControlledAtmosphere = Boolean(requiresControlledAtmosphere);
+                updateSection2LocalState('requiresControlledAtmosphere', State.requiresControlledAtmosphere);
+                hasChange = true;
+            }
+
+            if (hasChange) {
+                if (isReeferOperation()) {
+                    const spdLadenEl = document.getElementById('spd-laden');
+                    const spdBallastEl = document.getElementById('spd-ballast');
+                    if (spdLadenEl && (spdLadenEl.dataset?.manualOverride !== 'true' || Number(spdLadenEl.value) <= 13)) {
+                        spdLadenEl.value = '17.5';
+                        State.speedLaden = 17.5;
+                    }
+                    if (spdBallastEl && (spdBallastEl.dataset?.manualOverride !== 'true' || Number(spdBallastEl.value) <= 13)) {
+                        spdBallastEl.value = '17.5';
+                        State.speedBallast = 17.5;
+                    }
+                }
+
+                if (window.voyageStore?.getState()?.setCargoDetails) {
+                    window.voyageStore.getState().setCargoDetails({
+                        cargoVolumeCBM: State.cargoVolumeCBM ?? 0,
+                        palletQuantity: State.palletQuantity ?? 0,
+                        deckHeight: State.deckHeight ?? 2.2,
+                        targetTemperatureCelsius: State.targetTemperatureCelsius ?? 13.0,
+                        requiresControlledAtmosphere: Boolean(State.requiresControlledAtmosphere),
+                        auxiliaryGensetDailyCost: State.auxiliaryGensetDailyCost ?? 0,
+                    });
+                }
+                if (window.activeVoyage) {
+                    Object.assign(window.activeVoyage, {
+                        palletQuantity: State.palletQuantity,
+                        cargoVolumeCBM: State.cargoVolumeCBM,
+                        targetTemperatureCelsius: State.targetTemperatureCelsius,
+                        deckHeight: State.deckHeight,
+                        auxiliaryGensetDailyCost: State.auxiliaryGensetDailyCost,
+                        requiresControlledAtmosphere: State.requiresControlledAtmosphere,
+                    });
+                }
+                if (typeof runEngine === 'function') {
+                    runEngine();
+                }
+            }
+        }
+        window.hydrateReeferFromDataBridge = hydrateReeferFromDataBridge;
 
         const CARGO_OPERATION_DRAFT_IDS = Object.freeze([
             'gruas-swl-pol',
@@ -36166,6 +36342,13 @@ function createRouteAnchorElement(type) {
                 liquidSurchargeTag = ' (+30% Liquid Bulk Surcharge)';
             }
 
+            // Adjustments for Reefer Operations (Fruit terminals & priority tugs)
+            let reeferSurchargeTag = '';
+            if (typeof isReeferOperation === 'function' && isReeferOperation()) {
+                totalPDA *= 1.25; // Terminales fruteras y remolcadores prioritarios (+25%)
+                reeferSurchargeTag = ' (+25% Terminal Frutera / Reefer Priority Surcharge)';
+            }
+
             let finalPDA = Math.round(totalPDA / 50) * 50;
 
             // Validación de seguridad por defecto para POD
@@ -36222,7 +36405,7 @@ function createRouteAnchorElement(type) {
 
             if (showNotification) {
                 const podTag = type === 'pod' ? ' (+10% POD)' : '';
-                const extraSurcharges = `${podTag}${liquidSurchargeTag}${freePortTag}`;
+                const extraSurcharges = `${podTag}${liquidSurchargeTag}${reeferSurchargeTag}${freePortTag}`;
                 const sourceTag = calculationMode === 'official' ? ' | Data Bridge' : ' | Curva global DWT';
                 const sourceLabel = calculationMode === 'official' ? 'Cálculo Oficial' : 'Estimación Algorítmica Global';
                 showToast(`PDA ${type.toUpperCase()}: $${finalCalculatedPda.toLocaleString('en-US')} · ${sourceLabel}${extraSurcharges}<br><span class="text-[10px] text-emerald-300 mt-1 block font-mono">Nav/Maniobra: $${Math.round(navManiobra)} | Tasas: $${Math.round(tasasAutoridad)} | Agencia/Misc: $${Math.round(agenciaVarios)} | Muelle: $${Math.round(muelleEstadia)}${sourceTag}</span>`);
@@ -67273,8 +67456,22 @@ Compara el documento suministrado (que puede ser un contrato, carta de crédito 
         }
 
         function detectExecutiveShipClass() {
+            const isReefer = typeof isReeferOperation === 'function' ? isReeferOperation() : false;
             const dwt = Number(State.dwt || document.getElementById('vessel-dwt')?.value || 0);
             const rawType = String(State.class || document.getElementById('vessel-badge')?.innerText || document.getElementById('vessel-type')?.value || '').toLowerCase();
+            if (isReefer || rawType.includes('reefer') || rawType.includes('frigor')) {
+                return {
+                    key: 'REEFER',
+                    label: 'Reefer Vessel',
+                    capexUsdPerDwt: 650,
+                    capexAnnualRate: 0.125,
+                    insuranceUsdPerDwtDay: 0.035,
+                    portEconomyFactor: 1.25,
+                    minLoadRate: 800,
+                    minDischargeRate: 800,
+                    focus: 'Cadena de frío continua, plantas frigoríficas redundantes y velocidad comercial.'
+                };
+            }
             if (rawType.includes('mini') || rawType.includes('coaster') || rawType.includes('minibulker') || (dwt > 0 && dwt < 15000)) {
                 return {
                     key: 'MINI_BULKER',
@@ -67332,16 +67529,30 @@ Compara el documento suministrado (que puede ser un contrato, carta de crédito 
             if (podLimit !== null && vesselDraft > podLimit) warnings.push(`POD ${State.pod}: calado estimado ${vesselDraft.toFixed(2)} m supera límite ${podLimit.toFixed(1)} m.`);
             if (loadRate > 0 && loadRate < shipClass.minLoadRate) warnings.push(`Ritmo de carga ${Math.round(loadRate).toLocaleString('en-US')} TM/d por debajo del mínimo coherente para ${shipClass.label}.`);
             if (dischargeRate > 0 && dischargeRate < shipClass.minDischargeRate) warnings.push(`Ritmo de descarga ${Math.round(dischargeRate).toLocaleString('en-US')} TM/d por debajo del mínimo coherente para ${shipClass.label}.`);
+            
+            const isReefer = typeof isReeferOperation === 'function' ? isReeferOperation() : false;
+            const capexMultiplier = isReefer ? 1.28 : 1.00; // Incrementa la amortización diaria base en un +28% (plantas de frío y aislamiento)
             const vesselValue = dwt * shipClass.capexUsdPerDwt;
+            const baseCapexDaily = (vesselValue * shipClass.capexAnnualRate) / 365;
+            const capexDaily = baseCapexDaily * capexMultiplier;
+
+            // Prima de riesgo adicional para cubrir posible rotura de cadena de frío (Inherent Vice)
+            const reeferInsuranceRiskPremium = isReefer ? (dwt * 0.012) : 0;
+            const insuranceDaily = (dwt * shipClass.insuranceUsdPerDwtDay) + reeferInsuranceRiskPremium;
+
             return {
                 shipClass,
                 warnings,
                 vesselDraft,
                 vesselValue,
-                capexDaily: (vesselValue * shipClass.capexAnnualRate) / 365,
-                insuranceDaily: dwt * shipClass.insuranceUsdPerDwtDay,
-                capexFormula: `DWT x $${shipClass.capexUsdPerDwt}/DWT x ${(shipClass.capexAnnualRate * 100).toFixed(1)}% / 365`,
-                insuranceFormula: `DWT x $${shipClass.insuranceUsdPerDwtDay.toFixed(3)}/día`
+                capexDaily,
+                insuranceDaily,
+                capexFormula: isReefer
+                    ? `DWT x $${shipClass.capexUsdPerDwt}/DWT x ${(shipClass.capexAnnualRate * 100).toFixed(1)}% / 365 (+28% Recargo Planta Frigorífica/CAPEX)`
+                    : `DWT x $${shipClass.capexUsdPerDwt}/DWT x ${(shipClass.capexAnnualRate * 100).toFixed(1)}% / 365`,
+                insuranceFormula: isReefer
+                    ? `DWT x $${shipClass.insuranceUsdPerDwtDay.toFixed(3)}/día (+Prima Riesgo Cadena de Frío / Inherent Vice: $${Math.round(reeferInsuranceRiskPremium).toLocaleString()}/día)`
+                    : `DWT x $${shipClass.insuranceUsdPerDwtDay.toFixed(3)}/día`
             };
         }
 
@@ -68625,6 +68836,12 @@ Compara el documento suministrado (que puede ser un contrato, carta de crédito 
                         window.patchSection2Vessel?.(singleVessel);
                     }
 
+                    // Reefer Data Ingestion: Hidratación explícita de variables frigoríficas
+                    if (typeof window.hydrateReeferFromDataBridge === 'function') {
+                        window.hydrateReeferFromDataBridge(payload);
+                        window.hydrateReeferFromDataBridge(event.data);
+                    }
+
                     if (vessels.length > 0 && typeof window.receiveDataBridgeOpportunities === 'function') {
                         window.receiveDataBridgeOpportunities(vessels);
                     }
@@ -68655,6 +68872,11 @@ Compara el documento suministrado (que puede ser un contrato, carta de crédito 
                         const vessel = data.vessel || data.payload?.vessel || (Array.isArray(data.payload?.vessels) && data.payload.vessels.length === 1 ? data.payload.vessels[0] : null);
                         if (vessel) {
                             window.patchSection2Vessel?.(vessel);
+                        }
+
+                        if (typeof window.hydrateReeferFromDataBridge === 'function') {
+                            window.hydrateReeferFromDataBridge(data.payload || {});
+                            window.hydrateReeferFromDataBridge(data);
                         }
                     }
                 });
