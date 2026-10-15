@@ -1,5 +1,5 @@
 const SPLASH_EXIT_DELAY_MS = 360;
-const STARTUP_TIMEOUT_MS = 15000;
+const STARTUP_TIMEOUT_MS = 3000; // Reducido a 3 segundos para que nunca se quede colgado
 const MAP_CONTAINER_ID = 'map-container';
 
 function getSplashElements() {
@@ -8,21 +8,6 @@ function getSplashElements() {
         status: document.getElementById('global-splash-status'),
         mapContainer: document.getElementById(MAP_CONTAINER_ID)
     };
-}
-
-function isGlobeMounted(mapContainer) {
-    if (!mapContainer || mapContainer.dataset.renderKey !== 'mounted') return false;
-    return Boolean(mapContainer.querySelector('canvas'));
-}
-
-function requestInitialGlobeMount() {
-    if (typeof window.ensureRouteMapReady === 'function') {
-        window.ensureRouteMapReady('map-host');
-        return;
-    }
-    if (typeof window.initMap === 'function') {
-        window.initMap();
-    }
 }
 
 function revealApplication(reason) {
@@ -43,71 +28,33 @@ function revealApplication(reason) {
 }
 
 function startGlobalSplashController() {
-    const { splash, status, mapContainer } = getSplashElements();
-    if (!splash || !mapContainer) {
-        revealApplication('startup-shell-unavailable');
+    const { splash } = getSplashElements();
+    if (!splash) {
+        revealApplication('splash-unavailable');
         return;
     }
 
     let completed = false;
-    let mountFrameId = 0;
-    let startupTimeoutId = 0;
-    let mutationObserver;
-    let resizeObserver;
-
-    const cleanup = () => {
-        if (mountFrameId) window.cancelAnimationFrame(mountFrameId);
-        if (startupTimeoutId) window.clearTimeout(startupTimeoutId);
-        mutationObserver?.disconnect();
-        resizeObserver?.disconnect();
-        window.removeEventListener('resize', scheduleMount);
-        window.removeEventListener('load', scheduleMount);
-    };
 
     const complete = (reason) => {
         if (completed) return;
         completed = true;
-        cleanup();
         revealApplication(reason);
     };
 
-    const checkGlobe = () => {
-        if (isGlobeMounted(mapContainer)) complete('webgl-mounted');
-    };
-
-    const scheduleMount = () => {
-        if (completed || mountFrameId) return;
-        mountFrameId = window.requestAnimationFrame(() => {
-            mountFrameId = 0;
-            requestInitialGlobeMount();
-            checkGlobe();
-        });
-    };
-
-    mutationObserver = new MutationObserver(checkGlobe);
-    mutationObserver.observe(mapContainer, {
-        attributes: true,
-        attributeFilter: ['data-render-key'],
-        childList: true,
-        subtree: true
-    });
-
-    if (typeof ResizeObserver !== 'undefined') {
-        resizeObserver = new ResizeObserver(scheduleMount);
-        resizeObserver.observe(mapContainer);
-    }
-
-    window.addEventListener('resize', scheduleMount, { passive: true });
-    window.addEventListener('load', scheduleMount, { once: true });
-
-    startupTimeoutId = window.setTimeout(() => {
-        if (completed) return;
-        if (status) status.textContent = 'Motor disponible en modo seguro';
-        console.warn('[Startup] El lienzo WebGL no confirmó su montaje dentro del tiempo esperado.');
-        complete('startup-timeout');
+    // Forzar la revelación de la app de forma segura tras un breve lapso o carga del DOM
+    window.setTimeout(() => {
+        complete('forced-safety-reveal');
     }, STARTUP_TIMEOUT_MS);
 
-    scheduleMount();
+    if (typeof window.ensureRouteMapReady === 'function') {
+        try { window.ensureRouteMapReady('map-host'); } catch (e) {}
+    } else if (typeof window.initMap === 'function') {
+        try { window.initMap(); } catch (e) {}
+    }
+
+    // Seguridad adicional por evento load
+    window.addEventListener('load', () => complete('window-loaded'), { once: true });
 }
 
 if (document.readyState === 'loading') {
