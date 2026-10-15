@@ -28,8 +28,8 @@ test('2. Header retains exclusively Logo/Title, Connection status, Search bar an
     const header = headerMatch[1];
 
     // Logo & Title
-    assert.match(header, /SeaCharter Core PRO/, `Logo/Title present in ${name}`);
-    assert.match(header, /RODAHMAR ENGINE/, `Engine subtitle present in ${name}`);
+    assert.match(header, /(?:Reefer Charter|SeaCharter) Core PRO/, `Logo/Title present in ${name}`);
+    assert.match(header, /(?:REEFER|RODAHMAR) ENGINE/, `Engine subtitle present in ${name}`);
 
     // Indicators of connection
     assert.match(header, /id="connection-status-root"/, `Connection indicator present in ${name}`);

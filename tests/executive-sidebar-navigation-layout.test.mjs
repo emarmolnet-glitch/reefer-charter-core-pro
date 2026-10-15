@@ -46,8 +46,8 @@ test('3. Corporate iconography uses fine stroke SVG monocromáticos (stroke-widt
 test('4. Header is simplified to single row preserving logo, bridge indicator, IMO search, voyage ref, gear menu, master report, and right actions', () => {
   for (const [name, content] of [['index.html', indexHtml], ['dist/index.html', distIndexHtml]]) {
     // Logo
-    assert.match(content, /SeaCharter Core PRO/, `Brand name in ${name}`);
-    assert.match(content, /RODAHMAR ENGINE/, `Engine subtitle in ${name}`);
+    assert.match(content, /(?:Reefer Charter|SeaCharter) Core PRO/, `Brand name in ${name}`);
+    assert.match(content, /(?:REEFER|RODAHMAR) ENGINE/, `Engine subtitle in ${name}`);
 
     // Status bridge
     assert.match(content, /id="connection-status-root"/, `Bridge indicator in ${name}`);
