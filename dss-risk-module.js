@@ -11,7 +11,8 @@ import {
   FALLBACK_PORT_MATRIX,
   getFallbackPortAndDistance,
   calculateAutoExportDeficitBallast,
-  calculateAllInFreightGross
+  calculateAllInFreightGross,
+  REEFER_BREAKBULK_OPERATIONAL_WARNING
 } from './dss-risk-module.mjs';
 
 export {
@@ -26,7 +27,8 @@ export {
   FALLBACK_PORT_MATRIX,
   getFallbackPortAndDistance,
   calculateAutoExportDeficitBallast,
-  calculateAllInFreightGross
+  calculateAllInFreightGross,
+  REEFER_BREAKBULK_OPERATIONAL_WARNING
 };
 
 if (typeof module !== 'undefined' && module.exports) {
@@ -42,6 +44,7 @@ if (typeof module !== 'undefined' && module.exports) {
     FALLBACK_PORT_MATRIX,
     getFallbackPortAndDistance,
     calculateAutoExportDeficitBallast,
-    calculateAllInFreightGross
+    calculateAllInFreightGross,
+    REEFER_BREAKBULK_OPERATIONAL_WARNING
   };
 }

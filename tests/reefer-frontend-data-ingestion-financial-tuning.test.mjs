@@ -54,6 +54,7 @@ test('3. Data Bridge & NLP Ingestion: voyage-store.js applyNlpScenario hydrates 
   const strippedSource = storeSource
     .replace(/import\s*\{[^}]*\}\s*from\s*['"][^'"]*['"];?/g, '')
     .replace(/export\s+function/g, 'function')
+    .replace(/export\s+const\s+REEFER_BREAKBULK_OPERATIONAL_WARNING\s*=/g, 'const REEFER_BREAKBULK_OPERATIONAL_WARNING =')
     .replace(/const\s+EMPTY_DRAFT\s*=\s*Object\.freeze\(\{([\s\S]*?)\}\);/, 'const EMPTY_DRAFT = Object.freeze({$1});')
     .replace(/export\s+const\s+voyageStore\s*=/g, 'const voyageStore =')
     .replace(/export\s+const\s+useVoyageStore\s*=\s*voyageStore;?/g, '');

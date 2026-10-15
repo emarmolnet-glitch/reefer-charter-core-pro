@@ -36,6 +36,7 @@
     const REEFER_CAPEX_MULTIPLIER = 1.40;
     const REEFER_OPEX_MULTIPLIER = 1.30;
     const REEFER_PDA_MULTIPLIER = 1.50;
+    const REEFER_BREAKBULK_OPERATIONAL_WARNING = "Aviso Operativo: Exigir confirmación de Side Doors o Cunas multipallet en puerto. La estiba requiere bloque compacto con Dunnage bags y sistema Gratings libre de obstrucciones para flujo vertical a 13.5ºC";
 
     const RITMOS_BASE_PUERTO = {
         cinta_transportadora: 2500,
@@ -272,6 +273,10 @@
         const reeferMultiplier = isReefer ? REEFER_FINANCIAL_MULTIPLIERS.PDA : 1.0; // Terminales fruteras y remolcadores prioritarios (+50%)
         const adjustedPDA = (normalizedPda * reeferMultiplier) + shiftSimulation.overtimeSurcharge;
 
+        const reeferContextText = String(effectiveContext?.cargo || effectiveContext?.cargo_type || effectiveContext?.cargo_category || effectiveContext?.cargo_product || effectiveContext?.cargoType || '');
+        const isBreakbulk = !/container|fcl|contenedor/i.test(reeferContextText) || /breakbulk|bodega|palet/i.test(reeferContextText);
+        const operationalWarnings = (isReefer && isBreakbulk) ? [REEFER_BREAKBULK_OPERATIONAL_WARNING] : [];
+
         return {
             adjustedPDA,
             basePDA: normalizedPda,
@@ -282,6 +287,9 @@
             hasMinorityBerthAvailability: berthAvailability.hasMinorityAvailability,
             hasAdjustedRates,
             riskLevel,
+            operationalWarnings,
+            warnings: operationalWarnings,
+            observacionesOperativas: operationalWarnings,
             portCountry: toText(portCountry),
             weekendDates: shiftSimulation.weekendDates,
             berthAvailability,
@@ -330,6 +338,9 @@
             const usesShipGear = /(grua barco|grua del buque|ship crane|geared|_barco)/.test(methodsKey);
             const equipmentPrefix = `Por la naturaleza de la carga (${cargoType}),`;
 
+            if (/reefer|pl[aá]tano|fruta|banana/.test(cargoKey)) {
+                return REEFER_BREAKBULK_OPERATIONAL_WARNING;
+            }
             if (/big bags?|sacos|ensacad/.test(`${cargoKey} ${methodsKey}`)) {
                 return `${equipmentPrefix} se requiere operatividad total de las grúas del buque (Geared), aparejos certificados y supervisión especial de estiba.`;
             }
@@ -485,6 +496,22 @@
             insightParts.push(projectCargoAssessment.insightMessage);
             if (Array.isArray(projectCargoAssessment.requiredEquipment) && projectCargoAssessment.requiredEquipment.length > 0) {
                 insightParts.push(`Medios obligatorios: ${projectCargoAssessment.requiredEquipment.join(', ')}.`);
+            }
+        }
+        const reeferCheckText = `${calcResults.cargoType || ''} ${calcResults.cargo || ''} ${calcResults.product || ''} ${calcResults.category || ''} ${calcResults.loadMethod || ''}`.toLowerCase();
+        const isReeferOp = calcResults.isReefer || riskData.isReefer || /reefer|pl[aá]tano|fruta|banana/i.test(reeferCheckText) || calcResults.targetTemperatureCelsius !== undefined;
+        const isBreakbulkOp = !/container|fcl|contenedor/i.test(reeferCheckText) || /breakbulk|bodega|palet/i.test(reeferCheckText);
+        if (isReeferOp && isBreakbulkOp) {
+            if (!insightParts.includes(REEFER_BREAKBULK_OPERATIONAL_WARNING)) {
+                insightParts.push(REEFER_BREAKBULK_OPERATIONAL_WARNING);
+            }
+            if (typeof root !== 'undefined' && root.State) {
+                if (!Array.isArray(root.State.warnings)) root.State.warnings = [];
+                if (!root.State.warnings.includes(REEFER_BREAKBULK_OPERATIONAL_WARNING)) root.State.warnings.push(REEFER_BREAKBULK_OPERATIONAL_WARNING);
+                if (!Array.isArray(root.State.observacionesOperativas)) root.State.observacionesOperativas = [];
+                if (!root.State.observacionesOperativas.includes(REEFER_BREAKBULK_OPERATIONAL_WARNING)) root.State.observacionesOperativas.push(REEFER_BREAKBULK_OPERATIONAL_WARNING);
+                if (!Array.isArray(root.State.operationalWarnings)) root.State.operationalWarnings = [];
+                if (!root.State.operationalWarnings.includes(REEFER_BREAKBULK_OPERATIONAL_WARNING)) root.State.operationalWarnings.push(REEFER_BREAKBULK_OPERATIONAL_WARNING);
             }
         }
         setText('exec-insight-text', insightParts.join(' '));
@@ -957,6 +984,23 @@
         const cranes = validateCranes(effectiveState);
         const tugs = inferTugCostByDwt(effectiveState.capacidad_dwt, state.coste_remolcadores_ud);
         const totals = calculateTotals(effectiveState, canal.extras_canal, tugs.coste_total_tugs);
+
+        const cargoText = `${state.tipo_carga || ''} ${state.cargo_type || ''} ${state.cargoType || ''} ${state.product || ''} ${state.category || ''} ${state.mercancia || ''} ${state.mercancía || ''}`.toLowerCase();
+        const isReefer = state.isReefer || /reefer|pl[aá]tano|fruta|banana/i.test(cargoText) || state.targetTemperatureCelsius !== undefined;
+        const isBreakbulk = !/container|fcl|contenedor/i.test(cargoText) || /breakbulk|bodega|palet/i.test(cargoText);
+        if (isReefer && isBreakbulk) {
+            const warning = REEFER_BREAKBULK_OPERATIONAL_WARNING;
+            effectiveState.operationalWarnings = Array.isArray(effectiveState.operationalWarnings) ? [...effectiveState.operationalWarnings] : [];
+            if (!effectiveState.operationalWarnings.includes(warning)) effectiveState.operationalWarnings.push(warning);
+            effectiveState.warnings = Array.isArray(effectiveState.warnings) ? [...effectiveState.warnings] : [];
+            if (!effectiveState.warnings.includes(warning)) effectiveState.warnings.push(warning);
+            effectiveState.observacionesOperativas = Array.isArray(effectiveState.observacionesOperativas) ? [...effectiveState.observacionesOperativas] : [];
+            if (!effectiveState.observacionesOperativas.includes(warning)) effectiveState.observacionesOperativas.push(warning);
+            totals.operationalWarnings = effectiveState.operationalWarnings;
+            totals.warnings = effectiveState.warnings;
+            totals.observacionesOperativas = effectiveState.observacionesOperativas;
+        }
+
         return { ...totals, canal, cranes, tugs, fallbacks: fallbackResult.fallbacks, canal_efectivo: fallbackResult.canal_efectivo, state: effectiveState };
     }
 
@@ -1549,6 +1593,25 @@
             `;
         }
         renderSmartAdvisor(batch, hydratedBaseResult, documentRef);
+        const reeferMatrixText = `${hydratedBaseResult.cargoType || ''} ${hydratedBaseResult.cargo_type || ''} ${hydratedBaseResult.cargoProduct || ''} ${hydratedBaseResult.cargoCategory || ''} ${hydratedBaseResult.product || ''} ${hydratedBaseResult.category || ''}`.toLowerCase();
+        const isReeferMat = hydratedBaseResult.isReefer || /reefer|pl[aá]tano|fruta|banana/i.test(reeferMatrixText) || hydratedBaseResult.targetTemperatureCelsius !== undefined;
+        const isBreakbulkMat = !/container|fcl|contenedor/i.test(reeferMatrixText) || /breakbulk|bodega|palet/i.test(reeferMatrixText);
+        if (isReeferMat && isBreakbulkMat) {
+            batch.warnings = Array.isArray(batch.warnings) ? batch.warnings : [];
+            if (!batch.warnings.includes(REEFER_BREAKBULK_OPERATIONAL_WARNING)) batch.warnings.push(REEFER_BREAKBULK_OPERATIONAL_WARNING);
+            batch.operationalWarnings = Array.isArray(batch.operationalWarnings) ? batch.operationalWarnings : [];
+            if (!batch.operationalWarnings.includes(REEFER_BREAKBULK_OPERATIONAL_WARNING)) batch.operationalWarnings.push(REEFER_BREAKBULK_OPERATIONAL_WARNING);
+            batch.observacionesOperativas = Array.isArray(batch.observacionesOperativas) ? batch.observacionesOperativas : [];
+            if (!batch.observacionesOperativas.includes(REEFER_BREAKBULK_OPERATIONAL_WARNING)) batch.observacionesOperativas.push(REEFER_BREAKBULK_OPERATIONAL_WARNING);
+            if (typeof root !== 'undefined' && root.State) {
+                if (!Array.isArray(root.State.warnings)) root.State.warnings = [];
+                if (!root.State.warnings.includes(REEFER_BREAKBULK_OPERATIONAL_WARNING)) root.State.warnings.push(REEFER_BREAKBULK_OPERATIONAL_WARNING);
+                if (!Array.isArray(root.State.observacionesOperativas)) root.State.observacionesOperativas = [];
+                if (!root.State.observacionesOperativas.includes(REEFER_BREAKBULK_OPERATIONAL_WARNING)) root.State.observacionesOperativas.push(REEFER_BREAKBULK_OPERATIONAL_WARNING);
+                if (!Array.isArray(root.State.operationalWarnings)) root.State.operationalWarnings = [];
+                if (!root.State.operationalWarnings.includes(REEFER_BREAKBULK_OPERATIONAL_WARNING)) root.State.operationalWarnings.push(REEFER_BREAKBULK_OPERATIONAL_WARNING);
+            }
+        }
         root.SeaCharterSensitivityAnalysis = batch;
         return batch;
     }
@@ -2002,6 +2065,7 @@
         REEFER_CAPEX_MULTIPLIER,
         REEFER_OPEX_MULTIPLIER,
         REEFER_PDA_MULTIPLIER,
+        REEFER_BREAKBULK_OPERATIONAL_WARNING,
         VoyageCostDomController
     };
 
@@ -2014,6 +2078,7 @@
     root.REEFER_CAPEX_MULTIPLIER = REEFER_CAPEX_MULTIPLIER;
     root.REEFER_OPEX_MULTIPLIER = REEFER_OPEX_MULTIPLIER;
     root.REEFER_PDA_MULTIPLIER = REEFER_PDA_MULTIPLIER;
+    root.REEFER_BREAKBULK_OPERATIONAL_WARNING = REEFER_BREAKBULK_OPERATIONAL_WARNING;
 
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;

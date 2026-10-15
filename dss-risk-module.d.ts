@@ -75,6 +75,7 @@ export interface AllInFreightResult {
 }
 
 export declare const defaultDSSState: DSSFormState;
+export declare const REEFER_BREAKBULK_OPERATIONAL_WARNING: string;
 export declare function calculateMarketFreightWithRisk(dssState: DSSFormState, globalMarketTCE: number): number;
 export declare const dssCommitSchema: z.ZodObject<any>;
 export declare function handleCommitConditions(currentState: DSSFormState, executeSafeCommit?: (data: any) => void): boolean;
