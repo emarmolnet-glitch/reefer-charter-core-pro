@@ -13,7 +13,7 @@ export const CARGO_CATEGORIES = Object.freeze([
 
 export const CARGO_PRODUCT_TREE = Object.freeze({
   "Frutas Cítricas": Object.freeze(["Naranjas", "Limones", "Mandarinas"]),
-  "Frutas Tropicales y Exóticas": Object.freeze(["Bananas/Plátanos (requiere 13°C)", "Piñas", "Aguacates", "Mangos"]),
+  "Frutas Tropicales y Exóticas": Object.freeze(["Bananas/Plátanos", "Bananas/Plátanos (requiere 13°C)", "Piñas", "Aguacates", "Mangos"]),
   "Fruta de Hueso y Pepita": Object.freeze(["Manzanas (alto etileno)", "Peras", "Uvas/Arándanos", "Melocotones/Ciruelas"]),
   "Carnes y Pescados Congelados": Object.freeze(["Pescado Congelado", "Pollo Congelado", "Carne de Res Congelada"]),
   "Carnes y Pescados": Object.freeze(["Pescado Congelado", "Pollo Congelado", "Carne de Res Congelada"]),
@@ -93,7 +93,7 @@ const CARGO_FAMILIES = Object.freeze([
     especificacionCargaId: "10",
   }),
   Object.freeze({
-    aliases: ["banana", "bananas", "platano", "platanos", "pina", "pinas", "aguacate", "aguacates", "mango", "mangos", "tropical"],
+    aliases: ["banana", "bananas", "platano", "platanos", "pina", "pinas", "aguacate", "aguacates", "mango", "mangos", "tropical", "carga refrigerada (reefer)", "carga refrigerada", "reefer"],
     categoriaCarga: "Frutas Tropicales y Exóticas",
     especificacionCargaId: "10",
   }),
@@ -180,6 +180,19 @@ function findExactCargoValue(values, value) {
 }
 
 export function validateCargoHierarchy(category, product, cargoContext = "") {
+  const normCat = normalizeLookupText(category);
+  const normProd = normalizeLookupText(product);
+
+  const isReeferCategory = normCat.includes("carga refrigerada") || (normCat.includes("reefer") && !normCat.includes("vessel"));
+  const isPlatanosProduct = normProd.includes("platano") || normProd.includes("banana");
+
+  if (isReeferCategory || isPlatanosProduct) {
+    return {
+      categoriaCarga: "Frutas Tropicales y Exóticas",
+      productoEspecifico: "Bananas/Plátanos",
+    };
+  }
+
   const exactCategory = findExactCargoValue(CARGO_CATEGORIES, category);
   const exactProduct = findExactCargoValue(CARGO_PRODUCTS, product);
   if (!exactProduct) return { categoriaCarga: exactCategory, productoEspecifico: "" };
@@ -207,6 +220,7 @@ function includesAlias(normalizedText, alias) {
 function selectCargoProduct(normalizedCargo, specificationId, hasBigBags) {
   if (hasBigBags) return "Big Bags (Minerales/Cemento)";
   if (specificationId === "10") {
+    if (includesAlias(normalizedCargo, "platano") || includesAlias(normalizedCargo, "banana") || includesAlias(normalizedCargo, "carga refrigerada")) return "Bananas/Plátanos";
     if (includesAlias(normalizedCargo, "clinker")) return "Clínker";
     if (includesAlias(normalizedCargo, "yeso") || includesAlias(normalizedCargo, "gypsum")) return "Yeso";
     return "Cemento a granel";
@@ -346,8 +360,8 @@ export function normalizeNlpVoyagePayload(payload = {}, sourceText = "") {
     || PACKAGING_REGEX.test(rawProduct)
     || PACKAGING_REGEX.test(rawCategory);
 
-  const explicitCategory = hasDetectedPackaging ? "" : readCargoSelectionValue(source.cargo_category ?? source.cargoCategory ?? source.categoriaCarga);
-  const explicitProduct = hasDetectedPackaging ? "" : readCargoSelectionValue(source.cargo_product ?? source.cargoProduct ?? source.productoEspecifico);
+  const explicitCategory = hasDetectedPackaging ? "" : readCargoSelectionValue(source.cargo_category ?? source.cargoCategory ?? source.categoriaCarga ?? source.category);
+  const explicitProduct = hasDetectedPackaging ? "" : readCargoSelectionValue(source.cargo_product ?? source.cargoProduct ?? source.productoEspecifico ?? source.productSpecific ?? source.product);
   const explicitSpecification = readCargoSpecificationId(
     source.cargo_specification
       ?? source.cargoSpecification
@@ -371,24 +385,57 @@ export function normalizeNlpVoyagePayload(payload = {}, sourceText = "") {
   const handlingMode = String(rawProjectCargo.handlingMode ?? source.handlingMode ?? rawProjectCargo.configuracionOperativa ?? source.configuracionOperativa ?? source.projectHandlingMode ?? 'direct-lift').trim();
   const hasProjectCargo = Boolean(source.projectCargo || source.project_cargo || source.payload?.projectCargo || unitWeightMT > 0 || length > 0 || width > 0 || height > 0);
 
+  const palletQuantity = Number(source.palletQuantity ?? source.pallet_quantity ?? source.pallets ?? source.cantidadPalets) || undefined;
+  const cargoVolumeCBM = Number(source.cargoVolumeCBM ?? source.cargo_volume_cbm ?? source.cargoVolume ?? source.cargo_volume ?? source.volumenCBM) || undefined;
+  const rawTargetTemp = source.targetTemperatureCelsius ?? source.target_temperature_celsius ?? source.target_temperature ?? source.targetTemperature ?? source.temperaturaObjetivo;
+  const targetTemperatureCelsius = rawTargetTemp !== undefined && rawTargetTemp !== null && !isNaN(Number(rawTargetTemp)) ? Number(rawTargetTemp) : undefined;
+  const deckHeight = Number(source.deckHeight ?? source.deck_height ?? source.alturaCubierta) || undefined;
+  const auxiliaryGensetDailyCost = Number(source.auxiliaryGensetDailyCost ?? source.auxiliary_genset_daily_cost ?? source.auxiliaryGensetCost ?? source.costeGeneradorAuxiliar) || undefined;
+  const rawReqCA = source.requiresControlledAtmosphere ?? source.requires_controlled_atmosphere ?? source.atmosferaControlada;
+  const requiresControlledAtmosphere = rawReqCA !== undefined && rawReqCA !== null ? Boolean(rawReqCA) : undefined;
+
+  const combinedCargoText = `${cargoSource} ${explicitCategory} ${explicitProduct} ${rawCategory} ${rawProduct}`.toLowerCase();
+  const normCategory = normalizeLookupText(explicitCategory || rawCategory);
+  const normProduct = normalizeLookupText(explicitProduct || rawProduct);
+  const isReeferCategory = normCategory.includes("carga refrigerada") || normCategory === "reefer" || normCategory.includes("carga refrigerada reefer");
+  const isPlatanosProduct = normProduct.includes("platano") || normProduct.includes("platanos") || normProduct.includes("banana");
+  const isBackendReefer = !hasDetectedPackaging && (isReeferCategory || isPlatanosProduct);
+
+  const hasReeferKeywords = /reefer|pl[aá]tano|fruta/i.test(combinedCargoText);
+  const hasTargetTemp = targetTemperatureCelsius !== undefined;
+  const isReeferDetected = !hasDetectedPackaging && Boolean(
+    isBackendReefer ||
+    hasReeferKeywords ||
+    hasTargetTemp ||
+    (palletQuantity !== undefined && palletQuantity > 0) ||
+    (cargoVolumeCBM !== undefined && cargoVolumeCBM > 0) ||
+    requiresControlledAtmosphere
+  );
+
   const hasMappedFamily = mappedCargo.especificacionCargaId !== "100";
   const specificationId = hasDetectedPackaging
     ? (mappedCargo.especificacionCargaId && mappedCargo.especificacionCargaId !== "100" ? mappedCargo.especificacionCargaId : "10")
-    : (hasMappedFamily
-      ? mappedCargo.especificacionCargaId
-      : CARGO_SPECIFICATION_IDS.includes(explicitSpecification)
-        ? explicitSpecification
-        : hasProjectCargo
-          ? "90"
-          : mappedCargo.especificacionCargaId);
+    : (isBackendReefer
+      ? "10"
+      : (hasMappedFamily
+        ? mappedCargo.especificacionCargaId
+        : CARGO_SPECIFICATION_IDS.includes(explicitSpecification)
+          ? explicitSpecification
+          : hasProjectCargo
+            ? "90"
+            : mappedCargo.especificacionCargaId));
   const cargoCategory = hasDetectedPackaging
     ? (mappedCargo.categoriaCarga || "Minerales y Construcción")
-    : ((hasMappedFamily && mappedCargo.categoriaCarga) || explicitCategory || (hasProjectCargo && specificationId === "90" ? "Carga de Proyecto (Breakbulk)" : mappedCargo.categoriaCarga));
+    : (isBackendReefer
+      ? "Frutas Tropicales y Exóticas"
+      : ((hasMappedFamily && mappedCargo.categoriaCarga) || explicitCategory || (hasProjectCargo && specificationId === "90" ? "Carga de Proyecto (Breakbulk)" : mappedCargo.categoriaCarga)));
   let cargoProduct = hasDetectedPackaging
     ? "Big Bags (Minerales/Cemento)"
-    : (mappedCargo.hasBigBags || (hasMappedFamily && mappedCargo.productoEspecifico)
-      ? mappedCargo.productoEspecifico
-      : explicitProduct || (hasProjectCargo && specificationId === "90" ? (cargoDescription || "Piezas Especiales / Maquinaria") : mappedCargo.productoEspecifico));
+    : (isBackendReefer
+      ? "Bananas/Plátanos"
+      : (mappedCargo.hasBigBags || (hasMappedFamily && mappedCargo.productoEspecifico)
+        ? mappedCargo.productoEspecifico
+        : explicitProduct || (hasProjectCargo && specificationId === "90" ? (cargoDescription || "Piezas Especiales / Maquinaria") : mappedCargo.productoEspecifico)));
   if (hasDetectedPackaging && (!cargoProduct || /granel|bulk/i.test(cargoProduct))) {
     cargoProduct = "Big Bags (Minerales/Cemento)";
   }
@@ -396,13 +443,17 @@ export function normalizeNlpVoyagePayload(payload = {}, sourceText = "") {
   const defaultPackagingMethod = hasDetectedPackaging
     ? (/(palet|pallet)/i.test(cargoSource) ? "paletizado_barco" : "big_bags_barco")
     : "";
-  const methodPOL = explicitMethodPOL || inferCargoMethod(
-    cargoDescription,
-    validatedCargo.categoriaCarga,
-    validatedCargo.productoEspecifico,
-    specificationId,
-  ) || defaultPackagingMethod;
-  const methodPOD = normalizeCargoMethod(source.methodPOD ?? source.discharge_method ?? source.dischargeMethod ?? source.unloadingMethod) || methodPOL;
+  const methodPOL = isReeferDetected
+    ? "paletizado_portuaria"
+    : (explicitMethodPOL || inferCargoMethod(
+      cargoDescription,
+      validatedCargo.categoriaCarga,
+      validatedCargo.productoEspecifico,
+      specificationId,
+    ) || defaultPackagingMethod);
+  const methodPOD = isReeferDetected
+    ? "paletizado_portuaria"
+    : (normalizeCargoMethod(source.methodPOD ?? source.discharge_method ?? source.dischargeMethod ?? source.unloadingMethod) || methodPOL);
 
   const normalizedProjectCargo = hasProjectCargo ? {
     unitWeightMT,
@@ -420,15 +471,6 @@ export function normalizeNlpVoyagePayload(payload = {}, sourceText = "") {
       heightM: height,
     },
   } : undefined;
-
-  const palletQuantity = Number(source.palletQuantity ?? source.pallet_quantity ?? source.pallets ?? source.cantidadPalets) || undefined;
-  const cargoVolumeCBM = Number(source.cargoVolumeCBM ?? source.cargo_volume_cbm ?? source.cargoVolume ?? source.cargo_volume ?? source.volumenCBM) || undefined;
-  const rawTargetTemp = source.targetTemperatureCelsius ?? source.target_temperature_celsius ?? source.target_temperature ?? source.targetTemperature ?? source.temperaturaObjetivo;
-  const targetTemperatureCelsius = rawTargetTemp !== undefined && rawTargetTemp !== null && !isNaN(Number(rawTargetTemp)) ? Number(rawTargetTemp) : undefined;
-  const deckHeight = Number(source.deckHeight ?? source.deck_height ?? source.alturaCubierta) || undefined;
-  const auxiliaryGensetDailyCost = Number(source.auxiliaryGensetDailyCost ?? source.auxiliary_genset_daily_cost ?? source.auxiliaryGensetCost ?? source.costeGeneradorAuxiliar) || undefined;
-  const rawReqCA = source.requiresControlledAtmosphere ?? source.requires_controlled_atmosphere ?? source.atmosferaControlada;
-  const requiresControlledAtmosphere = rawReqCA !== undefined && rawReqCA !== null ? Boolean(rawReqCA) : undefined;
 
   return {
     ...source,
@@ -454,12 +496,20 @@ export function normalizeNlpVoyagePayload(payload = {}, sourceText = "") {
     } : {}),
     cargo_category: validatedCargo.categoriaCarga,
     cargo_product: validatedCargo.productoEspecifico,
+    category: validatedCargo.categoriaCarga,
+    product: validatedCargo.productoEspecifico,
     cargo_specification: specificationId,
     categoriaCarga: validatedCargo.categoriaCarga,
     productoEspecifico: validatedCargo.productoEspecifico,
     productSpecific: validatedCargo.productoEspecifico,
     cargoCategory: validatedCargo.categoriaCarga,
     cargoProduct: validatedCargo.productoEspecifico,
+    ...(isReeferDetected ? {
+      speed_laden: 17.5,
+      speed_ballast: 17.5,
+      speedLaden: 17.5,
+      speedBallast: 17.5,
+    } : {}),
     packaging: hasDetectedPackaging ? "Big Bags" : (source.packaging || ""),
     packingType: hasDetectedPackaging ? "Big Bags" : (source.packingType || ""),
     hasPackaging: hasDetectedPackaging,

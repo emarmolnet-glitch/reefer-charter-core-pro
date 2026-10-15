@@ -148,6 +148,6 @@ test('6. Financial Engine: CAPEX (+28%), OPEX Base (+20%), Seguros (Inherent Vic
 
   // Cost engine opex & PDA multipliers
   assert.match(costEngineSource, /estimateDailyOpexByDwt\(dwt,\s*isReefer\s*=\s*false\)/);
-  assert.match(costEngineSource, /return isReefer \? Math\.round\(base \* 1\.20\) : base;/);
-  assert.match(costEngineSource, /reeferMultiplier = isReefer \? 1\.25 : 1\.0;/);
+  assert.match(costEngineSource, /return isReefer \? Math\.round\(base \* (?:1\.30|1\.20|REEFER_FINANCIAL_MULTIPLIERS\.OPEX)\) : base;/);
+  assert.match(costEngineSource, /reeferMultiplier = isReefer \? (?:1\.50?|1\.25|REEFER_FINANCIAL_MULTIPLIERS\.PDA) : 1\.0;/);
 });

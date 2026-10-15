@@ -317,22 +317,76 @@ export const voyageStore = createStore(subscribeWithSelector((set, get) => ({
             ? cleanNonNegativeNumber(rawAuxGenset) ?? (current.draft.auxiliaryGensetDailyCost ?? current.auxiliaryGensetDailyCost ?? 0)
             : (current.draft.auxiliaryGensetDailyCost ?? current.auxiliaryGensetDailyCost ?? 0);
 
+        const cargoTextToInspect = [
+            scenario.cargo_type,
+            scenario.cargoType,
+            scenario.category,
+            scenario.cargo_category,
+            scenario.cargoCategory,
+            scenario.categoriaCarga,
+            scenario.product,
+            scenario.cargo_product,
+            scenario.cargoProduct,
+            scenario.productoEspecifico,
+            scenario.cargo?.description,
+            payload.cargo_type,
+            payload.cargoType,
+            payload.category,
+            payload.cargo_category,
+            payload.cargoCategory,
+            payload.categoriaCarga,
+            payload.product,
+            payload.cargo_product,
+            payload.cargoProduct,
+            payload.productoEspecifico,
+            payload.cargo?.description,
+        ].filter(Boolean).join(' ');
+
+        const hasTargetTemp = rawTargetTemp !== undefined && rawTargetTemp !== null && rawTargetTemp !== '' && !isNaN(Number(rawTargetTemp));
+        const hasReeferKeywords = /reefer|pl[aá]tano|fruta|citric|pescad|carn|congelad|farmac/i.test(cargoTextToInspect);
+
         const isReeferCargo = Boolean(
             palletQuantity > 0 ||
             cargoVolumeCBM > 0 ||
             requiresControlledAtmosphere ||
-            (rawTargetTemp !== undefined && rawTargetTemp !== null) ||
-            /fruta|citric|pescad|carn|congelad|farmac|reefer/i.test(String(scenario.cargo_type || scenario.cargoType || payload.cargo_type || payload.cargoType || ''))
+            hasTargetTemp ||
+            hasReeferKeywords
         );
 
         // Reefer Speed Profiling: 17.5 knots default for temperature controlled cargo (vs 10-13 for dry bulk)
         const defaultReeferSpeed = isReeferCargo ? 17.5 : null;
-        const speed_laden = cleanNonNegativeNumber(scenario.speed_laden ?? scenario.speedLaden ?? payload.speed_laden ?? payload.speedLaden)
-            ?? defaultReeferSpeed
-            ?? current.draft.speed_laden;
-        const speed_ballast = cleanNonNegativeNumber(scenario.speed_ballast ?? scenario.speedBallast ?? payload.speed_ballast ?? payload.speedBallast)
-            ?? defaultReeferSpeed
-            ?? current.draft.speed_ballast;
+        const speed_laden = isReeferCargo
+            ? 17.5
+            : (cleanNonNegativeNumber(scenario.speed_laden ?? scenario.speedLaden ?? payload.speed_laden ?? payload.speedLaden)
+                ?? defaultReeferSpeed
+                ?? current.draft.speed_laden);
+        const speed_ballast = isReeferCargo
+            ? 17.5
+            : (cleanNonNegativeNumber(scenario.speed_ballast ?? scenario.speedBallast ?? payload.speed_ballast ?? payload.speedBallast)
+                ?? defaultReeferSpeed
+                ?? current.draft.speed_ballast);
+
+        const reeferMethod = 'Paletizado - Grúa Portuaria';
+        const methodPOL = isReeferCargo
+            ? reeferMethod
+            : (cleanMethod(scenario.methodPOL ?? scenario.loading_method ?? scenario.loadingMethod ?? scenario.loadMethod) || current.draft.methodPOL);
+        const methodPOD = isReeferCargo
+            ? reeferMethod
+            : (cleanMethod(scenario.methodPOD ?? scenario.discharge_method ?? scenario.dischargeMethod) || current.draft.methodPOD);
+
+        const normCat = String(payload.category || payload.cargo_category || payload.cargoCategory || scenario.category || scenario.cargo_category || '').toLowerCase();
+        const normProd = String(payload.product || payload.cargo_product || payload.cargoProduct || scenario.product || scenario.cargo_product || '').toLowerCase();
+        const isBackendReefer = normCat.includes('carga refrigerada') || normCat.includes('reefer') || normProd.includes('platano') || normProd.includes('banana');
+
+        const resolvedCargoCategory = isBackendReefer
+            ? 'Frutas Tropicales y Exóticas'
+            : (payload.cargoCategory || payload.cargo_category || scenario.cargoCategory || scenario.cargo_category || current.draft.cargoCategory);
+        const resolvedCargoProduct = isBackendReefer
+            ? 'Bananas/Plátanos'
+            : (payload.cargoProduct || payload.cargo_product || scenario.cargoProduct || scenario.cargo_product || current.draft.cargoProduct);
+        const resolvedCargoDescription = isBackendReefer
+            ? 'Bananas/Plátanos'
+            : (cleanText(scenario.cargo_type || scenario.cargoType || payload.cargo_type || payload.cargoType) || current.draft.cargo.description);
 
         const nextDraft = {
             pol: normalizeNlpPort(scenario.pol_port || scenario.pol, cleanText(scenario.pol)) || current.draft.pol,
@@ -342,11 +396,15 @@ export const voyageStore = createStore(subscribeWithSelector((set, get) => ({
                 cancelling: cleanText(scenario.cancelling) || current.draft.laycan.cancelling,
             },
             cargo: {
-                description: cleanText(scenario.cargo_type || scenario.cargoType) || current.draft.cargo.description,
+                description: resolvedCargoDescription,
                 quantityMt: scenario.cargo_qty !== undefined || scenario.cargoQty !== undefined
                     ? cleanNumber(scenario.cargo_qty ?? scenario.cargoQty) || current.draft.cargo.quantityMt
                     : current.draft.cargo.quantityMt,
             },
+            cargoCategory: resolvedCargoCategory,
+            cargoProduct: resolvedCargoProduct,
+            categoriaCarga: resolvedCargoCategory,
+            productoEspecifico: resolvedCargoProduct,
             projectCargo,
             cargoVolumeCBM,
             palletQuantity,
@@ -363,8 +421,8 @@ export const voyageStore = createStore(subscribeWithSelector((set, get) => ({
                 ? cleanNumber(scenario.ratePOD ?? scenario.discharge_rate ?? scenario.dischargeRate) || current.draft.dischargeRate
                 : current.draft.dischargeRate,
             dwt: cleanNumber(scenario.dwt ?? scenario.required_dwt ?? scenario.requiredDwt) || current.draft.dwt,
-            methodPOL: cleanMethod(scenario.methodPOL ?? scenario.loading_method ?? scenario.loadingMethod ?? scenario.loadMethod) || current.draft.methodPOL,
-            methodPOD: cleanMethod(scenario.methodPOD ?? scenario.discharge_method ?? scenario.dischargeMethod) || current.draft.methodPOD,
+            methodPOL,
+            methodPOD,
             ratePOL: cleanNumber(scenario.ratePOL ?? scenario.loading_rate ?? scenario.loadingRate) || current.draft.ratePOL,
             ratePOD: cleanNumber(scenario.ratePOD ?? scenario.discharge_rate ?? scenario.dischargeRate) || current.draft.ratePOD,
             ballastDistanceNm: current.draft.ballastDistanceNm,
@@ -501,6 +559,30 @@ export const voyageStore = createStore(subscribeWithSelector((set, get) => ({
             }) || current.draft.vessel,
             lastSource: 'calculator',
         };
+
+        const calculatorReeferText = [
+            state.cargoProduct,
+            state.cargoType,
+            state.cargoDescription,
+            state.category,
+            state.cargoCategory,
+            state.categoriaCarga,
+            state.product,
+            state.productoEspecifico,
+        ].filter(Boolean).join(' ');
+        const isCalculatorReefer = Boolean(
+            palletQuantity > 0 ||
+            cargoVolumeCBM > 0 ||
+            requiresControlledAtmosphere ||
+            (state.targetTemperatureCelsius !== undefined && state.targetTemperatureCelsius !== null && !isNaN(Number(state.targetTemperatureCelsius))) ||
+            /reefer|pl[aá]tano|fruta/i.test(calculatorReeferText)
+        );
+        if (isCalculatorReefer) {
+            nextDraft.speed_laden = 17.5;
+            nextDraft.speed_ballast = 17.5;
+            nextDraft.methodPOL = 'Paletizado - Grúa Portuaria';
+            nextDraft.methodPOD = 'Paletizado - Grúa Portuaria';
+        }
 
         const currentComparable = { ...current.draft, updatedAt: null, lastSource: 'calculator' };
         const nextComparable = { ...nextDraft, updatedAt: null, lastSource: 'calculator' };
