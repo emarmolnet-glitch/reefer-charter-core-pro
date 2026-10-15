@@ -727,23 +727,54 @@ function hydrateCalculatorFromDraft(draft) {
         if (caEl2) caEl2.checked = Boolean(draft.requiresControlledAtmosphere);
     }
 
-    const isReeferOperation = Boolean(
+    const isReeferOp = Boolean(
+        (typeof isReeferOperation === 'function' && isReeferOperation()) ||
+        (typeof window !== 'undefined' && typeof window.isReeferOperation === 'function' && window.isReeferOperation()) ||
         (Number(draft?.palletQuantity) > 0) ||
         (Number(draft?.cargoVolumeCBM) > 0) ||
         draft?.requiresControlledAtmosphere ||
         (draft?.targetTemperatureCelsius !== undefined && draft?.targetTemperatureCelsius !== null && Number(draft.targetTemperatureCelsius) <= 15) ||
-        /reefer|pl[aá]tano|fruta/i.test(String(draft?.cargo?.description || draft?.cargoProduct || draft?.cargoCategory || ''))
+        /reefer|frigor|pl[aá]tano|fruta/i.test(String(draft?.cargo?.description || draft?.cargoProduct || draft?.cargoCategory || ''))
     );
 
-    if (isReeferOperation) {
+    if (isReeferOp) {
         setValue('spd-laden', 17.5, false);
         setValue('spd-ballast', 17.5, false);
+        const spdLadenEl = document.getElementById('spd-laden');
+        if (spdLadenEl) {
+            spdLadenEl.value = '17.5';
+            spdLadenEl.dataset.autoInferred = 'true';
+            spdLadenEl.dataset.vesselSegment = 'Reefer Vessel';
+        }
+        const spdBallastEl = document.getElementById('spd-ballast');
+        if (spdBallastEl) {
+            spdBallastEl.value = '17.5';
+            spdBallastEl.dataset.autoInferred = 'true';
+            spdBallastEl.dataset.vesselSegment = 'Reefer Vessel';
+        }
+        if (typeof State !== 'undefined' && State) {
+            State.speedLaden = 17.5;
+            State.speedBallast = 17.5;
+            State.spdLaden = 17.5;
+            State.spdBallast = 17.5;
+        }
         if (window.State) {
             window.State.speedLaden = 17.5;
             window.State.speedBallast = 17.5;
+            window.State.spdLaden = 17.5;
+            window.State.spdBallast = 17.5;
         }
         replaceOperationalMethod('pol', 'Paletizado - Grúa Portuaria');
         replaceOperationalMethod('pod', 'Paletizado - Grúa Portuaria');
+
+        if (typeof window.calculateAdjustedEtaAndDays === 'function') {
+            window.calculateAdjustedEtaAndDays();
+        }
+        if (typeof window.runEngine === 'function') {
+            window.runEngine();
+        } else if (typeof window.calculateVoyage === 'function') {
+            window.calculateVoyage();
+        }
     }
 
     if (typeof window !== 'undefined') {
