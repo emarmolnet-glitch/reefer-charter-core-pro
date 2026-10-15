@@ -63,11 +63,17 @@ export type DraftVoyage = {
   pol: VoyagePort | null;
   pod: VoyagePort | null;
   laycan: { laydays: string; cancelling: string };
-  cargo: { description: string; quantityMt: number };
+  cargoVolumeCBM: number;
+  palletQuantity: number;
+  deckHeight: number;
+  targetTemperatureCelsius: number;
+  requiresControlledAtmosphere: boolean;
+  auxiliaryGensetDailyCost: number;
+  cargo: { description: string; quantityMt?: number };
   projectCargo?: ProjectCargoDraft | null;
   loadingRate: number;
   dischargeRate: number;
-  dwt: number;
+  dwt?: number;
   methodPOL: string;
   methodPOD: string;
   ratePOL: number;
@@ -81,10 +87,25 @@ export type DraftVoyage = {
   lastSource: string;
 };
 export type VoyageStoreState = {
+  cargoVolumeCBM: number;
+  palletQuantity: number;
+  deckHeight: number;
+  targetTemperatureCelsius: number;
+  requiresControlledAtmosphere: boolean;
+  auxiliaryGensetDailyCost: number;
   draft: DraftVoyage;
+  setCargoDetails: (details?: Partial<{
+    cargoVolumeCBM: number;
+    palletQuantity: number;
+    deckHeight: number;
+    targetTemperatureCelsius: number;
+    requiresControlledAtmosphere: boolean;
+    auxiliaryGensetDailyCost: number;
+  }>) => void;
   applyNlpScenario: (scenario?: Record<string, unknown>) => void;
   updateFromCalculator: (state?: Record<string, unknown>) => void;
   patchSection2Vessel: (vessel?: Record<string, unknown>) => void;
+  patchVesselData?: (vessel?: Record<string, unknown>) => void;
   setBallastDistance: (payload?: { ballastDistanceNm?: number; source?: string }) => void;
   applyTrackingAudit: (payload?: { ballastDistanceNm?: number; lastreCoordinates?: unknown[]; vessel?: Record<string, unknown> }) => void;
   applyMatchingCandidate: (payload?: { ballastDistanceNm?: number; lastreCoordinates?: unknown[]; vessel?: Record<string, unknown> }) => void;

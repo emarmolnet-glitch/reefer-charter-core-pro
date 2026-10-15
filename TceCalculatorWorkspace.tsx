@@ -217,7 +217,7 @@ const COST_PLUS_INPUTS: Array<{
   { key: 'daysPort', label: 'Días de puerto', suffix: 'días' },
   { key: 'bunkerCost', label: 'Coste combustible', suffix: 'USD' },
   { key: 'portCosts', label: 'Gastos portuarios', suffix: 'USD' },
-  { key: 'cargoVolume', label: 'Toneladas carga', suffix: 'MT' },
+  { key: 'cargoVolume', label: 'Volumen CBM', suffix: 'CBM' },
 ];
 
 const INPUTS: Array<{
@@ -232,7 +232,7 @@ const INPUTS: Array<{
   { key: 'seaFuelConsumption', label: 'Consumo mar', suffix: 't/d', step: 'any' },
   { key: 'portFuelConsumption', label: 'Consumo puerto', suffix: 't/d', step: 'any' },
   { key: 'portCosts', label: 'Costes portuarios', suffix: 'USD' },
-  { key: 'cargoVolume', label: 'Volumen de carga', suffix: 'MT' },
+  { key: 'cargoVolume', label: 'Volumen CBM', suffix: 'CBM' },
   { key: 'bunkerDailyPortCost', label: 'Bunker diario en puerto', suffix: 'USD/día' },
   { key: 'totalCo2Emissions', label: 'Emisiones CO2 ETS', suffix: 'tCO2', step: '0.1' },
   { key: 'euaPrice', label: 'Precio EUA', suffix: 'USD/t', step: '0.01' },
@@ -1304,6 +1304,84 @@ export function ReverseTceCalculator({
   const [renderRefreshTick, setRenderRefreshTick] = useState(0);
   const etaBaseRadar = laycanDate || '';
 
+  const [reeferState, setReeferState] = useState(() => {
+    const st = voyageStore.getState();
+    const draft = st?.draft || ({} as any);
+    return {
+      palletQuantity: Number(st?.palletQuantity ?? draft?.palletQuantity ?? 0) || 0,
+      cargoVolumeCBM: Number(st?.cargoVolumeCBM ?? draft?.cargoVolumeCBM ?? 0) || 0,
+      deckHeight: Number(st?.deckHeight ?? draft?.deckHeight ?? 2.2) || 2.2,
+      targetTemperatureCelsius: Number.isFinite(Number(st?.targetTemperatureCelsius))
+        ? Number(st?.targetTemperatureCelsius)
+        : (Number.isFinite(Number(draft?.targetTemperatureCelsius)) ? Number(draft?.targetTemperatureCelsius) : 13.0),
+      requiresControlledAtmosphere: Boolean(st?.requiresControlledAtmosphere ?? draft?.requiresControlledAtmosphere),
+      auxiliaryGensetDailyCost: Number(st?.auxiliaryGensetDailyCost ?? draft?.auxiliaryGensetDailyCost ?? 0) || 0,
+    };
+  });
+
+  useEffect(() => {
+    const unsub = voyageStore.subscribe((state) => {
+      const draft = state.draft || state;
+      setReeferState((prev) => {
+        const next = {
+          palletQuantity: Number(state.palletQuantity ?? draft?.palletQuantity ?? 0) || 0,
+          cargoVolumeCBM: Number(state.cargoVolumeCBM ?? draft?.cargoVolumeCBM ?? 0) || 0,
+          deckHeight: Number(state.deckHeight ?? draft?.deckHeight ?? 2.2) || 2.2,
+          targetTemperatureCelsius: Number.isFinite(Number(state.targetTemperatureCelsius))
+            ? Number(state.targetTemperatureCelsius)
+            : (Number.isFinite(Number(draft?.targetTemperatureCelsius)) ? Number(draft?.targetTemperatureCelsius) : 13.0),
+          requiresControlledAtmosphere: Boolean(state.requiresControlledAtmosphere ?? draft?.requiresControlledAtmosphere),
+          auxiliaryGensetDailyCost: Number(state.auxiliaryGensetDailyCost ?? draft?.auxiliaryGensetDailyCost ?? 0) || 0,
+        };
+        if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
+        return next;
+      });
+    });
+    return () => unsub();
+  }, []);
+
+  const handleReeferChange = (field: string, val: unknown) => {
+    const updated = { ...reeferState, [field]: val };
+    setReeferState(updated);
+
+    if (field === 'cargoVolumeCBM') {
+      const cbmNum = Number(val) || 0;
+      setValues((cur) => ({ ...cur, cargoVolume: cbmNum }));
+    }
+
+    if (typeof voyageStore.getState()?.setCargoDetails === 'function') {
+      voyageStore.getState().setCargoDetails(updated);
+    }
+
+    if (typeof window !== 'undefined') {
+      if (window.activeVoyage) {
+        Object.assign(window.activeVoyage, updated);
+      }
+      const gStore = (window as any).SeaCharterStore;
+      if (gStore?.set) {
+        gStore.set(updated, { source: 'reefer-ui' });
+      }
+      if (window.activeVoyage) {
+        window.dispatchEvent(new CustomEvent('voyageCalculated', { detail: window.activeVoyage }));
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const active = window.activeVoyage || {};
+      window.activeVoyage = {
+        ...active,
+        cargoVolumeCBM: reeferState.cargoVolumeCBM,
+        palletQuantity: reeferState.palletQuantity,
+        deckHeight: reeferState.deckHeight,
+        targetTemperatureCelsius: reeferState.targetTemperatureCelsius,
+        requiresControlledAtmosphere: reeferState.requiresControlledAtmosphere,
+        auxiliaryGensetDailyCost: reeferState.auxiliaryGensetDailyCost,
+      };
+    }
+  }, [reeferState]);
+
   const getSyncedValues = (current: ReverseCalculatorState) => {
     const strategy = NAVIGATION_STRATEGIES[navigationStrategy];
     const spotVal = Number.isFinite(Number(theoreticalSpotTce)) && Number(theoreticalSpotTce) > 0
@@ -1857,6 +1935,90 @@ export function ReverseTceCalculator({
                     className="h-5 w-5 accent-teal-700"
                   />
                 </label>
+              </div>
+
+              {/* Parámetros de Carga Frigorífica (Reefer Cargo) */}
+              <div className="mb-4 rounded-xl border border-teal-200 bg-white p-4 shadow-sm">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-teal-900 flex items-center gap-2">
+                    <span className="text-base">❄️</span> Carga Frigorífica (Reefer Cargo)
+                  </h3>
+                  <span className="rounded-full bg-teal-50 border border-teal-200 px-2 py-0.5 text-[10px] font-bold text-teal-800">
+                    Reefer Charter Core PRO
+                  </span>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div>
+                    <label
+                      htmlFor="reverse-pallet-quantity"
+                      className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-slate-500"
+                    >
+                      Cantidad de Palets
+                    </label>
+                    <input
+                      id="reverse-pallet-quantity"
+                      name="palletQuantity"
+                      type="number"
+                      min="0"
+                      value={reeferState.palletQuantity || ''}
+                      onChange={(e) => handleReeferChange('palletQuantity', Number(e.target.value) || 0)}
+                      placeholder="0"
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="reverse-cargo-volume-cbm"
+                      className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-slate-500"
+                    >
+                      Volumen CBM
+                    </label>
+                    <input
+                      id="reverse-cargo-volume-cbm"
+                      name="cargoVolumeCBM"
+                      type="number"
+                      min="0"
+                      value={reeferState.cargoVolumeCBM || ''}
+                      onChange={(e) => handleReeferChange('cargoVolumeCBM', Number(e.target.value) || 0)}
+                      placeholder="0"
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="reverse-target-temperature"
+                      className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-slate-500"
+                    >
+                      Temperatura Objetivo °C
+                    </label>
+                    <input
+                      id="reverse-target-temperature"
+                      name="targetTemperatureCelsius"
+                      type="number"
+                      step="0.1"
+                      value={reeferState.targetTemperatureCelsius}
+                      onChange={(e) => handleReeferChange('targetTemperatureCelsius', Number(e.target.value) || 0)}
+                      placeholder="13.0"
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
+                    />
+                  </div>
+                  <div className="flex flex-col justify-end">
+                    <label
+                      htmlFor="reverse-controlled-atmosphere"
+                      className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 cursor-pointer min-h-[40px]"
+                    >
+                      <input
+                        id="reverse-controlled-atmosphere"
+                        name="requiresControlledAtmosphere"
+                        type="checkbox"
+                        checked={reeferState.requiresControlledAtmosphere}
+                        onChange={(e) => handleReeferChange('requiresControlledAtmosphere', e.target.checked)}
+                        className="h-5 w-5 accent-teal-700 rounded"
+                      />
+                      <span className="text-xs font-bold text-slate-700">Atmósfera Controlada (CA)</span>
+                    </label>
+                  </div>
+                </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">

@@ -10596,12 +10596,30 @@
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                        <!-- Reefer Cargo Inputs (Reefer Charter Core PRO) -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 p-3 bg-slate-900/60 rounded-xl border border-teal-500/30">
                             <div class="input-group">
-                                <label id="label-cargo-qty" class="text-action-required flex items-center min-h-[24px]">Carga a Transportar (TM)</label>
-                                <input type="number" id="cargo-qty" class="input-gc action-required-field required-use-highlight text-action-required font-bold" value="0" step="any" oninput="updateSection2LocalState('cargo-qty', this.value); updateCargoVesselClassDisplay();" onblur="detectVesselSegmentFromInputs()">
-                                <p id="cargo-vessel-class-display" class="text-[10px] text-teal-300 mt-1 font-semibold min-h-[14px]"></p>
+                                <label id="label-pallet-quantity" for="pallet-quantity" class="text-action-required flex items-center min-h-[24px] text-teal-300 font-bold">Cantidad de Palets</label>
+                                <input type="number" id="pallet-quantity" class="input-gc action-required-field required-use-highlight text-action-required font-bold" value="0" min="0" step="1" placeholder="0" oninput="handleReeferInputChange('palletQuantity', this.value)">
                             </div>
+                            <div class="input-group">
+                                <label id="label-cargo-volume-cbm" for="cargo-volume-cbm" class="text-action-required flex items-center min-h-[24px] text-teal-300 font-bold">Volumen CBM</label>
+                                <input type="number" id="cargo-volume-cbm" class="input-gc action-required-field required-use-highlight text-action-required font-bold" value="0" min="0" step="any" placeholder="0" oninput="handleReeferInputChange('cargoVolumeCBM', this.value)">
+                            </div>
+                            <div class="input-group">
+                                <label id="label-target-temperature" for="target-temperature" class="text-action-required flex items-center min-h-[24px] text-teal-300 font-bold">Temperatura Objetivo °C</label>
+                                <input type="number" id="target-temperature" class="input-gc action-required-field required-use-highlight text-action-required font-bold" value="13.0" step="0.1" placeholder="13.0" oninput="handleReeferInputChange('targetTemperatureCelsius', this.value)">
+                            </div>
+                            <div class="input-group flex flex-col justify-end">
+                                <label id="label-controlled-atmosphere" for="controlled-atmosphere" class="flex items-center gap-2 p-2 rounded-lg border border-slate-700 bg-slate-800/90 hover:bg-slate-700 cursor-pointer min-h-[42px]">
+                                    <input type="checkbox" id="controlled-atmosphere" class="h-5 w-5 accent-teal-500 rounded" onchange="handleReeferInputChange('requiresControlledAtmosphere', this.checked)">
+                                    <span class="text-xs font-bold text-teal-200">Atmósfera Controlada (CA)</span>
+                                </label>
+                            </div>
+                            <input type="hidden" id="cargo-qty" value="0">
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                             <div class="input-group">
                                 <label id="label-cargo-type" class="text-action-required flex items-center min-h-[24px]">Categoría de Carga</label>
                                 <select id="cargo-type" class="input-gc action-required-field required-use-highlight text-action-required" required aria-required="true" onchange="markCargoSelectionCommitted(); updateSection2LocalState('cargo-type', this.value); handleCargoCategoryChange(); populateCargoProducts(); autoPopulateRouteLimits();">
@@ -18281,6 +18299,7 @@
             nplDataOrigin: "Externo",
             portBallast: "", pol: "", pod: "", portBallastCoordinates: null, polCoordinates: null, podCoordinates: null,
             distBallast: 0, distLaden: 0, totalDays: 0,
+            cargoVolumeCBM: 0, palletQuantity: 0, deckHeight: 2.2, targetTemperatureCelsius: 13.0, requiresControlledAtmosphere: false, auxiliaryGensetDailyCost: 0,
             cargo: 0, cargoQuantity: 0, stowageFactor: 1.20, cargoTolerance: 0, loadRate: 0, dischRate: 0, dischargeRate: 0,
             cargoType: "",
             cargoProduct: "",
@@ -18522,8 +18541,24 @@
                     heightM: height
                 }
             };
+            const cargoVolumeCBM = Number(source.cargoVolumeCBM ?? source.cargoVolume ?? base.cargoVolumeCBM ?? 0) || 0;
+            const palletQuantity = Number(source.palletQuantity ?? base.palletQuantity ?? 0) || 0;
+            const deckHeight = Number(source.deckHeight ?? base.deckHeight ?? 2.2) || 2.2;
+            const targetTemperatureCelsius = Number.isFinite(Number(source.targetTemperatureCelsius))
+                ? Number(source.targetTemperatureCelsius)
+                : (Number.isFinite(Number(base.targetTemperatureCelsius)) ? Number(base.targetTemperatureCelsius) : 13.0);
+            const requiresControlledAtmosphere = source.requiresControlledAtmosphere !== undefined
+                ? Boolean(source.requiresControlledAtmosphere)
+                : Boolean(base.requiresControlledAtmosphere);
+            const auxiliaryGensetDailyCost = Number(source.auxiliaryGensetDailyCost ?? base.auxiliaryGensetDailyCost ?? 0) || 0;
             return {
                 ...source,
+                cargoVolumeCBM,
+                palletQuantity,
+                deckHeight,
+                targetTemperatureCelsius,
+                requiresControlledAtmosphere,
+                auxiliaryGensetDailyCost,
                 laycan: { laydays, cancelling },
                 laydays,
                 cancelling,
@@ -34474,6 +34509,66 @@ function createRouteAnchorElement(type) {
         }
         window.updateSection2LocalState = updateSection2LocalState;
 
+        function handleReeferInputChange(field, rawValue) {
+            updateSection2LocalState(field, rawValue);
+            if (typeof State === 'undefined' || !State) return;
+
+            if (field === 'requiresControlledAtmosphere') {
+                const val = Boolean(rawValue);
+                State.requiresControlledAtmosphere = val;
+                if (window.voyageStore?.getState()?.setCargoDetails) {
+                    window.voyageStore.getState().setCargoDetails({ requiresControlledAtmosphere: val });
+                }
+                if (window.SeaCharterStore?.set) {
+                    window.SeaCharterStore.set({ requiresControlledAtmosphere: val }, { source: 'reefer-input', silent: true });
+                }
+            } else {
+                const num = Number(rawValue) || 0;
+                State[field] = num;
+
+                if (field === 'palletQuantity' && num > 0) {
+                    const cbmInput = document.getElementById('cargo-volume-cbm');
+                    if (cbmInput && (!Number(cbmInput.value) || Number(cbmInput.value) === 0)) {
+                        const estCbm = Number((num * 1.8).toFixed(1));
+                        cbmInput.value = String(estCbm);
+                        State.cargoVolumeCBM = estCbm;
+                        updateSection2LocalState('cargoVolumeCBM', estCbm);
+                    }
+                }
+
+                const effectiveWeight = field === 'palletQuantity' ? num * 1.0 : (State.palletQuantity ? State.palletQuantity * 1.0 : (State.cargoVolumeCBM ? State.cargoVolumeCBM * 0.5 : num));
+                const cargoQtyEl = document.getElementById('cargo-qty');
+                if (cargoQtyEl) {
+                    cargoQtyEl.value = String(effectiveWeight);
+                }
+                State.cargo = effectiveWeight;
+                State.cargoQty = effectiveWeight;
+
+                if (window.voyageStore?.getState()?.setCargoDetails) {
+                    window.voyageStore.getState().setCargoDetails({
+                        cargoVolumeCBM: State.cargoVolumeCBM || 0,
+                        palletQuantity: State.palletQuantity || 0,
+                        deckHeight: State.deckHeight || 2.2,
+                        targetTemperatureCelsius: State.targetTemperatureCelsius ?? 13.0,
+                        requiresControlledAtmosphere: Boolean(State.requiresControlledAtmosphere),
+                        auxiliaryGensetDailyCost: State.auxiliaryGensetDailyCost || 0,
+                    });
+                }
+                if (window.SeaCharterStore?.set) {
+                    window.SeaCharterStore.set({
+                        [field]: num,
+                        cargo: effectiveWeight,
+                        cargoQty: effectiveWeight,
+                    }, { source: 'reefer-input', silent: true });
+                }
+            }
+
+            if (typeof runEngine === 'function') {
+                runEngine();
+            }
+        }
+        window.handleReeferInputChange = handleReeferInputChange;
+
         const CARGO_OPERATION_DRAFT_IDS = Object.freeze([
             'gruas-swl-pol',
             'gruas-tara-pol',
@@ -41605,6 +41700,16 @@ function scheduleReactiveEngine() {
 
             refreshVesselCompatibilityWarning();
 
+            const storeDraft = window.voyageStore?.getState?.()?.draft || {};
+            const storeState = window.voyageStore?.getState?.() || {};
+
+            const cargoVolumeCBM = State.cargoVolumeCBM ?? storeState.cargoVolumeCBM ?? storeDraft.cargoVolumeCBM ?? parseFloat(document.getElementById('cargo-volume-cbm')?.value) ?? 0;
+            const palletQuantity = State.palletQuantity ?? storeState.palletQuantity ?? storeDraft.palletQuantity ?? parseFloat(document.getElementById('pallet-quantity')?.value) ?? 0;
+            const deckHeight = State.deckHeight ?? storeState.deckHeight ?? storeDraft.deckHeight ?? parseFloat(document.getElementById('deck-height')?.value) ?? 2.2;
+            const targetTemperatureCelsius = State.targetTemperatureCelsius ?? storeState.targetTemperatureCelsius ?? storeDraft.targetTemperatureCelsius ?? parseFloat(document.getElementById('target-temperature')?.value) ?? 13.0;
+            const requiresControlledAtmosphere = Boolean(State.requiresControlledAtmosphere ?? storeState.requiresControlledAtmosphere ?? storeDraft.requiresControlledAtmosphere ?? document.getElementById('controlled-atmosphere')?.checked);
+            const auxiliaryGensetDailyCost = State.auxiliaryGensetDailyCost ?? storeState.auxiliaryGensetDailyCost ?? storeDraft.auxiliaryGensetDailyCost ?? 0;
+
             const activeVoyagePayload = {
                 pol: State.pol,
                 pod: State.pod,
@@ -41631,13 +41736,25 @@ function scheduleReactiveEngine() {
                 vesselName: State.vessel,
                 vesselDwt: State.dwt,
                 laycanDate: State.laycanDate,
-                cancellingDate: State.cancellingDate
+                cancellingDate: State.cancellingDate,
+                cargoVolumeCBM,
+                palletQuantity,
+                deckHeight,
+                targetTemperatureCelsius,
+                requiresControlledAtmosphere,
+                auxiliaryGensetDailyCost
             };
             if (typeof window !== 'undefined') {
                 window.activeVoyage = activeVoyagePayload;
                 if (window.State) {
                     window.State.activeVoyage = activeVoyagePayload;
                     window.State.cargoQty = State.cargoQty;
+                    window.State.cargoVolumeCBM = cargoVolumeCBM;
+                    window.State.palletQuantity = palletQuantity;
+                    window.State.deckHeight = deckHeight;
+                    window.State.targetTemperatureCelsius = targetTemperatureCelsius;
+                    window.State.requiresControlledAtmosphere = requiresControlledAtmosphere;
+                    window.State.auxiliaryGensetDailyCost = auxiliaryGensetDailyCost;
                 }
             }
 
@@ -42142,7 +42259,7 @@ function scheduleReactiveEngine() {
         window.estadoInicialDecisiones = estadoInicialDecisiones;
 
         function hasDecisionVoyageData(state = {}) {
-            return Boolean(String(state?.pol || '').trim() && String(state?.pod || '').trim() && Number(state?.cargoQty || state?.cargo) > 0);
+            return Boolean(String(state?.pol || '').trim() && String(state?.pod || '').trim() && (Number(state?.cargoQty || state?.cargo) > 0 || Number(state?.palletQuantity) > 0 || Number(state?.cargoVolumeCBM) > 0));
         }
 
         // ==========================================
@@ -42286,16 +42403,39 @@ function scheduleReactiveEngine() {
                 if (fleteEstimado && document.getElementById('input-fleteEstimado')) document.getElementById('input-fleteEstimado').value = fleteEstimado;
                 if (breakEven && document.getElementById('input-breakEven')) document.getElementById('input-breakEven').value = breakEven.toFixed(2);
 
-                // Propagar el coste total canónico al estado del DSS (Módulo 7).
+                const cargoVolumeCBM = Number(voyageData?.cargoVolumeCBM) || parseFloat(document.getElementById('cargo-volume-cbm')?.value) || 0;
+                const palletQuantity = Number(voyageData?.palletQuantity) || parseFloat(document.getElementById('pallet-quantity')?.value) || 0;
+                const targetTemperatureCelsius = Number.isFinite(Number(voyageData?.targetTemperatureCelsius))
+                    ? Number(voyageData?.targetTemperatureCelsius)
+                    : (parseFloat(document.getElementById('target-temperature')?.value) || 13.0);
+                const requiresControlledAtmosphere = voyageData?.requiresControlledAtmosphere !== undefined
+                    ? Boolean(voyageData.requiresControlledAtmosphere)
+                    : Boolean(document.getElementById('controlled-atmosphere')?.checked);
+                const deckHeight = Number(voyageData?.deckHeight) || parseFloat(document.getElementById('deck-height')?.value) || 2.2;
+                const auxiliaryGensetDailyCost = Number(voyageData?.auxiliaryGensetDailyCost) || 0;
+
+                // Propagar el coste total canónico y variables frigoríficas al estado del DSS (Módulo 7).
                 if (typeof dssFormState !== 'undefined' && dssFormState) {
                     dssFormState.totalVoyageCost = canonical.totalVoyageCost;
                     dssFormState.breakEven = breakEven;
                     dssFormState.breakEvenUnitario = breakEven;
+                    dssFormState.cargoVolumeCBM = cargoVolumeCBM;
+                    dssFormState.palletQuantity = palletQuantity;
+                    dssFormState.deckHeight = deckHeight;
+                    dssFormState.targetTemperatureCelsius = targetTemperatureCelsius;
+                    dssFormState.requiresControlledAtmosphere = requiresControlledAtmosphere;
+                    dssFormState.auxiliaryGensetDailyCost = auxiliaryGensetDailyCost;
                 }
                 if (typeof window !== 'undefined' && window.dssFormState) {
                     window.dssFormState.totalVoyageCost = canonical.totalVoyageCost;
                     window.dssFormState.breakEven = breakEven;
                     window.dssFormState.breakEvenUnitario = breakEven;
+                    window.dssFormState.cargoVolumeCBM = cargoVolumeCBM;
+                    window.dssFormState.palletQuantity = palletQuantity;
+                    window.dssFormState.deckHeight = deckHeight;
+                    window.dssFormState.targetTemperatureCelsius = targetTemperatureCelsius;
+                    window.dssFormState.requiresControlledAtmosphere = requiresControlledAtmosphere;
+                    window.dssFormState.auxiliaryGensetDailyCost = auxiliaryGensetDailyCost;
                 }
 
                 if (!hasDecisionVoyageData({ pol, pod, cargoQty })) {
