@@ -1947,7 +1947,7 @@ export function ReverseTceCalculator({
                     Reefer Charter Core PRO
                   </span>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 items-end">
                   <div>
                     <label
                       htmlFor="reverse-pallet-quantity"
@@ -1963,7 +1963,7 @@ export function ReverseTceCalculator({
                       value={reeferState.palletQuantity || ''}
                       onChange={(e) => handleReeferChange('palletQuantity', Number(e.target.value) || 0)}
                       placeholder="0"
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
+                      className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
                     />
                   </div>
                   <div>
@@ -1981,7 +1981,7 @@ export function ReverseTceCalculator({
                       value={reeferState.cargoVolumeCBM || ''}
                       onChange={(e) => handleReeferChange('cargoVolumeCBM', Number(e.target.value) || 0)}
                       placeholder="0"
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
+                      className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
                     />
                   </div>
                   <div>
@@ -1999,13 +1999,53 @@ export function ReverseTceCalculator({
                       value={reeferState.targetTemperatureCelsius}
                       onChange={(e) => handleReeferChange('targetTemperatureCelsius', Number(e.target.value) || 0)}
                       placeholder="13.0"
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
+                      className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="reverse-deck-height"
+                      className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-slate-500"
+                    >
+                      Altura Cubierta (m)
+                    </label>
+                    <input
+                      id="reverse-deck-height"
+                      name="deckHeight"
+                      type="number"
+                      step="0.01"
+                      value={reeferState.deckHeight ?? 2.2}
+                      onChange={(e) => handleReeferChange('deckHeight', Number(e.target.value) || 2.2)}
+                      placeholder="2.2"
+                      className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="reverse-auxiliary-genset-cost"
+                      className="mb-1.5 block text-[11px] font-black uppercase tracking-wide text-slate-500"
+                    >
+                      Genset Aux. ($/día)
+                    </label>
+                    <input
+                      id="reverse-auxiliary-genset-cost"
+                      name="auxiliaryGensetDailyCost"
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={reeferState.auxiliaryGensetDailyCost || ''}
+                      onChange={(e) => handleReeferChange('auxiliaryGensetDailyCost', Number(e.target.value) || 0)}
+                      placeholder="0"
+                      className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
                     />
                   </div>
                   <div className="flex flex-col justify-end">
+                    <label className="mb-1.5 hidden text-[11px] font-black uppercase tracking-wide text-slate-500 sm:block invisible">
+                      Atmósfera
+                    </label>
                     <label
                       htmlFor="reverse-controlled-atmosphere"
-                      className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 cursor-pointer min-h-[40px]"
+                      className="flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 cursor-pointer px-3 py-2 select-none transition"
                     >
                       <input
                         id="reverse-controlled-atmosphere"
@@ -2013,9 +2053,9 @@ export function ReverseTceCalculator({
                         type="checkbox"
                         checked={reeferState.requiresControlledAtmosphere}
                         onChange={(e) => handleReeferChange('requiresControlledAtmosphere', e.target.checked)}
-                        className="h-5 w-5 accent-teal-700 rounded"
+                        className="h-4 w-4 accent-teal-700 rounded cursor-pointer"
                       />
-                      <span className="text-xs font-bold text-slate-700">Atmósfera Controlada (CA)</span>
+                      <span className="text-xs font-bold text-slate-700 whitespace-nowrap">Atmósfera Controlada (CA)</span>
                     </label>
                   </div>
                 </div>
@@ -2912,6 +2952,32 @@ export default function TceCalculatorWorkspace({
           || null;
         explicitRef = (data.reference as string) || (data.contractRef as string) || (data.target_session_id as string) || (data.targetSessionId as string) || (payload.reference as string) || null;
         pendingImo = (data.imo as string) || (data.pending_imo as string) || (data.core_pro_pending_imo as string) || (payload.imo as string) || null;
+
+        // Ingestión de variables de buque frigorífico (Data Bridge Reefer Ingestion)
+        const rawPalletQty = payload.palletQuantity ?? payload.pallet_quantity ?? payload.pallets ?? data.palletQuantity;
+        const rawCargoVol = payload.cargoVolumeCBM ?? payload.cargo_volume_cbm ?? payload.cargoVolume ?? data.cargoVolumeCBM;
+        const rawTargetTemp = payload.targetTemperatureCelsius ?? payload.target_temperature_celsius ?? payload.target_temperature ?? data.targetTemperatureCelsius;
+        const rawDeckH = payload.deckHeight ?? payload.deck_height ?? data.deckHeight;
+        const rawAuxGenset = payload.auxiliaryGensetDailyCost ?? payload.auxiliary_genset_daily_cost ?? payload.auxiliaryGensetCost ?? data.auxiliaryGensetDailyCost;
+        const rawCA = payload.requiresControlledAtmosphere ?? payload.requires_controlled_atmosphere ?? data.requiresControlledAtmosphere;
+
+        if (rawPalletQty !== undefined || rawCargoVol !== undefined || rawTargetTemp !== undefined || rawDeckH !== undefined || rawAuxGenset !== undefined || rawCA !== undefined) {
+          const updatedReefer = {
+            palletQuantity: rawPalletQty !== undefined ? Number(rawPalletQty) || 0 : reeferState.palletQuantity,
+            cargoVolumeCBM: rawCargoVol !== undefined ? Number(rawCargoVol) || 0 : reeferState.cargoVolumeCBM,
+            targetTemperatureCelsius: rawTargetTemp !== undefined ? Number(rawTargetTemp) || 13.0 : reeferState.targetTemperatureCelsius,
+            deckHeight: rawDeckH !== undefined ? Number(rawDeckH) || 2.2 : reeferState.deckHeight,
+            auxiliaryGensetDailyCost: rawAuxGenset !== undefined ? Number(rawAuxGenset) || 0 : reeferState.auxiliaryGensetDailyCost,
+            requiresControlledAtmosphere: rawCA !== undefined ? Boolean(rawCA) : reeferState.requiresControlledAtmosphere,
+          };
+          setReeferState(updatedReefer);
+          if (voyageStore?.getState()?.setCargoDetails) {
+            voyageStore.getState().setCargoDetails(updatedReefer);
+          }
+          if (typeof window !== 'undefined' && window.activeVoyage) {
+            Object.assign(window.activeVoyage, updatedReefer);
+          }
+        }
 
         if (!vessel && !pendingImo && typeof data === 'object') {
           const possibleImo = String(data.imo || data.pending_imo || data.value || '').trim();

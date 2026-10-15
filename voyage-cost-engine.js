@@ -248,7 +248,9 @@
         const riskLevel = (isDraftExceeded || berthAvailability.hasMinorityAvailability)
             ? 'ALTO'
             : (shiftSimulation.overtimeHours > 0 || hasAdjustedRates ? 'MODERADO' : 'BAJO');
-        const adjustedPDA = normalizedPda + shiftSimulation.overtimeSurcharge;
+        const isReefer = Boolean(operationalContext?.isReefer || operationalContext?.requiresControlledAtmosphere || toNumber(operationalContext?.palletQuantity) > 0 || toNumber(operationalContext?.cargoVolumeCBM) > 0);
+        const reeferMultiplier = isReefer ? 1.25 : 1.0; // Terminales fruteras y remolcadores prioritarios (+25%)
+        const adjustedPDA = (normalizedPda * reeferMultiplier) + shiftSimulation.overtimeSurcharge;
 
         return {
             adjustedPDA,
@@ -634,14 +636,15 @@
         return 12;
     }
 
-    function estimateDailyOpexByDwt(dwt) {
+    function estimateDailyOpexByDwt(dwt, isReefer = false) {
         const value = toNumber(dwt);
         if (value <= 0) return 0;
-        if (value < 20000) return 4800;
-        if (value < 40000) return 5600;
-        if (value < 65000) return 6100;
-        if (value < 85000) return 6600;
-        return 7500;
+        let base = 7500;
+        if (value < 20000) base = 4800;
+        else if (value < 40000) base = 5600;
+        else if (value < 65000) base = 6100;
+        else if (value < 85000) base = 6600;
+        return isReefer ? Math.round(base * 1.20) : base;
     }
 
     function inferTugCostByDwt(dwt, manualUnitCost) {
@@ -774,8 +777,16 @@
             fallbacks.grab_capacity_cbm = estimated;
         }
 
+        const isReeferCargo = Boolean(
+            effectiveState.isReefer ||
+            effectiveState.requiresControlledAtmosphere ||
+            toNumber(effectiveState.palletQuantity) > 0 ||
+            toNumber(effectiveState.cargoVolumeCBM) > 0 ||
+            /fruta|citric|pescad|carn|congelad|farmac|reefer/i.test(String(effectiveState.cargo || effectiveState.cargo_type || effectiveState.tipo_carga || ''))
+        );
+
         if (dwt > 0 && (toNumber(effectiveState.opex_fijo_diario) <= 0 || isTbnVesselName(effectiveState.nombre_buque))) {
-            const estimated = estimateDailyOpexByDwt(dwt);
+            const estimated = estimateDailyOpexByDwt(dwt, isReeferCargo);
             if (estimated > 0) {
                 effectiveState.opex_fijo_diario = estimated;
                 fallbacks.opex_fijo_diario = estimated;

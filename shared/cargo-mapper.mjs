@@ -421,8 +421,23 @@ export function normalizeNlpVoyagePayload(payload = {}, sourceText = "") {
     },
   } : undefined;
 
+  const palletQuantity = Number(source.palletQuantity ?? source.pallet_quantity ?? source.pallets ?? source.cantidadPalets) || undefined;
+  const cargoVolumeCBM = Number(source.cargoVolumeCBM ?? source.cargo_volume_cbm ?? source.cargoVolume ?? source.cargo_volume ?? source.volumenCBM) || undefined;
+  const rawTargetTemp = source.targetTemperatureCelsius ?? source.target_temperature_celsius ?? source.target_temperature ?? source.targetTemperature ?? source.temperaturaObjetivo;
+  const targetTemperatureCelsius = rawTargetTemp !== undefined && rawTargetTemp !== null && !isNaN(Number(rawTargetTemp)) ? Number(rawTargetTemp) : undefined;
+  const deckHeight = Number(source.deckHeight ?? source.deck_height ?? source.alturaCubierta) || undefined;
+  const auxiliaryGensetDailyCost = Number(source.auxiliaryGensetDailyCost ?? source.auxiliary_genset_daily_cost ?? source.auxiliaryGensetCost ?? source.costeGeneradorAuxiliar) || undefined;
+  const rawReqCA = source.requiresControlledAtmosphere ?? source.requires_controlled_atmosphere ?? source.atmosferaControlada;
+  const requiresControlledAtmosphere = rawReqCA !== undefined && rawReqCA !== null ? Boolean(rawReqCA) : undefined;
+
   return {
     ...source,
+    ...(palletQuantity !== undefined ? { palletQuantity, pallet_quantity: palletQuantity } : {}),
+    ...(cargoVolumeCBM !== undefined ? { cargoVolumeCBM, cargo_volume_cbm: cargoVolumeCBM } : {}),
+    ...(targetTemperatureCelsius !== undefined ? { targetTemperatureCelsius, target_temperature_celsius: targetTemperatureCelsius } : {}),
+    ...(deckHeight !== undefined ? { deckHeight, deck_height: deckHeight } : {}),
+    ...(auxiliaryGensetDailyCost !== undefined ? { auxiliaryGensetDailyCost, auxiliary_genset_daily_cost: auxiliaryGensetDailyCost } : {}),
+    ...(requiresControlledAtmosphere !== undefined ? { requiresControlledAtmosphere, requires_controlled_atmosphere: requiresControlledAtmosphere } : {}),
     ...(cargoDescription ? { cargo_type: hasDetectedPackaging && (!cargoDescription || /granel|bulk/i.test(cargoDescription)) ? "Big Bags (Minerales/Cemento)" : cargoDescription } : {}),
     ...(normalizedProjectCargo ? {
       projectCargo: normalizedProjectCargo,

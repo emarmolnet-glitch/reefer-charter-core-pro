@@ -677,16 +677,69 @@ function hydrateCalculatorFromDraft(draft) {
 
     if (draft?.palletQuantity !== undefined && draft?.palletQuantity !== null) {
         setValue('pallet-quantity', draft.palletQuantity, false);
+        setValue('reverse-pallet-quantity', draft.palletQuantity, false);
     }
     if (draft?.cargoVolumeCBM !== undefined && draft?.cargoVolumeCBM !== null) {
         setValue('cargo-volume-cbm', draft.cargoVolumeCBM, false);
+        setValue('reverse-cargo-volume-cbm', draft.cargoVolumeCBM, false);
     }
     if (draft?.targetTemperatureCelsius !== undefined && draft?.targetTemperatureCelsius !== null) {
         setValue('target-temperature', draft.targetTemperatureCelsius, false);
+        setValue('reverse-target-temperature', draft.targetTemperatureCelsius, false);
+    }
+    if (draft?.deckHeight !== undefined && draft?.deckHeight !== null) {
+        setValue('deck-height', draft.deckHeight, false);
+        setValue('reverse-deck-height', draft.deckHeight, false);
+    }
+    if (draft?.auxiliaryGensetDailyCost !== undefined && draft?.auxiliaryGensetDailyCost !== null) {
+        setValue('auxiliary-genset-cost', draft.auxiliaryGensetDailyCost, false);
+        setValue('auxiliary-genset-daily-cost', draft.auxiliaryGensetDailyCost, false);
+        setValue('reverse-auxiliary-genset-cost', draft.auxiliaryGensetDailyCost, false);
     }
     if (draft?.requiresControlledAtmosphere !== undefined && draft?.requiresControlledAtmosphere !== null) {
         const caEl = document.getElementById('controlled-atmosphere');
         if (caEl) caEl.checked = Boolean(draft.requiresControlledAtmosphere);
+        const caEl2 = document.getElementById('reverse-controlled-atmosphere');
+        if (caEl2) caEl2.checked = Boolean(draft.requiresControlledAtmosphere);
+    }
+
+    const isReeferOperation = Boolean(
+        (Number(draft?.palletQuantity) > 0) ||
+        (Number(draft?.cargoVolumeCBM) > 0) ||
+        draft?.requiresControlledAtmosphere ||
+        (draft?.targetTemperatureCelsius !== undefined && draft?.targetTemperatureCelsius !== null && Number(draft.targetTemperatureCelsius) <= 15)
+    );
+
+    if (isReeferOperation) {
+        const spdLadenEl = document.getElementById('spd-laden');
+        const spdBallastEl = document.getElementById('spd-ballast');
+        if (spdLadenEl && (spdLadenEl.dataset?.manualOverride !== 'true' || Number(spdLadenEl.value) <= 13)) {
+            setValue('spd-laden', 17.5, false);
+            if (window.State) window.State.speedLaden = 17.5;
+        }
+        if (spdBallastEl && (spdBallastEl.dataset?.manualOverride !== 'true' || Number(spdBallastEl.value) <= 13)) {
+            setValue('spd-ballast', 17.5, false);
+            if (window.State) window.State.speedBallast = 17.5;
+        }
+    }
+
+    if (typeof window !== 'undefined') {
+        if (window.activeVoyage) {
+            if (draft?.palletQuantity !== undefined) window.activeVoyage.palletQuantity = draft.palletQuantity;
+            if (draft?.cargoVolumeCBM !== undefined) window.activeVoyage.cargoVolumeCBM = draft.cargoVolumeCBM;
+            if (draft?.targetTemperatureCelsius !== undefined) window.activeVoyage.targetTemperatureCelsius = draft.targetTemperatureCelsius;
+            if (draft?.deckHeight !== undefined) window.activeVoyage.deckHeight = draft.deckHeight;
+            if (draft?.auxiliaryGensetDailyCost !== undefined) window.activeVoyage.auxiliaryGensetDailyCost = draft.auxiliaryGensetDailyCost;
+            if (draft?.requiresControlledAtmosphere !== undefined) window.activeVoyage.requiresControlledAtmosphere = draft.requiresControlledAtmosphere;
+        }
+        if (window.State) {
+            if (draft?.palletQuantity !== undefined) window.State.palletQuantity = draft.palletQuantity;
+            if (draft?.cargoVolumeCBM !== undefined) window.State.cargoVolumeCBM = draft.cargoVolumeCBM;
+            if (draft?.targetTemperatureCelsius !== undefined) window.State.targetTemperatureCelsius = draft.targetTemperatureCelsius;
+            if (draft?.deckHeight !== undefined) window.State.deckHeight = draft.deckHeight;
+            if (draft?.auxiliaryGensetDailyCost !== undefined) window.State.auxiliaryGensetDailyCost = draft.auxiliaryGensetDailyCost;
+            if (draft?.requiresControlledAtmosphere !== undefined) window.State.requiresControlledAtmosphere = draft.requiresControlledAtmosphere;
+        }
     }
 
     if (draft?.projectCargo) {

@@ -1085,6 +1085,51 @@ async function executeActionableAiUpdateFields(actionObj) {
             if (handlingMode) updateInputs(["project-handling-mode"], handlingMode);
         }
 
+        // 1c. REEFER DATA INGESTION & HYDRATION (Reefer Charter Core PRO)
+        const palletQuantity = Number(p.palletQuantity ?? p.pallet_quantity ?? p.pallets ?? p.payload?.palletQuantity) || 0;
+        const cargoVolumeCBM = Number(p.cargoVolumeCBM ?? p.cargo_volume_cbm ?? p.cargoVolume ?? p.cargo_volume ?? p.payload?.cargoVolumeCBM) || 0;
+        const rawTargetTemp = p.targetTemperatureCelsius ?? p.target_temperature_celsius ?? p.target_temperature ?? p.targetTemperature ?? p.payload?.targetTemperatureCelsius;
+        const targetTemperatureCelsius = rawTargetTemp !== undefined && rawTargetTemp !== null && !isNaN(Number(rawTargetTemp)) ? Number(rawTargetTemp) : (palletQuantity > 0 || cargoVolumeCBM > 0 ? 13.0 : null);
+        const deckHeight = Number(p.deckHeight ?? p.deck_height ?? p.payload?.deckHeight) || 0;
+        const auxiliaryGensetDailyCost = Number(p.auxiliaryGensetDailyCost ?? p.auxiliary_genset_daily_cost ?? p.auxiliaryGensetCost ?? p.payload?.auxiliaryGensetDailyCost) || 0;
+        const rawReqCA = p.requiresControlledAtmosphere ?? p.requires_controlled_atmosphere ?? p.payload?.requiresControlledAtmosphere;
+        const requiresControlledAtmosphere = rawReqCA !== undefined && rawReqCA !== null ? Boolean(rawReqCA) : false;
+
+        const hasReeferData = Boolean(
+            palletQuantity > 0 ||
+            cargoVolumeCBM > 0 ||
+            deckHeight > 0 ||
+            auxiliaryGensetDailyCost > 0 ||
+            requiresControlledAtmosphere ||
+            (rawTargetTemp !== undefined && rawTargetTemp !== null)
+        );
+
+        if (hasReeferData) {
+            if (palletQuantity > 0) updateInputs(["pallet-quantity", "reverse-pallet-quantity"], palletQuantity);
+            if (cargoVolumeCBM > 0) updateInputs(["cargo-volume-cbm", "reverse-cargo-volume-cbm"], cargoVolumeCBM);
+            if (targetTemperatureCelsius !== null) updateInputs(["target-temperature", "reverse-target-temperature"], targetTemperatureCelsius);
+            if (deckHeight > 0) updateInputs(["deck-height", "reverse-deck-height"], deckHeight);
+            if (auxiliaryGensetDailyCost > 0) updateInputs(["auxiliary-genset-cost", "auxiliary-genset-daily-cost", "reverse-auxiliary-genset-cost"], auxiliaryGensetDailyCost);
+            const caEl = document.getElementById("controlled-atmosphere");
+            if (caEl && rawReqCA !== undefined) {
+                caEl.checked = requiresControlledAtmosphere;
+                caEl.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+            const revCaEl = document.getElementById("reverse-controlled-atmosphere");
+            if (revCaEl && rawReqCA !== undefined) {
+                revCaEl.checked = requiresControlledAtmosphere;
+                revCaEl.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+
+            // Reefer Speed Profiling: 17.5 knots default for temperature controlled cargo
+            updateInputs(["spd-laden", "speed-laden", "spd_laden"], 17.5, true);
+            updateInputs(["spd-ballast", "speed-ballast", "spd_ballast"], 17.5, true);
+            if (window.State) {
+                window.State.speedLaden = 17.5;
+                window.State.speedBallast = 17.5;
+            }
+        }
+
         // Forzar modo MANUAL en ritmos
         document.querySelectorAll('button, span, label, div').forEach(el => {
             const txt = el.textContent.trim().toLowerCase();
@@ -1284,6 +1329,28 @@ async function executeActionableAiUpdateFields(actionObj) {
                     },
                 },
             });
+        }
+        if (hasReeferData) {
+            Object.assign(routeState, {
+                palletQuantity,
+                cargoVolumeCBM,
+                targetTemperatureCelsius: targetTemperatureCelsius !== null ? targetTemperatureCelsius : 13.0,
+                deckHeight: deckHeight > 0 ? deckHeight : 2.2,
+                auxiliaryGensetDailyCost,
+                requiresControlledAtmosphere,
+                speedLaden: 17.5,
+                speedBallast: 17.5,
+            });
+            if (typeof window !== 'undefined' && window.activeVoyage) {
+                Object.assign(window.activeVoyage, {
+                    palletQuantity,
+                    cargoVolumeCBM,
+                    targetTemperatureCelsius: targetTemperatureCelsius !== null ? targetTemperatureCelsius : 13.0,
+                    deckHeight: deckHeight > 0 ? deckHeight : 2.2,
+                    auxiliaryGensetDailyCost,
+                    requiresControlledAtmosphere,
+                });
+            }
         }
         if (Object.keys(routeState).length > 0) {
             if (!window.State) window.State = {};
