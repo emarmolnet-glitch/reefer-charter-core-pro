@@ -10616,7 +10616,8 @@
                                     <span class="text-xs font-bold text-teal-200">Atmósfera Controlada (CA)</span>
                                 </label>
                             </div>
-                            <input type="hidden" id="cargo-qty" value="0">
+                            <input type="hidden" id="cargo-qty" value="0" oninput="updateSection2LocalState('cargo-qty', this.value)">
+                            <span id="cargo-vessel-class-display" class="hidden"></span>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
@@ -10624,20 +10625,20 @@
                                 <label id="label-cargo-type" class="text-action-required flex items-center min-h-[24px]">Categoría de Carga</label>
                                 <select id="cargo-type" class="input-gc action-required-field required-use-highlight text-action-required" required aria-required="true" onchange="markCargoSelectionCommitted(); updateSection2LocalState('cargo-type', this.value); handleCargoCategoryChange(); populateCargoProducts(); autoPopulateRouteLimits();">
                                     <option value="" selected>Selecciona una categoría</option>
-                                    <option value="Minerales y Construcción">Minerales y Construcción</option>
-                                    <option value="Biomasa y Combustibles Sólidos">Biomasa y Combustibles Sólidos</option>
-                                    <option value="Carga Siderúrgica y Metales">Carga Siderúrgica y Metales</option>
-                                    <option value="Carga Unitizada / Envasada">Carga Unitizada / Envasada</option>
-                                    <option value="Carga de Proyecto (Breakbulk)">Carga de Proyecto (Breakbulk)</option>
+                                    <option value="Frutas Cítricas">Frutas Cítricas</option>
+                                    <option value="Frutas Tropicales y Exóticas">Frutas Tropicales y Exóticas</option>
+                                    <option value="Fruta de Hueso y Pepita">Fruta de Hueso y Pepita</option>
+                                    <option value="Carnes y Pescados Congelados">Carnes y Pescados Congelados</option>
+                                    <option value="Productos Farmacéuticos">Productos Farmacéuticos</option>
                                 </select>
                             </div>
                             <div class="input-group">
                                 <label id="label-cargo-product" class="text-action-required flex items-center min-h-[24px]">Producto Específico</label>
                                 <select id="cargo-product" class="input-gc action-required-field required-use-highlight text-action-required" required aria-required="true" onchange="markCargoSelectionCommitted(); updateSection2LocalState('cargo-product', this.value); applySelectedCargoProduct(true);">
                                     <option value="" selected>Selecciona una mercancía</option>
-                                    <option value="Cemento a granel">Cemento a granel</option>
-                                    <option value="Clínker">Clínker</option>
-                                    <option value="Yeso">Yeso</option>
+                                    <option value="Naranjas">Naranjas</option>
+                                    <option value="Limones">Limones</option>
+                                    <option value="Mandarinas">Mandarinas</option>
                                 </select>
                             </div>
                             <div class="input-group">
@@ -10888,7 +10889,9 @@
                             <div class="input-group">
                                 <label id="label-cargo-type-manual" class="text-action-required flex items-center min-h-[24px]">Especificación Carga</label>
                                 <select id="cargo-type-manual" data-cargo-type-selector="calculator" class="input-gc action-required-field required-use-highlight text-action-required font-bold cursor-pointer" required aria-required="true">
-                                    <option value="100" selected>100 · Otros (N/A)</option>
+                                    <option value="10" selected>10 - Frutas Frescas (Temperatura >0°C)</option>
+                                    <option value="20">20 - Congelados (Temperatura &lt;0°C)</option>
+                                    <option value="30">30 - Productos Farmacéuticos y Sensibles</option>
                                 </select>
                                 <p id="cargo-auto-classification" class="text-[10px] text-teal-300 mt-1 min-h-[14px]"></p>
                             </div>
@@ -10904,7 +10907,7 @@
                             </div>
                             <div class="input-group">
                                 <label id="label-cargo-sf" class="flex items-center min-h-[24px]">Stowage Factor</label>
-                                <input type="number" id="cargo-sf" class="input-gc text-indigo-300" value="1.20" min="0" step="0.01" oninput="updateSection2LocalState('cargo-sf', this.value)">
+                                <input type="number" id="cargo-sf" class="input-gc text-indigo-300" value="0.85" min="0" step="0.01" oninput="updateSection2LocalState('cargo-sf', this.value)">
                             </div>
                             <div class="input-group">
                                 <label id="label-turn-time-hours" class="text-action-required flex items-center min-h-[24px]">TURN TIME (Preaviso NOR) (H)</label>
@@ -19242,10 +19245,10 @@
                 'asb-cancel-time', 'nombre-buque-calculadora',
                 'vessel-name', 'vessel-flag'
             ].forEach((id) => setInputValue(id, ''));
-            setInputValue('cargo-type', 'Minerales y Construcción');
-            populateCargoProducts('Cemento a granel');
-            setInputValue('cargo-type-manual', '100');
-            window.CargoTypeSelector?.persistSelection('100');
+            setInputValue('cargo-type', 'Frutas Cítricas');
+            populateCargoProducts('Naranjas');
+            setInputValue('cargo-type-manual', '10');
+            window.CargoTypeSelector?.persistSelection('10');
             setInputValue('charter-party-standard', 'GENCON');
             setInputValue('turn-time-hours', 24);
             setInputValue('apply-ets-surcharge', 'NO');
@@ -28279,23 +28282,23 @@ function createRouteAnchorElement(type) {
             const readStoredSelection = () => {
                 try {
                     const storedValue = window.sessionStorage.getItem(MATCHING_CARGO_TYPE_STORAGE_KEY);
-                    if (!storedValue) return { cargoCode: '100', cargoDescription: window.getCargoTaxonomyLabel?.('100') || 'Otros' };
+                    if (!storedValue) return { cargoCode: '10', cargoDescription: window.getCargoTaxonomyLabel?.('10') || 'Frutas Frescas (Temperatura >0°C)' };
                     try {
                         const parsed = JSON.parse(storedValue);
                         if (parsed && typeof parsed === 'object') return normalizeMatchingCargoPayload(parsed);
                     } catch (_) {}
                     return normalizeMatchingCargoPayload({ cargoCode: storedValue });
                 } catch (_) {
-                    return { cargoCode: '100', cargoDescription: window.getCargoTaxonomyLabel?.('100') || 'Otros' };
+                    return { cargoCode: '10', cargoDescription: window.getCargoTaxonomyLabel?.('10') || 'Frutas Frescas (Temperatura >0°C)' };
                 }
             };
             const readSelectedId = () => {
                 const storedSelection = readStoredSelection();
-                return window.resolveCargoTaxonomyId?.(storedSelection.cargoCode) || storedSelection.cargoCode || '100';
+                return window.resolveCargoTaxonomyId?.(storedSelection.cargoCode) || storedSelection.cargoCode || '10';
             };
-            const getItem = cargoTypeId => window.CARGO_TAXONOMY?.find(item => item.id === (window.resolveCargoTaxonomyId?.(cargoTypeId) || '100'))
-                || window.CARGO_TAXONOMY?.find(item => item.id === '100')
-                || { id: '100', label: 'Otros', chapter: 'N/A' };
+            const getItem = cargoTypeId => window.CARGO_TAXONOMY?.find(item => item.id === (window.resolveCargoTaxonomyId?.(cargoTypeId) || '10'))
+                || window.CARGO_TAXONOMY?.find(item => item.id === '10')
+                || { id: '10', label: 'Frutas Frescas (Temperatura >0°C)', chapter: '>0°C' };
             const persistSelection = cargoTypeId => {
                 const selected = getItem(cargoTypeId);
                 document.querySelectorAll('[data-cargo-type-selector]').forEach(select => {
@@ -28348,7 +28351,7 @@ function createRouteAnchorElement(type) {
                 if (selects.length === 0 || !Array.isArray(window.CARGO_TAXONOMY)) return false;
                 const selectedId = readSelectedId();
                 const optionsMarkup = window.CARGO_TAXONOMY.map(item =>
-                    `<option value="${item.id}">${item.id} · ${item.label} (${item.chapter})</option>`
+                    `<option value="${item.id}">${item.id} - ${String(item.label).replace(/</g, '&lt;')}</option>`
                 ).join('');
                 selects.forEach(select => {
                     select.innerHTML = optionsMarkup;
@@ -28356,7 +28359,7 @@ function createRouteAnchorElement(type) {
                     if (select.dataset.cargoTypeMounted === 'true') return;
                     select.dataset.cargoTypeMounted = 'true';
                     select.addEventListener('change', () => {
-                        persistSelection(select.value || '100');
+                        persistSelection(select.value || '10');
                         if (select.dataset.cargoTypeSelector === 'calculator') {
                             window.handleCargoManualInput?.({ persist: false });
                         }
@@ -33870,27 +33873,35 @@ function createRouteAnchorElement(type) {
         }
 
         const cargoDictionary = {
-            "Minerales y Construcción": [
-                { nombre: "Cemento a granel", sf: 0.70, requiresPieceWeight: false },
-                { nombre: "Clínker", sf: 0.85, requiresPieceWeight: false },
-                { nombre: "Yeso", sf: 0.90, requiresPieceWeight: false },
-                { nombre: "Big Bags (Minerales/Cemento)", sf: 0.95, requiresPieceWeight: false }
+            "Frutas Cítricas": [
+                { nombre: "Naranjas", sf: 0.85, requiresPieceWeight: false, cargoCode: "10" },
+                { nombre: "Limones", sf: 0.88, requiresPieceWeight: false, cargoCode: "10" },
+                { nombre: "Mandarinas", sf: 0.83, requiresPieceWeight: false, cargoCode: "10" }
             ],
-            "Biomasa y Combustibles Sólidos": [
-                { nombre: "Biomasa (Grignon, Astillas, Pellets)", sf: 1.85, requiresPieceWeight: false },
-                { nombre: "Carbón mineral", sf: 1.20, requiresPieceWeight: false }
+            "Frutas Tropicales y Exóticas": [
+                { nombre: "Bananas/Plátanos (requiere 13°C)", sf: 0.75, requiresPieceWeight: false, cargoCode: "10" },
+                { nombre: "Piñas", sf: 0.80, requiresPieceWeight: false, cargoCode: "10" },
+                { nombre: "Aguacates", sf: 0.78, requiresPieceWeight: false, cargoCode: "10" },
+                { nombre: "Mangos", sf: 0.82, requiresPieceWeight: false, cargoCode: "10" }
             ],
-            "Carga Siderúrgica y Metales": [
-                { nombre: "Bobinas de Acero (Steel Coils)", sf: 0.35, requiresPieceWeight: true },
-                { nombre: "Tubos de Acero (Steel Pipes)", sf: 0.60, requiresPieceWeight: true },
-                { nombre: "Hierro / Chatarra", sf: 0.50, requiresPieceWeight: false }
+            "Fruta de Hueso y Pepita": [
+                { nombre: "Manzanas (alto etileno)", sf: 0.85, requiresPieceWeight: false, cargoCode: "10" },
+                { nombre: "Peras", sf: 0.84, requiresPieceWeight: false, cargoCode: "10" },
+                { nombre: "Uvas/Arándanos", sf: 0.90, requiresPieceWeight: false, cargoCode: "10" },
+                { nombre: "Melocotones/Ciruelas", sf: 0.86, requiresPieceWeight: false, cargoCode: "10" }
             ],
-            "Carga Unitizada / Envasada": [
-                { nombre: "Big Bags (Minerales/Cemento)", sf: 0.95, requiresPieceWeight: false },
-                { nombre: "Carga Paletizada", sf: 1.40, requiresPieceWeight: false }
+            "Carnes y Pescados Congelados": [
+                { nombre: "Pescado Congelado", sf: 0.65, requiresPieceWeight: false, cargoCode: "20" },
+                { nombre: "Pollo Congelado", sf: 0.60, requiresPieceWeight: false, cargoCode: "20" },
+                { nombre: "Carne de Res Congelada", sf: 0.62, requiresPieceWeight: false, cargoCode: "20" }
             ],
-            "Carga de Proyecto (Breakbulk)": [
-                { nombre: "Piezas Especiales / Maquinaria", sf: 2.00, requiresPieceWeight: true }
+            "Carnes y Pescados": [
+                { nombre: "Pescado Congelado", sf: 0.65, requiresPieceWeight: false, cargoCode: "20" },
+                { nombre: "Pollo Congelado", sf: 0.60, requiresPieceWeight: false, cargoCode: "20" },
+                { nombre: "Carne de Res Congelada", sf: 0.62, requiresPieceWeight: false, cargoCode: "20" }
+            ],
+            "Productos Farmacéuticos": [
+                { nombre: "Vacunas/Medicinas (alto valor, estiba ligera)", sf: 1.20, requiresPieceWeight: false, cargoCode: "30" }
             ]
         };
 
@@ -33926,7 +33937,11 @@ function createRouteAnchorElement(type) {
         function getSelectedCargoProduct() {
             const category = document.getElementById('cargo-type')?.value || '';
             const productName = document.getElementById('cargo-product')?.value || '';
-            return (cargoDictionary[category] || []).find((product) => product.nombre === productName) || null;
+            const list = cargoDictionary[category] || [];
+            return list.find((product) => product.nombre === productName)
+                || list.find((product) => product.nombre.startsWith(productName) || (productName && product.nombre.includes(productName)))
+                || list.find((product) => productName && (product.nombre.startsWith(productName.split(' (')[0]) || productName.startsWith(product.nombre.split(' (')[0])))
+                || null;
         }
 
         function markCargoSelectionCommitted() {
@@ -33969,7 +33984,9 @@ function createRouteAnchorElement(type) {
                 ...products.map((product) => ({ value: product.nombre, label: product.nombre }))
             ]);
             productEl.disabled = products.length === 0;
-            productEl.value = products.some((product) => product.nombre === selectedProduct) ? selectedProduct : '';
+            const matched = products.find((product) => product.nombre === selectedProduct)
+                || products.find((product) => selectedProduct && (product.nombre.startsWith(selectedProduct) || selectedProduct.startsWith(product.nombre.split(' (')[0])));
+            productEl.value = matched ? matched.nombre : '';
             applySelectedCargoProduct();
         }
 
@@ -33977,21 +33994,21 @@ function createRouteAnchorElement(type) {
             const categoryEl = document.getElementById('cargo-type');
             if (!categoryEl) return;
             const normalized = String(category || '').toLowerCase();
-            let resolvedCategory = cargoDictionary[category] ? category : 'Minerales y Construcción';
+            let resolvedCategory = cargoDictionary[category] ? category : 'Frutas Cítricas';
             let resolvedProduct = product;
             if (!cargoDictionary[category]) {
-                if (normalized.includes('cemento') || normalized.includes('yeso') || normalized.includes('clinker') || normalized.includes('clínker')) resolvedCategory = 'Minerales y Construcción';
-                if (normalized.includes('combustible') || normalized.includes('carbon') || normalized.includes('carbón') || normalized.includes('biomasa')) resolvedCategory = 'Biomasa y Combustibles Sólidos';
-                if (normalized.includes('acero') || normalized.includes('hierro')) resolvedCategory = 'Carga Siderúrgica y Metales';
-                if (normalized.includes('big bag') || normalized.includes('palet') || normalized.includes('unitizada')) resolvedCategory = 'Carga Unitizada / Envasada';
-                if (normalized.includes('proyecto') || normalized.includes('especial') || normalized.includes('breakbulk')) resolvedCategory = 'Carga de Proyecto (Breakbulk)';
-                if (!resolvedProduct && normalized.includes('big bag')) resolvedProduct = 'Big Bags (Minerales/Cemento)';
-                if (!resolvedProduct && normalized.includes('palet')) resolvedProduct = 'Carga Paletizada';
-                if (!resolvedProduct && normalized.includes('acero')) resolvedProduct = 'Bobinas de Acero (Steel Coils)';
-                if (!resolvedProduct && normalized.includes('proyecto')) resolvedProduct = 'Piezas Especiales / Maquinaria';
+                if (normalized.includes('cítric') || normalized.includes('citric') || normalized.includes('naranja') || normalized.includes('limon') || normalized.includes('mandarina')) resolvedCategory = 'Frutas Cítricas';
+                else if (normalized.includes('tropical') || normalized.includes('banana') || normalized.includes('platano') || normalized.includes('plátano') || normalized.includes('piña') || normalized.includes('pina') || normalized.includes('aguacate') || normalized.includes('mango')) resolvedCategory = 'Frutas Tropicales y Exóticas';
+                else if (normalized.includes('hueso') || normalized.includes('pepita') || normalized.includes('manzana') || normalized.includes('pera') || normalized.includes('uva') || normalized.includes('arándano') || normalized.includes('arandano') || normalized.includes('melocotón') || normalized.includes('ciruela')) resolvedCategory = 'Fruta de Hueso y Pepita';
+                else if (normalized.includes('carne') || normalized.includes('pescado') || normalized.includes('pollo') || normalized.includes('congelad')) resolvedCategory = 'Carnes y Pescados Congelados';
+                else if (normalized.includes('farma') || normalized.includes('vacuna') || normalized.includes('medicina')) resolvedCategory = 'Productos Farmacéuticos';
+                else resolvedCategory = 'Frutas Cítricas';
+                if (!resolvedProduct && (normalized.includes('banana') || normalized.includes('platano'))) resolvedProduct = 'Bananas/Plátanos (requiere 13°C)';
+                if (!resolvedProduct && normalized.includes('naranja')) resolvedProduct = 'Naranjas';
+                if (!resolvedProduct && normalized.includes('manzana')) resolvedProduct = 'Manzanas (alto etileno)';
+                if (!resolvedProduct && (normalized.includes('pescado') || normalized.includes('carne'))) resolvedProduct = 'Pescado Congelado';
+                if (!resolvedProduct && (normalized.includes('vacuna') || normalized.includes('medicina'))) resolvedProduct = 'Vacunas/Medicinas (alto valor, estiba ligera)';
             }
-            if (resolvedProduct === "Grignon d'olive (Biomasa)") resolvedProduct = 'Biomasa (Grignon, Astillas, Pellets)';
-            if (resolvedProduct === 'Big Bags (Jumbo Bags - Minerales/Cemento)') resolvedProduct = 'Big Bags (Minerales/Cemento)';
             categoryEl.value = resolvedCategory;
             populateCargoProducts(resolvedProduct);
         }
@@ -34001,6 +34018,13 @@ function createRouteAnchorElement(type) {
             const product = getSelectedCargoProduct();
             const sfInput = document.getElementById('cargo-sf');
             if (sfInput && product) sfInput.value = product.sf.toFixed(2);
+            if (product && product.cargoCode) {
+                const manualSelect = document.getElementById('cargo-type-manual');
+                if (manualSelect && manualSelect.value !== product.cargoCode) {
+                    manualSelect.value = product.cargoCode;
+                    window.CargoTypeSelector?.persistSelection?.(product.cargoCode);
+                }
+            }
             autoAdjustSF();
             actualizarCamposTipoCarga();
             if (typeof applyMethodAndProductConditions === 'function') {
@@ -64635,6 +64659,12 @@ Compara el documento suministrado (que puede ser un contrato, carta de crédito 
             bombas_neumaticas: Object.freeze({ rate: 8000, turnTimeHours: 10 })
         });
         const equipmentMatrix = Object.freeze({
+            "Frutas Cítricas": ["Paletizado - Grúa Barco", "Paletizado - Grúa Portuaria"],
+            "Frutas Tropicales y Exóticas": ["Paletizado - Grúa Barco", "Paletizado - Grúa Portuaria"],
+            "Fruta de Hueso y Pepita": ["Paletizado - Grúa Barco", "Paletizado - Grúa Portuaria"],
+            "Carnes y Pescados Congelados": ["Paletizado - Grúa Barco", "Paletizado - Grúa Portuaria"],
+            "Carnes y Pescados": ["Paletizado - Grúa Barco", "Paletizado - Grúa Portuaria"],
+            "Productos Farmacéuticos": ["Paletizado - Grúa Barco", "Paletizado - Grúa Portuaria"],
             "Minerales y Construcción": ["Cuchara (Grab) - Grúa Barco", "Cuchara (Grab) - Grúa Portuaria", "Cinta Transportadora", "Bombas Neumáticas", "Camión Tolva", "Big Bags - Grúa Barco", "Big Bags - Grúa Portuaria"],
             "Biomasa y Combustibles Sólidos": ["Cuchara (Grab) - Grúa Barco", "Cuchara (Grab) - Grúa Portuaria", "Cinta Transportadora", "Bombas Neumáticas", "Camión Tolva"],
             "Carga Siderúrgica y Metales": ["Hierro/Acero - Grúa Barco", "Hierro/Acero - Grúa Portuaria", "Cuchara (Grab) - Grúa Barco", "Cuchara (Grab) - Grúa Portuaria"],
@@ -65562,6 +65592,12 @@ Compara el documento suministrado (que puede ser un contrato, carta de crédito 
         // FASE 1: ALERTA DE COMPATIBILIDAD (CARGA VS. MÉTODO)
         // ==========================================
         const cargoCompatibilityMap = Object.freeze({
+            "Frutas Cítricas": ['Paletizado - Grúa Barco', 'Paletizado - Grúa Portuaria'],
+            "Frutas Tropicales y Exóticas": ['Paletizado - Grúa Barco', 'Paletizado - Grúa Portuaria'],
+            "Fruta de Hueso y Pepita": ['Paletizado - Grúa Barco', 'Paletizado - Grúa Portuaria'],
+            "Carnes y Pescados Congelados": ['Paletizado - Grúa Barco', 'Paletizado - Grúa Portuaria'],
+            "Carnes y Pescados": ['Paletizado - Grúa Barco', 'Paletizado - Grúa Portuaria'],
+            "Productos Farmacéuticos": ['Paletizado - Grúa Barco', 'Paletizado - Grúa Portuaria'],
             "Minerales y Construcción": ['Cuchara (Grab) - Grúa Barco', 'Cuchara (Grab) - Grúa Portuaria', 'Cinta Transportadora', 'Bombas Neumáticas', 'Camión Tolva'],
             "Biomasa y Combustibles Sólidos": ['Cuchara (Grab) - Grúa Barco', 'Cuchara (Grab) - Grúa Portuaria', 'Cinta Transportadora', 'Bombas Neumáticas', 'Camión Tolva'],
             "Carga Unificada / Sacos": ['Big Bags - Grúa Barco', 'Big Bags - Grúa Portuaria', 'Paletizado - Grúa Barco', 'Paletizado - Grúa Portuaria'],

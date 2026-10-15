@@ -1,37 +1,24 @@
 export const CARGO_TAXONOMY = Object.freeze([
-  Object.freeze({ id: "10", label: "Cemento, yeso, cal y clínker", chapter: "25" }),
-  Object.freeze({ id: "20", label: "Hierro, acero y sus manufacturas", chapter: "72/73" }),
-  Object.freeze({ id: "30", label: "Fertilizantes y abonos", chapter: "31" }),
-  Object.freeze({ id: "40", label: "Aluminio y sus manufacturas", chapter: "76" }),
-  Object.freeze({ id: "50", label: "Madera, carbón vegetal y pasta de madera", chapter: "44/47" }),
-  Object.freeze({ id: "60", label: "Cereales, granos y soja", chapter: "10/12" }),
-  Object.freeze({ id: "70", label: "Combustibles, carbón mineral y aceites", chapter: "27" }),
-  Object.freeze({ id: "80", label: "Productos químicos y plásticos", chapter: "28/29/39" }),
-  Object.freeze({ id: "90", label: "Maquinaria, vehículos y equipos pesados", chapter: "84/85/87" }),
-  Object.freeze({ id: "100", label: "Otros", chapter: "N/A" }),
+  Object.freeze({ id: "10", label: "Frutas Frescas (Temperatura >0°C)", chapter: ">0°C" }),
+  Object.freeze({ id: "20", label: "Congelados (Temperatura <0°C)", chapter: "<0°C" }),
+  Object.freeze({ id: "30", label: "Productos Farmacéuticos y Sensibles", chapter: "Pharma" }),
 ]);
 
-export const DEFAULT_CARGO_TYPE_ID = "100";
+export const DEFAULT_CARGO_TYPE_ID = "10";
 
 const CARGO_RULES = Object.freeze({
   "10": Object.freeze([
-    Object.freeze({ key: "cement_carrier", label: "Cement Carrier", weight: 14, terms: ["cement carrier", "cementero", "clinker carrier"] }),
-    Object.freeze({ key: "self_discharger", label: "Self-Discharger", weight: 10, terms: ["self discharger", "self unloading", "self unloader"] }),
+    Object.freeze({ key: "reefer_vessel", label: "Reefer Vessel", weight: 14, terms: ["reefer", "refrigerated", "cool", "refrigerada"] }),
+    Object.freeze({ key: "controlled_atmosphere", label: "Atmósfera Controlada", weight: 10, terms: ["controlled atmosphere", "ca fitted", "atmosfera controlada"] }),
+    Object.freeze({ key: "fresh_temp_control", label: "Control Térmico >0°C", weight: 6, terms: ["chilled", "fresh", "frutas", "citricos", "fruta"] }),
   ]),
   "20": Object.freeze([
-    Object.freeze({ key: "open_hatch_gantry", label: "Open Hatch Gantry Crane", weight: 14, terms: ["open hatch gantry crane", "open hatch gantry", "ohgc"] }),
-    Object.freeze({ key: "box_shaped_holds", label: "Box-shaped holds", weight: 8, terms: ["box shaped holds", "box shaped hold", "box holds"] }),
+    Object.freeze({ key: "reefer_freezer", label: "Freezer Vessel", weight: 14, terms: ["reefer", "freezer", "congelador", "deep freeze"] }),
+    Object.freeze({ key: "subzero_cooling", label: "Control Térmico Sub-Cero", weight: 10, terms: ["sub-zero", "freezer hold", "congelacion", "frozen", "carne", "pescado"] }),
   ]),
-  "60": Object.freeze([
-    Object.freeze({ key: "grain_fitted", label: "Grain Fitted", weight: 12, terms: ["grain fitted", "grain certificate", "grain certified"] }),
-    Object.freeze({ key: "clean_holds", label: "Bodegas limpias", weight: 8, terms: ["hold cleanliness clean", "holds clean", "clean holds", "grain clean"] }),
-  ]),
-  "70": Object.freeze([
-    Object.freeze({ key: "high_ventilation", label: "Alta ventilación", weight: 12, terms: ["high ventilation", "forced ventilation", "mechanical ventilation", "high capacity ventilation"] }),
-    Object.freeze({ key: "ventilation_rating", label: "Rating de ventilación", weight: 8, terms: ["ventilation rating", "ventilation class", "air changes per hour", "air changes hour"] }),
-  ]),
-  "90": Object.freeze([
-    Object.freeze({ key: "heavy_lift", label: "Heavy Lift gear", weight: 18, terms: ["heavy lift", "heavy lift gear", "heavy cargo crane", "project cargo gear"] }),
+  "30": Object.freeze([
+    Object.freeze({ key: "pharma_certified", label: "Pharma Certified Reefer", weight: 14, terms: ["pharma", "gdp certified", "temperature logger", "reefer", "vacunas", "farmaceutico"] }),
+    Object.freeze({ key: "redundant_genset", label: "Generador Redundante", weight: 10, terms: ["genset", "auxiliary generator", "dual cooling", "redundant cooling", "generador auxiliar"] }),
   ]),
 });
 
@@ -191,10 +178,11 @@ function classifyVesselDesign(shipType, vessel) {
   const isMinibulkerDwt = dwtVal !== null && dwtVal > 10000 && dwtVal <= 15000 && !hasExplicitNonDryDesign;
   const isMinibulker = isMinibulkerKeyword || isMinibulkerDwt;
 
+  const isReefer = /\b(reefer|refrigerated|frigorifico|frigorífico)\b/.test(declaredType);
   const isBulk = (/\b(bulk carrier|bulker|dry bulk|handysize|handymax|supramax|ultramax|panamax|capesize|coaster|mini bulker|minibulker|mini-bulker)\b/.test(declaredType)
-    || isAisCargoCode || isCoaster || isMinibulker) && !hasExplicitNonDryDesign;
+    || isAisCargoCode || isCoaster || isMinibulker || isReefer) && !hasExplicitNonDryDesign;
   const isCement = /\b(cement carrier|cementero|clinker carrier)\b/.test(declaredType);
-  const isGeneral = (/\b(general cargo|coaster|mini bulker|minibulker|mini-bulker|cargo ship|cargo|freighter|ship|merchant)\b/.test(declaredType)
+  const isGeneral = (/\b(general cargo|coaster|mini bulker|minibulker|mini-bulker|cargo ship|cargo|freighter|ship|merchant|reefer|refrigerated)\b/.test(declaredType)
     || isAisCargoCode || isGeneralCargoWord || isCoaster || isMinibulker || isClassB) && !hasExplicitNonDryDesign;
   const isMultipurpose = (/\b(multipurpose|multi purpose|mpp|mpv|heavy lift|open hatch)\b/.test(declaredType)
     || isAisCargoCode || isGeneralCargoWord || isCoaster || isMinibulker || isClassB) && !hasExplicitNonDryDesign;
@@ -210,6 +198,7 @@ function classifyVesselDesign(shipType, vessel) {
     coaster: isCoaster,
     minibulker: isMinibulker,
     isClassB,
+    reefer: isReefer,
     tanker: isTanker,
     container: isContainer,
     roro: isRoro,
@@ -264,9 +253,9 @@ function cargoAllowsDesign(cargoTypeId, design) {
   if (design.nonCargo || design.tug || design.passenger) return false;
   if (["10", "20", "30", "40", "50", "60"].includes(cargoTypeId) && (design.tanker || design.container)) return false;
   if (design.declaredType === "unknown" || !design.declaredType) return true;
-  if (cargoTypeId === "10") return design.bulk || design.cement || design.general || design.multipurpose;
-  if (cargoTypeId === "20") return design.bulk || design.general || design.multipurpose;
-  if (["30", "40", "50", "60"].includes(cargoTypeId)) return design.bulk || design.general || design.multipurpose;
+  if (cargoTypeId === "10" || cargoTypeId === "20" || cargoTypeId === "30") {
+    return design.reefer || design.bulk || design.general || design.multipurpose;
+  }
   if (cargoTypeId === "70") return design.bulk || design.tanker || design.general;
   if (cargoTypeId === "80") return design.bulk || design.general || design.multipurpose || design.tanker;
   if (cargoTypeId === "90") return design.general || design.multipurpose || design.roro || design.bulk;
@@ -384,15 +373,13 @@ export function resolveCargoTaxonomyId(value) {
   const normalizedValue = normalizeText(rawValue);
   const exactItem = CARGO_TAXONOMY.find(item => normalizeText(item.label) === normalizedValue);
   if (exactItem) return exactItem.id;
+  if (/\b(fruta|frutas|citric|citricos|naranja|naranjas|limon|limones|mandarina|mandarinas|tropical|banana|bananas|platano|platanos|pina|pinas|aguacate|aguacates|mango|mangos|hueso|pepita|manzana|manzanas|pera|peras|uva|uvas|arandano|arandanos|melocoton|melocotones|ciruela|ciruelas|fresca|frescas|fresh)\b/.test(normalizedValue)) return "10";
+  if (/\b(congelad|congelado|congelados|carne|carnes|pescado|pescados|pollo|res|frozen|freeze|meat|fish)\b/.test(normalizedValue)) return "20";
+  if (/\b(farmaceutic|farmaceuticos|vacuna|vacunas|medicina|medicinas|sensible|sensibles|pharma|vaccine|medicamento|medicamentos)\b/.test(normalizedValue)) return "30";
   if (/\b(cemento|cement|clinker|clinquer|yeso|cal)\b/.test(normalizedValue)) return "10";
   if (/\b(hierro|acero|steel|iron)\b/.test(normalizedValue)) return "20";
   if (/\b(fertilizante|fertilizer|abono)\b/.test(normalizedValue)) return "30";
-  if (/\b(aluminio|aluminium|aluminum)\b/.test(normalizedValue)) return "40";
-  if (/\b(madera|wood|carbon vegetal|charcoal|pasta de madera|wood pulp)\b/.test(normalizedValue)) return "50";
-  if (/\b(cereal|grano|grain|soja|soy|trigo|wheat)\b/.test(normalizedValue)) return "60";
-  if (/\b(combustible|fuel|carbon mineral|coal|aceite|oil)\b/.test(normalizedValue)) return "70";
-  if (/\b(quimico|chemical|plastico|plastic)\b/.test(normalizedValue)) return "80";
-  if (/\b(maquinaria|machinery|vehiculo|vehicle|equipo pesado|heavy equipment|proyecto|project cargo)\b/.test(normalizedValue)) return "90";
+  if (rawValue === "100" || normalizedValue.includes("otro")) return "10";
   return DEFAULT_CARGO_TYPE_ID;
 }
 

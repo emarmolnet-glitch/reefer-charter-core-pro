@@ -8,6 +8,25 @@ import {
 import { normalizeNlpVoyagePayload } from "../../shared/cargo-mapper.mjs";
 
 const CARGO_PRODUCTS = Object.freeze({
+  "Frutas Cítricas": ["Naranjas", "Limones", "Mandarinas"],
+  "Frutas Tropicales y Exóticas": [
+    "Bananas/Plátanos (requiere 13°C)",
+    "Piñas",
+    "Aguacates",
+    "Mangos",
+  ],
+  "Fruta de Hueso y Pepita": [
+    "Manzanas (alto etileno)",
+    "Peras",
+    "Uvas/Arándanos",
+    "Melocotones/Ciruelas",
+  ],
+  "Carnes y Pescados Congelados": [
+    "Pescado Congelado",
+    "Pollo Congelado",
+    "Carne de Res Congelada",
+  ],
+  "Productos Farmacéuticos": ["Vacunas/Medicinas (alto valor, estiba ligera)"],
   "Minerales y Construcción": ["Cemento a granel", "Clínker", "Yeso", "Big Bags (Minerales/Cemento)"],
   "Biomasa y Combustibles Sólidos": [
     "Biomasa (Grignon, Astillas, Pellets)",

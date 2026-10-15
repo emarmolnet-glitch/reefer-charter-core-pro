@@ -11,10 +11,15 @@ import {
 const indexSource = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const aiFilterSource = readFileSync(new URL('../netlify/functions/ai-ais-filter.ts', import.meta.url), 'utf8');
 
-test('cargo taxonomy exposes the standardized ten-value selector with Otros by default', () => {
-  assert.equal(CARGO_TAXONOMY.length, 10);
-  assert.equal(DEFAULT_CARGO_TYPE_ID, '100');
-  assert.equal(CARGO_TAXONOMY.at(-1)?.label, 'Otros');
+test('cargo taxonomy exposes the standardized Reefer selector (10, 20, 30)', () => {
+  assert.equal(CARGO_TAXONOMY.length, 3);
+  assert.equal(DEFAULT_CARGO_TYPE_ID, '10');
+  assert.equal(CARGO_TAXONOMY[0].id, '10');
+  assert.equal(CARGO_TAXONOMY[0].label, 'Frutas Frescas (Temperatura >0°C)');
+  assert.equal(CARGO_TAXONOMY[1].id, '20');
+  assert.equal(CARGO_TAXONOMY[1].label, 'Congelados (Temperatura <0°C)');
+  assert.equal(CARGO_TAXONOMY[2].id, '30');
+  assert.equal(CARGO_TAXONOMY[2].label, 'Productos Farmacéuticos y Sensibles');
   assert.match(indexSource, /window\.CargoTypeSelector/);
   assert.match(indexSource, /MATCHING_CARGO_TYPE_STORAGE_KEY/);
   assert.match(indexSource, /data-cargo-type-selector="calculator"/);
@@ -36,11 +41,9 @@ test('master calculator payload maps the selected cargo strictly to its code', (
 });
 
 test('cargo intelligence applies the Rules of Gold signals', () => {
-  assert.equal(calculateCargoIntelligenceBoost('10', { vesselType: 'Cement Carrier', equipment: 'Self-Discharger' }).boost, 20);
-  assert.equal(calculateCargoIntelligenceBoost('60', { certificates: 'Grain Fitted', holdCleanliness: 'Clean holds' }).boost, 20);
-  assert.equal(calculateCargoIntelligenceBoost('20', { design: 'Open Hatch Gantry Crane with box-shaped holds' }).boost, 20);
-  assert.equal(calculateCargoIntelligenceBoost('70', { ventilation: 'High ventilation', rating: 'Ventilation rating A' }).boost, 20);
-  assert.equal(calculateCargoIntelligenceBoost('90', { gear: 'Heavy Lift gear' }).boost, 18);
+  assert.equal(calculateCargoIntelligenceBoost('10', { vesselType: 'Reefer Vessel', equipment: 'Controlled Atmosphere' }).boost, 20);
+  assert.equal(calculateCargoIntelligenceBoost('20', { vesselType: 'Freezer Vessel', equipment: 'Sub-Zero Cooling' }).boost, 20);
+  assert.equal(calculateCargoIntelligenceBoost('30', { vesselType: 'Pharma Certified Reefer', equipment: 'Redundant Genset' }).boost, 20);
 });
 
 test('matching scoring includes cargo boost and LIVE recalculation preserves radar state', () => {

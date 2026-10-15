@@ -1,4 +1,9 @@
 export const CARGO_CATEGORIES = Object.freeze([
+  "Frutas Cítricas",
+  "Frutas Tropicales y Exóticas",
+  "Fruta de Hueso y Pepita",
+  "Carnes y Pescados Congelados",
+  "Productos Farmacéuticos",
   "Minerales y Construcción",
   "Biomasa y Combustibles Sólidos",
   "Carga Siderúrgica y Metales",
@@ -7,6 +12,12 @@ export const CARGO_CATEGORIES = Object.freeze([
 ]);
 
 export const CARGO_PRODUCT_TREE = Object.freeze({
+  "Frutas Cítricas": Object.freeze(["Naranjas", "Limones", "Mandarinas"]),
+  "Frutas Tropicales y Exóticas": Object.freeze(["Bananas/Plátanos (requiere 13°C)", "Piñas", "Aguacates", "Mangos"]),
+  "Fruta de Hueso y Pepita": Object.freeze(["Manzanas (alto etileno)", "Peras", "Uvas/Arándanos", "Melocotones/Ciruelas"]),
+  "Carnes y Pescados Congelados": Object.freeze(["Pescado Congelado", "Pollo Congelado", "Carne de Res Congelada"]),
+  "Carnes y Pescados": Object.freeze(["Pescado Congelado", "Pollo Congelado", "Carne de Res Congelada"]),
+  "Productos Farmacéuticos": Object.freeze(["Vacunas/Medicinas (alto valor, estiba ligera)"]),
   "Minerales y Construcción": Object.freeze(["Cemento a granel", "Clínker", "Yeso", "Big Bags (Minerales/Cemento)"]),
   "Biomasa y Combustibles Sólidos": Object.freeze(["Biomasa (Grignon, Astillas, Pellets)", "Carbón mineral"]),
   "Carga Siderúrgica y Metales": Object.freeze(["Bobinas de Acero (Steel Coils)", "Tubos de Acero (Steel Pipes)", "Hierro / Chatarra"]),
@@ -19,9 +30,9 @@ export const CARGO_PRODUCTS = Object.freeze([...new Set(Object.values(CARGO_PROD
 export const CARGO_SPECIFICATION_IDS = Object.freeze(["10", "20", "30", "40", "50", "60", "70", "80", "90", "100"]);
 
 export const CARGO_SPECIFICATIONS = Object.freeze({
-  "10": "10 - Cemento, yeso, cal y clínker (25) (Envasado / Granel)",
-  "20": "20 - Hierro, acero y sus manufacturas (72/73)",
-  "30": "30 - Fertilizantes y abonos (31)",
+  "10": "10 - Frutas Frescas (Temperatura >0°C)",
+  "20": "20 - Congelados (Temperatura <0°C)",
+  "30": "30 - Productos Farmacéuticos y Sensibles",
   "40": "40 - Aluminio y sus manufacturas (76)",
   "50": "50 - Madera, carbón vegetal y pasta de madera (44/47)",
   "60": "60 - Cereales, granos y soja (10/12)",
@@ -76,6 +87,31 @@ export const ISLAMIC_LOCATION_KEYWORDS = Object.freeze([
 ]);
 
 const CARGO_FAMILIES = Object.freeze([
+  Object.freeze({
+    aliases: ["naranja", "naranjas", "limon", "limones", "mandarina", "mandarinas", "citrico", "citricos", "citricas", "frutas citricas"],
+    categoriaCarga: "Frutas Cítricas",
+    especificacionCargaId: "10",
+  }),
+  Object.freeze({
+    aliases: ["banana", "bananas", "platano", "platanos", "pina", "pinas", "aguacate", "aguacates", "mango", "mangos", "tropical"],
+    categoriaCarga: "Frutas Tropicales y Exóticas",
+    especificacionCargaId: "10",
+  }),
+  Object.freeze({
+    aliases: ["manzana", "manzanas", "pera", "peras", "uva", "uvas", "arandano", "arandanos", "melocoton", "melocotones", "ciruela", "ciruelas", "hueso y pepita"],
+    categoriaCarga: "Fruta de Hueso y Pepita",
+    especificacionCargaId: "10",
+  }),
+  Object.freeze({
+    aliases: ["pescado", "pescados", "pescado congelado", "pollo", "pollo congelado", "carne", "carnes", "carne de res", "carne de res congelada", "congelado", "congelados"],
+    categoriaCarga: "Carnes y Pescados Congelados",
+    especificacionCargaId: "20",
+  }),
+  Object.freeze({
+    aliases: ["vacuna", "vacunas", "medicina", "medicinas", "farmaceutico", "farmaceuticos", "medicamento", "medicamentos", "pharma"],
+    categoriaCarga: "Productos Farmacéuticos",
+    especificacionCargaId: "30",
+  }),
   Object.freeze({
     aliases: ["cemento", "cement", "clinker", "clinquer", "yeso", "gypsum", "cal", "lime", "cenizas", "slag"],
     categoriaCarga: "Minerales y Construcción",
