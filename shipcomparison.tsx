@@ -455,7 +455,7 @@ export default function ShipComparison() {
         </div>
         <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
           <span className="hidden md:inline-block bg-emerald-950/40 text-emerald-400 border border-emerald-500/20 px-2.5 py-1 rounded-md text-[10px] uppercase font-mono tracking-widest">
-            RODAHMAR ENGINE
+            REEFER ENGINE
           </span>
           {/* Session Actions Container */}
           <div className="flex justify-end gap-2" id="session-actions">
