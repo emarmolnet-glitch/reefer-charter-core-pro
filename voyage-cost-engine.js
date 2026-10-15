@@ -977,17 +977,40 @@
     function calculateVoyageCostState(state) {
         const fallbackResult = applyTechnicalFallbacks(state);
         const effectiveState = fallbackResult.state;
+
+        const cargoText = `${state.tipo_carga || ''} ${state.cargo_type || ''} ${state.cargoType || ''} ${state.product || ''} ${state.category || ''} ${state.mercancia || ''} ${state.mercancía || ''}`.toLowerCase();
+        const isReefer = state.isReefer || /reefer|pl[aá]tano|fruta|banana/i.test(cargoText) || state.targetTemperatureCelsius !== undefined;
+        const isBreakbulk = !/container|fcl|contenedor/i.test(cargoText) || /breakbulk|bodega|palet/i.test(cargoText);
+
+        // 1. REEFER OVERRIDES (El Monstruo Eléctrico y la Demora)
+        if (isReefer) {
+            effectiveState.consumo_puerto_td = 12; // 12 MT diarias para compresores
+            const baseDemurrage = Number(state.demurrage_rate || state.demurrageRate || 10000);
+            effectiveState.demurrage_rate = Math.max(baseDemurrage * 2.5, 35000); // Suelo de 35k
+        }
+
         effectiveState.turn_time_days = Math.max(0, toNumber(effectiveState.turn_time_hours)) / 24;
-        effectiveState.dias_puerto_total = toNumber(effectiveState.dias_puerto) +
-            effectiveState.turn_time_days;
+        effectiveState.dias_puerto_total = toNumber(effectiveState.dias_puerto) + effectiveState.turn_time_days;
+        
         const canal = calculateCanalToll(effectiveState);
         const cranes = validateCranes(effectiveState);
         const tugs = inferTugCostByDwt(effectiveState.capacidad_dwt, state.coste_remolcadores_ud);
         const totals = calculateTotals(effectiveState, canal.extras_canal, tugs.coste_total_tugs);
 
-        const cargoText = `${state.tipo_carga || ''} ${state.cargo_type || ''} ${state.cargoType || ''} ${state.product || ''} ${state.category || ''} ${state.mercancia || ''} ${state.mercancía || ''}`.toLowerCase();
-        const isReefer = state.isReefer || /reefer|pl[aá]tano|fruta|banana/i.test(cargoText) || state.targetTemperatureCelsius !== undefined;
-        const isBreakbulk = !/container|fcl|contenedor/i.test(cargoText) || /breakbulk|bodega|palet/i.test(cargoText);
+        // 2. REEFER VOLUME VALIDATION (Bloqueo por CBM)
+        let isViable = true;
+        let viabilityWarning = null;
+        const dwtVal = toNumber(effectiveState.capacidad_dwt);
+        const cargoVolCBM = toNumber(state.cargoVolumeCBM || state.volumen_cbm);
+        const maxCubicCapacity = dwtVal * 1.35;
+        
+        if (isReefer && cargoVolCBM > 0 && dwtVal > 0 && cargoVolCBM > maxCubicCapacity) {
+            isViable = false;
+            viabilityWarning = 'INVIABLE (SOBREPASADO POR VOLUMEN): La carga excede la capacidad cúbica de las bodegas (estiba ligera).';
+            effectiveState.operationalWarnings = Array.isArray(effectiveState.operationalWarnings) ? [...effectiveState.operationalWarnings] : [];
+            if (!effectiveState.operationalWarnings.includes(viabilityWarning)) effectiveState.operationalWarnings.unshift(viabilityWarning);
+        }
+
         if (isReefer && isBreakbulk) {
             const warning = REEFER_BREAKBULK_OPERATIONAL_WARNING;
             effectiveState.operationalWarnings = Array.isArray(effectiveState.operationalWarnings) ? [...effectiveState.operationalWarnings] : [];
@@ -996,12 +1019,13 @@
             if (!effectiveState.warnings.includes(warning)) effectiveState.warnings.push(warning);
             effectiveState.observacionesOperativas = Array.isArray(effectiveState.observacionesOperativas) ? [...effectiveState.observacionesOperativas] : [];
             if (!effectiveState.observacionesOperativas.includes(warning)) effectiveState.observacionesOperativas.push(warning);
+            
             totals.operationalWarnings = effectiveState.operationalWarnings;
             totals.warnings = effectiveState.warnings;
             totals.observacionesOperativas = effectiveState.observacionesOperativas;
         }
 
-        return { ...totals, canal, cranes, tugs, fallbacks: fallbackResult.fallbacks, canal_efectivo: fallbackResult.canal_efectivo, state: effectiveState };
+        return { ...totals, canal, cranes, tugs, fallbacks: fallbackResult.fallbacks, canal_efectivo: fallbackResult.canal_efectivo, state: effectiveState, isViable, viabilityWarning };
     }
 
     const DEFAULT_LUMPSUM_TARGET_BASE_MT = 5000;
@@ -1862,6 +1886,27 @@
             const breakEvenEl = this.el('res-breakeven');
             if (totalEl) totalEl.textContent = moneyFormatter.format(result.coste_total_viaje);
             if (breakEvenEl) breakEvenEl.textContent = moneyFormatter.format(result.break_even);
+
+            // 3. SINCRONIZACIÓN COMERCIAL INTELIGENTE (Sección 8)
+            const isReefer = result.state?.isReefer || /reefer|pl[aá]tano|fruta/i.test(result.state?.tipo_carga || '');
+            if (isReefer) {
+                const buyInput = this.document.querySelector('input[id*="compra"], input[name*="compra"], input[id*="buy"]');
+                const sellInput = this.document.querySelector('input[id*="venta"], input[name*="venta"], input[id*="sell"]');
+                
+                const costValueStr = Number(result.break_even || 0).toFixed(2);
+                const sellValueStr = Number(result.break_even ? result.break_even * 1.15 : 0).toFixed(2);
+                
+                // Freno anti-bucle: solo dispara el evento si el valor es nuevo
+                if (buyInput && buyInput.value !== costValueStr && Number(costValueStr) > 0) {
+                    buyInput.value = costValueStr;
+                    buyInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+                
+                if (sellInput && sellInput.value !== sellValueStr && Number(sellValueStr) > 0) {
+                    sellInput.value = sellValueStr;
+                    sellInput.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            }
         }
 
         recalculate(options = {}) {
