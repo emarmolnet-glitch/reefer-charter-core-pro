@@ -675,6 +675,20 @@ function hydrateCalculatorFromDraft(draft) {
         }, { source: 'voyage-draft-ballast-restore', silent: true });
     }
 
+    if (draft?.palletQuantity !== undefined && draft?.palletQuantity !== null) {
+        setValue('pallet-quantity', draft.palletQuantity, false);
+    }
+    if (draft?.cargoVolumeCBM !== undefined && draft?.cargoVolumeCBM !== null) {
+        setValue('cargo-volume-cbm', draft.cargoVolumeCBM, false);
+    }
+    if (draft?.targetTemperatureCelsius !== undefined && draft?.targetTemperatureCelsius !== null) {
+        setValue('target-temperature', draft.targetTemperatureCelsius, false);
+    }
+    if (draft?.requiresControlledAtmosphere !== undefined && draft?.requiresControlledAtmosphere !== null) {
+        const caEl = document.getElementById('controlled-atmosphere');
+        if (caEl) caEl.checked = Boolean(draft.requiresControlledAtmosphere);
+    }
+
     if (draft?.projectCargo) {
         const pc = draft.projectCargo;
         const pcWeight = Number(pc.unitWeightMT ?? pc.pesoUnitario) || 0;

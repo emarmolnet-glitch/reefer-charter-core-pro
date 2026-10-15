@@ -5,7 +5,13 @@ const EMPTY_DRAFT = Object.freeze({
     pol: null,
     pod: null,
     laycan: { laydays: '', cancelling: '' },
-    cargo: { description: '', quantityMt: 0 },
+    cargoVolumeCBM: 0,
+    palletQuantity: 0,
+    deckHeight: 2.2,
+    targetTemperatureCelsius: 13.0,
+    requiresControlledAtmosphere: false,
+    auxiliaryGensetDailyCost: 0,
+    cargo: { description: '' },
     projectCargo: {
         unitWeightMT: 0,
         pesoUnitario: 0,
@@ -24,7 +30,6 @@ const EMPTY_DRAFT = Object.freeze({
     },
     loadingRate: 0,
     dischargeRate: 0,
-    dwt: 0,
     loa_meters: null,
     beam_meters: null,
     draft_meters: null,
@@ -34,8 +39,6 @@ const EMPTY_DRAFT = Object.freeze({
     service_speed_knots: null,
     speed_laden: null,
     speed_ballast: null,
-    gross_tonnage: null,
-    net_tonnage: null,
     year_built: null,
     owner_manager: '',
     vessel_class: '',
@@ -190,12 +193,68 @@ export function hasOperationalDraft(draft) {
         && draft?.pod?.name
         && draft?.laycan?.laydays
         && draft?.laycan?.cancelling
-        && cleanNumber(draft?.cargo?.quantityMt) > 0
+        && (cleanNumber(draft?.palletQuantity) > 0 || cleanNumber(draft?.cargoVolumeCBM) > 0 || cleanNumber(draft?.cargo?.quantityMt) > 0)
     );
 }
 
 export const voyageStore = createStore(subscribeWithSelector((set, get) => ({
+    cargoVolumeCBM: 0,
+    palletQuantity: 0,
+    deckHeight: 2.2,
+    targetTemperatureCelsius: 13.0,
+    requiresControlledAtmosphere: false,
+    auxiliaryGensetDailyCost: 0,
     draft: { ...EMPTY_DRAFT, laycan: { ...EMPTY_DRAFT.laycan }, cargo: { ...EMPTY_DRAFT.cargo }, projectCargo: { ...EMPTY_DRAFT.projectCargo, dimensions: { ...EMPTY_DRAFT.projectCargo.dimensions } } },
+    setCargoDetails: (details = {}) => set((current) => {
+        const payload = details && typeof details === 'object' ? details : {};
+        const cargoVolumeCBM = payload.cargoVolumeCBM !== undefined
+            ? cleanNonNegativeNumber(payload.cargoVolumeCBM) ?? 0
+            : (current.draft.cargoVolumeCBM ?? current.cargoVolumeCBM ?? 0);
+        const palletQuantity = payload.palletQuantity !== undefined
+            ? cleanNonNegativeNumber(payload.palletQuantity) ?? 0
+            : (current.draft.palletQuantity ?? current.palletQuantity ?? 0);
+        const deckHeight = payload.deckHeight !== undefined
+            ? cleanNonNegativeNumber(payload.deckHeight) ?? 2.2
+            : (current.draft.deckHeight ?? current.deckHeight ?? 2.2);
+        const targetTemperatureCelsius = payload.targetTemperatureCelsius !== undefined
+            ? (Number.isFinite(Number(payload.targetTemperatureCelsius)) ? Number(payload.targetTemperatureCelsius) : 13.0)
+            : (current.draft.targetTemperatureCelsius ?? current.targetTemperatureCelsius ?? 13.0);
+        const requiresControlledAtmosphere = payload.requiresControlledAtmosphere !== undefined
+            ? Boolean(payload.requiresControlledAtmosphere)
+            : Boolean(current.draft.requiresControlledAtmosphere ?? current.requiresControlledAtmosphere);
+        const auxiliaryGensetDailyCost = payload.auxiliaryGensetDailyCost !== undefined
+            ? cleanNonNegativeNumber(payload.auxiliaryGensetDailyCost) ?? 0
+            : (current.draft.auxiliaryGensetDailyCost ?? current.auxiliaryGensetDailyCost ?? 0);
+
+        const nextDraft = {
+            ...current.draft,
+            cargoVolumeCBM,
+            palletQuantity,
+            deckHeight,
+            targetTemperatureCelsius,
+            requiresControlledAtmosphere,
+            auxiliaryGensetDailyCost,
+            updatedAt: new Date().toISOString(),
+            lastSource: 'setCargoDetails',
+        };
+
+        const currentComparable = { ...current.draft, updatedAt: null, lastSource: 'setCargoDetails' };
+        const nextComparable = { ...nextDraft, updatedAt: null, lastSource: 'setCargoDetails' };
+        if (JSON.stringify(currentComparable) === JSON.stringify(nextComparable)) {
+            return current;
+        }
+
+        return {
+            ...current,
+            cargoVolumeCBM,
+            palletQuantity,
+            deckHeight,
+            targetTemperatureCelsius,
+            requiresControlledAtmosphere,
+            auxiliaryGensetDailyCost,
+            draft: nextDraft,
+        };
+    }),
     applyNlpScenario: (scenario = {}) => set((current) => {
         const payload = scenario?.payload && typeof scenario.payload === 'object' ? scenario.payload : scenario;
         const rawProjectCargo = payload.projectCargo || payload.project_cargo || scenario.projectCargo || scenario.project_cargo || {};
@@ -313,8 +372,33 @@ export const voyageStore = createStore(subscribeWithSelector((set, get) => ({
             },
         };
 
+        const cargoVolumeCBM = state.cargoVolumeCBM !== undefined
+            ? cleanNonNegativeNumber(state.cargoVolumeCBM) ?? 0
+            : (current.draft.cargoVolumeCBM ?? current.cargoVolumeCBM ?? 0);
+        const palletQuantity = state.palletQuantity !== undefined
+            ? cleanNonNegativeNumber(state.palletQuantity) ?? 0
+            : (current.draft.palletQuantity ?? current.palletQuantity ?? 0);
+        const deckHeight = state.deckHeight !== undefined
+            ? cleanNonNegativeNumber(state.deckHeight) ?? 2.2
+            : (current.draft.deckHeight ?? current.deckHeight ?? 2.2);
+        const targetTemperatureCelsius = state.targetTemperatureCelsius !== undefined
+            ? (Number.isFinite(Number(state.targetTemperatureCelsius)) ? Number(state.targetTemperatureCelsius) : 13.0)
+            : (current.draft.targetTemperatureCelsius ?? current.targetTemperatureCelsius ?? 13.0);
+        const requiresControlledAtmosphere = state.requiresControlledAtmosphere !== undefined
+            ? Boolean(state.requiresControlledAtmosphere)
+            : Boolean(current.draft.requiresControlledAtmosphere ?? current.requiresControlledAtmosphere);
+        const auxiliaryGensetDailyCost = state.auxiliaryGensetDailyCost !== undefined
+            ? cleanNonNegativeNumber(state.auxiliaryGensetDailyCost) ?? 0
+            : (current.draft.auxiliaryGensetDailyCost ?? current.auxiliaryGensetDailyCost ?? 0);
+
         const nextDraft = {
             ...current.draft,
+            cargoVolumeCBM,
+            palletQuantity,
+            deckHeight,
+            targetTemperatureCelsius,
+            requiresControlledAtmosphere,
+            auxiliaryGensetDailyCost,
             pol: normalizePort(state.polCoordinates, state.pol) || current.draft.pol,
             pod: normalizePort(state.podCoordinates, state.pod) || current.draft.pod,
             laycan: {
@@ -357,6 +441,13 @@ export const voyageStore = createStore(subscribeWithSelector((set, get) => ({
         }
 
         return {
+            ...current,
+            cargoVolumeCBM: nextDraft.cargoVolumeCBM,
+            palletQuantity: nextDraft.palletQuantity,
+            deckHeight: nextDraft.deckHeight,
+            targetTemperatureCelsius: nextDraft.targetTemperatureCelsius,
+            requiresControlledAtmosphere: nextDraft.requiresControlledAtmosphere,
+            auxiliaryGensetDailyCost: nextDraft.auxiliaryGensetDailyCost,
             draft: {
                 ...nextDraft,
                 updatedAt: new Date().toISOString(),
@@ -548,10 +639,23 @@ export const voyageStore = createStore(subscribeWithSelector((set, get) => ({
             },
         };
     }),
+    patchVesselData: (vesselData = {}) => get().patchSection2Vessel(vesselData),
     clearDraft: () => set({
+        cargoVolumeCBM: 0,
+        palletQuantity: 0,
+        deckHeight: 2.2,
+        targetTemperatureCelsius: 13.0,
+        requiresControlledAtmosphere: false,
+        auxiliaryGensetDailyCost: 0,
         draft: { ...EMPTY_DRAFT, laycan: { ...EMPTY_DRAFT.laycan }, cargo: { ...EMPTY_DRAFT.cargo }, projectCargo: { ...EMPTY_DRAFT.projectCargo, dimensions: { ...EMPTY_DRAFT.projectCargo.dimensions } } },
     }),
     hasOperationalDraft: () => hasOperationalDraft(get().draft),
 })));
+
+if (typeof window !== 'undefined') {
+    window.voyageStore = voyageStore;
+    window.VoyageStore = voyageStore;
+    window.useVoyageStore = voyageStore;
+}
 
 export const useVoyageStore = voyageStore;
