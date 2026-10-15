@@ -82,8 +82,9 @@ function replaceCargoHierarchySelection(category, product) {
         window.populateCargoProducts?.(normalizedProduct);
         setSelectValue('cargo-product', normalizedProduct);
     }
+    const currentProductVal = document.getElementById('cargo-product')?.value || '';
     return document.getElementById('cargo-type')?.value === normalizedCategory
-        && document.getElementById('cargo-product')?.value === normalizedProduct;
+        && (currentProductVal === normalizedProduct || currentProductVal.startsWith(normalizedProduct) || currentProductVal.includes(normalizedProduct));
 }
 
 function waitForUiStateCommit() {
@@ -281,9 +282,21 @@ function injectVoyageScenario(incomingScenario = {}, options = {}) {
     const cargoType = shouldApplyCargoType
         ? String(scenario.cargo_type || scenario.cargoType || '').trim()
         : String(previousDraft.cargo?.description || '').trim();
-    const cargoCategory = String(scenario.cargo_category || scenario.categoriaCarga || '').trim();
-    const cargoProduct = String(scenario.cargo_product || scenario.productoEspecifico || cargoType).trim();
-    const cargoSpecification = String(scenario.cargo_specification || scenario.especificacionCargaId || '100').trim();
+    const rawCategory = String(incomingScenario.category || incomingScenario.cargo_category || incomingScenario.cargoCategory || incomingScenario.categoriaCarga || scenario.cargo_category || scenario.categoriaCarga || '').trim();
+    const rawProduct = String(incomingScenario.product || incomingScenario.cargo_product || incomingScenario.cargoProduct || incomingScenario.productoEspecifico || scenario.cargo_product || scenario.productoEspecifico || '').trim();
+    const normCat = rawCategory.toLowerCase();
+    const normProd = rawProduct.toLowerCase();
+    const isBackendReefer = normCat.includes('carga refrigerada') || normCat.includes('reefer') || normProd.includes('platano') || normProd.includes('banana');
+
+    const cargoCategory = isBackendReefer
+        ? 'Frutas Tropicales y Exóticas'
+        : (String(scenario.cargo_category || scenario.categoriaCarga || rawCategory).trim());
+    const cargoProduct = isBackendReefer
+        ? 'Bananas/Plátanos'
+        : (String(scenario.cargo_product || scenario.productoEspecifico || rawProduct || cargoType).trim());
+    const cargoSpecification = isBackendReefer
+        ? '10'
+        : (String(scenario.cargo_specification || scenario.especificacionCargaId || '100').trim());
     const laydays = shouldApplyLaydays
         ? String(scenario.laydays || '').trim()
         : String(previousDraft.laycan?.laydays || '').trim();
@@ -293,8 +306,19 @@ function injectVoyageScenario(incomingScenario = {}, options = {}) {
     const loadingRate = readPositiveNumber(scenario, ['ratePOL', 'loading_rate', 'loadingRate']);
     const dischargeRate = readPositiveNumber(scenario, ['ratePOD', 'discharge_rate', 'dischargeRate']);
     const dwt = readPositiveNumber(scenario, ['dwt', 'required_dwt', 'requiredDwt']);
-    const methodPOL = resolveBigBagsMethod(`${cargoType} ${cargoProduct}`, readMethodValue(scenario.methodPOL ?? scenario.loading_method ?? scenario.loadingMethod ?? scenario.loadMethod));
-    const methodPOD = readMethodValue(scenario.methodPOD ?? scenario.discharge_method ?? scenario.dischargeMethod) || methodPOL;
+
+    const isReeferDetected = isBackendReefer || Boolean(
+        /reefer|pl[aá]tano|fruta/i.test(`${cargoType} ${cargoProduct} ${cargoCategory} ${rawCategory} ${rawProduct}`) ||
+        (incomingScenario.targetTemperatureCelsius !== undefined) ||
+        (incomingScenario.palletQuantity > 0) ||
+        (incomingScenario.requiresControlledAtmosphere)
+    );
+    const methodPOL = isReeferDetected
+        ? 'Paletizado - Grúa Portuaria'
+        : resolveBigBagsMethod(`${cargoType} ${cargoProduct}`, readMethodValue(scenario.methodPOL ?? scenario.loading_method ?? scenario.loadingMethod ?? scenario.loadMethod));
+    const methodPOD = isReeferDetected
+        ? 'Paletizado - Grúa Portuaria'
+        : (readMethodValue(scenario.methodPOD ?? scenario.discharge_method ?? scenario.dischargeMethod) || methodPOL);
     const hasValidatedPol = Boolean(scenario.pol_port);
     const hasValidatedPod = Boolean(scenario.pod_port);
 
@@ -707,20 +731,19 @@ function hydrateCalculatorFromDraft(draft) {
         (Number(draft?.palletQuantity) > 0) ||
         (Number(draft?.cargoVolumeCBM) > 0) ||
         draft?.requiresControlledAtmosphere ||
-        (draft?.targetTemperatureCelsius !== undefined && draft?.targetTemperatureCelsius !== null && Number(draft.targetTemperatureCelsius) <= 15)
+        (draft?.targetTemperatureCelsius !== undefined && draft?.targetTemperatureCelsius !== null && Number(draft.targetTemperatureCelsius) <= 15) ||
+        /reefer|pl[aá]tano|fruta/i.test(String(draft?.cargo?.description || draft?.cargoProduct || draft?.cargoCategory || ''))
     );
 
     if (isReeferOperation) {
-        const spdLadenEl = document.getElementById('spd-laden');
-        const spdBallastEl = document.getElementById('spd-ballast');
-        if (spdLadenEl && (spdLadenEl.dataset?.manualOverride !== 'true' || Number(spdLadenEl.value) <= 13)) {
-            setValue('spd-laden', 17.5, false);
-            if (window.State) window.State.speedLaden = 17.5;
+        setValue('spd-laden', 17.5, false);
+        setValue('spd-ballast', 17.5, false);
+        if (window.State) {
+            window.State.speedLaden = 17.5;
+            window.State.speedBallast = 17.5;
         }
-        if (spdBallastEl && (spdBallastEl.dataset?.manualOverride !== 'true' || Number(spdBallastEl.value) <= 13)) {
-            setValue('spd-ballast', 17.5, false);
-            if (window.State) window.State.speedBallast = 17.5;
-        }
+        replaceOperationalMethod('pol', 'Paletizado - Grúa Portuaria');
+        replaceOperationalMethod('pod', 'Paletizado - Grúa Portuaria');
     }
 
     if (typeof window !== 'undefined') {

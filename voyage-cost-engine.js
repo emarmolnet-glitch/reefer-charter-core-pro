@@ -25,6 +25,18 @@
             .replaceAll("'", '&#039;');
     }
 
+    const REEFER_FINANCIAL_MULTIPLIERS = Object.freeze({
+        CAPEX: 1.40,
+        OPEX: 1.30,
+        PDA: 1.50,
+        capexMultiplier: 1.40,
+        opexMultiplier: 1.30,
+        pdaMultiplier: 1.50
+    });
+    const REEFER_CAPEX_MULTIPLIER = 1.40;
+    const REEFER_OPEX_MULTIPLIER = 1.30;
+    const REEFER_PDA_MULTIPLIER = 1.50;
+
     const RITMOS_BASE_PUERTO = {
         cinta_transportadora: 2500,
         camion_tolva: 1500,
@@ -235,21 +247,29 @@
     }
 
     function calculateOperationalRisk(basePDA, etaDate, portDays, portCountry, vesselDraft, portMaxDraft, operationalContext = {}) {
+        const effectiveContext = (vesselDraft && typeof vesselDraft === 'object') ? vesselDraft : (operationalContext || {});
+        const effectiveVesselDraft = (vesselDraft && typeof vesselDraft === 'object') ? 0 : vesselDraft;
         const normalizedPda = Math.max(0, toNumber(basePDA));
-        const cargoQuantity = Math.max(0, toNumber(operationalContext?.cargoQuantity));
-        const portDailyRate = Math.max(0, toNumber(operationalContext?.portDailyRate));
+        const cargoQuantity = Math.max(0, toNumber(effectiveContext?.cargoQuantity));
+        const portDailyRate = Math.max(0, toNumber(effectiveContext?.portDailyRate));
         const totalPortHours = cargoQuantity > 0 && portDailyRate > 0
             ? (cargoQuantity / portDailyRate) * 24
             : Math.max(0, toNumber(portDays)) * 24;
-        const shiftSimulation = simulateShiftSchedule(etaDate, totalPortHours, portCountry, operationalContext);
-        const berthAvailability = evaluateBerthAvailability(vesselDraft, operationalContext?.berths, portMaxDraft);
+        const shiftSimulation = simulateShiftSchedule(etaDate, totalPortHours, portCountry, effectiveContext);
+        const berthAvailability = evaluateBerthAvailability(effectiveVesselDraft, effectiveContext?.berths, portMaxDraft);
         const isDraftExceeded = berthAvailability.isDraftExceeded;
-        const hasAdjustedRates = Boolean(operationalContext?.hasAdjustedRates);
+        const hasAdjustedRates = Boolean(effectiveContext?.hasAdjustedRates);
         const riskLevel = (isDraftExceeded || berthAvailability.hasMinorityAvailability)
             ? 'ALTO'
             : (shiftSimulation.overtimeHours > 0 || hasAdjustedRates ? 'MODERADO' : 'BAJO');
-        const isReefer = Boolean(operationalContext?.isReefer || operationalContext?.requiresControlledAtmosphere || toNumber(operationalContext?.palletQuantity) > 0 || toNumber(operationalContext?.cargoVolumeCBM) > 0);
-        const reeferMultiplier = isReefer ? 1.25 : 1.0; // Terminales fruteras y remolcadores prioritarios (+25%)
+        const isReefer = Boolean(
+            effectiveContext?.isReefer ||
+            effectiveContext?.requiresControlledAtmosphere ||
+            toNumber(effectiveContext?.palletQuantity) > 0 ||
+            toNumber(effectiveContext?.cargoVolumeCBM) > 0 ||
+            /reefer|pl[aá]tano|fruta/i.test(String(effectiveContext?.cargo || effectiveContext?.cargo_type || effectiveContext?.cargo_category || effectiveContext?.cargo_product || ''))
+        );
+        const reeferMultiplier = isReefer ? REEFER_FINANCIAL_MULTIPLIERS.PDA : 1.0; // Terminales fruteras y remolcadores prioritarios (+50%)
         const adjustedPDA = (normalizedPda * reeferMultiplier) + shiftSimulation.overtimeSurcharge;
 
         return {
@@ -644,7 +664,15 @@
         else if (value < 40000) base = 5600;
         else if (value < 65000) base = 6100;
         else if (value < 85000) base = 6600;
-        return isReefer ? Math.round(base * 1.20) : base;
+        return isReefer ? Math.round(base * REEFER_FINANCIAL_MULTIPLIERS.OPEX) : base;
+    }
+
+    function calculateDailyCapex(dwt, shipClass = {}, isReefer = false) {
+        const capexMultiplier = isReefer ? REEFER_FINANCIAL_MULTIPLIERS.CAPEX : 1.0;
+        const vesselValue = toNumber(dwt) * (shipClass?.capexUsdPerDwt || (isReefer ? 570 : 450));
+        const annualRate = shipClass?.capexAnnualRate || 0.10;
+        const baseCapexDaily = (vesselValue * annualRate) / 365;
+        return baseCapexDaily * capexMultiplier;
     }
 
     function inferTugCostByDwt(dwt, manualUnitCost) {
@@ -1969,6 +1997,11 @@
         evaluateRisk,
         calculateMeteoceanRisk,
         renderAutomaticRiskMatrix,
+        calculateDailyCapex,
+        REEFER_FINANCIAL_MULTIPLIERS,
+        REEFER_CAPEX_MULTIPLIER,
+        REEFER_OPEX_MULTIPLIER,
+        REEFER_PDA_MULTIPLIER,
         VoyageCostDomController
     };
 
@@ -1976,6 +2009,11 @@
     root.ISLAMIC_WEEKEND_COUNTRIES = ISLAMIC_WEEKEND_COUNTRIES;
     root.calculateOperationalRisk = calculateOperationalRisk;
     root.updateExecutiveDashboard = updateExecutiveDashboard;
+    root.calculateDailyCapex = calculateDailyCapex;
+    root.REEFER_FINANCIAL_MULTIPLIERS = REEFER_FINANCIAL_MULTIPLIERS;
+    root.REEFER_CAPEX_MULTIPLIER = REEFER_CAPEX_MULTIPLIER;
+    root.REEFER_OPEX_MULTIPLIER = REEFER_OPEX_MULTIPLIER;
+    root.REEFER_PDA_MULTIPLIER = REEFER_PDA_MULTIPLIER;
 
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;

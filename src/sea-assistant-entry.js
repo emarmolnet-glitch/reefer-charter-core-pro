@@ -1147,9 +1147,45 @@ async function executeActionableAiUpdateFields(actionObj) {
         const rawPackagingText = String(p.packingType || p.packaging || p.packageType || "").toLowerCase();
         const rawProductText = String(p.product || p.cargoProduct || p.productoEspecifico || p.productSpecific || "").toLowerCase();
         const rawCategoryText = String(p.category || p.cargoCategory || p.categoriaCarga || "").toLowerCase();
-        const hasEnvase = packagingRegex.test(cargoTypeLower) || packagingRegex.test(rawPackagingText) || packagingRegex.test(rawProductText) || packagingRegex.test(rawCategoryText);
 
-        if (hasEnvase) {
+        const isReeferCategoryOrProduct = /carga refrigerada|reefer/i.test(rawCategoryText) ||
+            /platano|banana/i.test(rawProductText) ||
+            /carga refrigerada|reefer/i.test(cargoTypeLower) ||
+            /platano|banana/i.test(cargoTypeLower) ||
+            hasReeferData;
+
+        const hasEnvase = !isReeferCategoryOrProduct && (packagingRegex.test(cargoTypeLower) || packagingRegex.test(rawPackagingText) || packagingRegex.test(rawProductText) || packagingRegex.test(rawCategoryText));
+
+        if (isReeferCategoryOrProduct) {
+            p.category = "Frutas Tropicales y Exóticas";
+            p.cargoCategory = "Frutas Tropicales y Exóticas";
+            p.categoriaCarga = "Frutas Tropicales y Exóticas";
+            p.product = "Bananas/Plátanos";
+            p.cargoProduct = "Bananas/Plátanos";
+            p.productoEspecifico = "Bananas/Plátanos";
+            p.productSpecific = "Bananas/Plátanos";
+            p.cargoSpecification = "10";
+            p.cargo_specification = "10";
+            p.especificacionCargaId = "10";
+            p.loadingMethod = "Paletizado - Grúa Portuaria";
+            p.dischargeMethod = "Paletizado - Grúa Portuaria";
+            p.methodPOL = "Paletizado - Grúa Portuaria";
+            p.methodPOD = "Paletizado - Grúa Portuaria";
+            p.speed_laden = 17.5;
+            p.speed_ballast = 17.5;
+            p.speedLaden = 17.5;
+            p.speedBallast = 17.5;
+            updateInputs(["spd-laden", "speed-laden", "spd_laden"], 17.5, true);
+            updateInputs(["spd-ballast", "speed-ballast", "spd_ballast"], 17.5, true);
+            updateInputs(["metodo_carga", "methodPOL"], "Paletizado - Grúa Portuaria", true);
+            updateInputs(["metodo_descarga_pod", "methodPOD"], "Paletizado - Grúa Portuaria", true);
+            if (window.State) {
+                window.State.speedLaden = 17.5;
+                window.State.speedBallast = 17.5;
+                window.State.methodPOL = "Paletizado - Grúa Portuaria";
+                window.State.methodPOD = "Paletizado - Grúa Portuaria";
+            }
+        } else if (hasEnvase) {
             p.category = "Minerales y Construcción";
             p.cargoCategory = "Minerales y Construcción";
             p.categoriaCarga = "Minerales y Construcción";
@@ -1223,6 +1259,12 @@ async function executeActionableAiUpdateFields(actionObj) {
                 const optText = opt.text.toLowerCase();
                 const optValue = String(opt.value).toLowerCase();
                 
+                if (isReeferCategoryOrProduct) {
+                    if (sel.id === 'cargo-type' && (optValue.includes('frutas tropicales') || optText.includes('frutas tropicales'))) return true;
+                    if (sel.id === 'cargo-product' && (optValue.includes('banana') || optValue.includes('platano') || optText.includes('banana') || optText.includes('platano'))) return true;
+                    if (sel.id === 'cargo-type-manual' && (optValue === '10' || optText.startsWith('10'))) return true;
+                }
+
                 if (hasEnvase) {
                     if (sel.id === 'cargo-type' && (optValue === 'minerales y construcción' || optText.includes('minerales y construcción'))) return true;
                     if (sel.id === 'cargo-product' && (optValue === 'big bags (minerales/cemento)' || optText.includes('big bags (minerales/cemento)'))) return true;
