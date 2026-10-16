@@ -1947,15 +1947,17 @@
         if (el.children.length === 0 && el.textContent.includes('VIABLE (') && el.textContent.includes('DWT')) {
             el.textContent = result.viabilityWarning;
             el.className = 'rounded-lg border border-red-300 bg-red-50 p-3 text-xs font-bold text-red-800 text-center mb-4';
-        }
-    });
+                }
+            });
+        } // <--- AÑADE ESTA LLAVE (Cierra la validación de volumen)
+    } // <--- AÑADE ESTA LLAVE (Cierra la comprobación Reefer)
 
-                return result;
-            } catch (error) {
-                console.error('Error en motor Core PRO:', error);
-                this.showDataAlert('Faltan datos operativos');
-                return null;
-            }
+    return result;
+} catch (error) {
+    console.error('Error en motor Core PRO:', error);
+    this.showDataAlert('Faltan datos operativos');
+    return null;
+}
         }
 
         bindDelegatedListener() {
