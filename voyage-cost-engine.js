@@ -1908,6 +1908,7 @@
                     sellInput.dispatchEvent(new Event('change', { bubbles: true }));
                 }
             }
+        } // <- ESTA ES LA LLAVE QUE FALTABA
 
         recalculate(options = {}) {
             if (this.isWriting) return null;
@@ -1925,6 +1926,7 @@
                 this.renderTugs(result.tugs);
                 this.renderCraneAlert(result.cranes);
                 if (options.renderTotals) this.renderTotals(result);
+
                 // --- FORZADO VISUAL DEFINITIVO: ALERTA DE VOLUMEN CBM ---
                 const cargoCheckText = `${state.tipo_carga || ''} ${state.cargo_type || ''} ${state.product || ''}`.toLowerCase();
                 const isReeferUi = state.isReefer || /reefer|pl[aá]tano|fruta/i.test(cargoCheckText);
@@ -1947,6 +1949,7 @@
                         }
                     }
                 }
+
                 return result;
             } catch (error) {
                 console.error('Error en motor Core PRO:', error);
