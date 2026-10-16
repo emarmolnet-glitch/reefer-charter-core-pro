@@ -1894,7 +1894,7 @@
                 const sellInput = this.document.querySelector('input[id*="venta"], input[name*="venta"], input[id*="sell"], input[id*="fletador"], input[id*="charterer"]');
                 
                 const costValueStr = Number(result.break_even || 0).toFixed(2);
-                const sellValueStr = Number(result.break_even ? result.break_even * 1.15 : 0).toFixed(2);
+                const sellValueStr = Number(result.break_even ? result.break_even * 1.10 : 0).toFixed(2);
                 
                 if (buyInput && buyInput.value !== costValueStr && Number(costValueStr) > 0) {
                     buyInput.value = costValueStr;
@@ -1914,6 +1914,16 @@
             if (this.isWriting) return null;
             try {
                 const state = this.readState();
+
+                // --- 1. INYECCIÓN REEFER DIRECTA AL ESTADO MATEMÁTICO ---
+                const cargoCheckText = `${state.tipo_carga || ''} ${state.cargo_type || ''} ${state.product || ''}`.toLowerCase();
+                const isReeferMath = state.isReefer || /reefer|pl[aá]tano|fruta/i.test(cargoCheckText);
+                if (isReeferMath) {
+                    state.consumo_puerto_td = 12.0;
+                    const consPortEl = this.el('cons-port');
+                    if (consPortEl && consPortEl.value !== '12.0') consPortEl.value = '12.0';
+                }
+
                 if (state.capacidad_dwt <= 0 && (state.tonelaje_neto <= 0 || state.calado_actual <= 0 || state.crane_swl_mt <= 0)) {
                     this.showDataAlert('Faltan datos operativos: DWT requerido para estimar specs tecnicas.');
                 } else {
@@ -1928,7 +1938,6 @@
                 if (options.renderTotals) this.renderTotals(result);
 
                 // --- FORZADO VISUAL DEFINITIVO: ALERTA DE VOLUMEN CBM ---
-                const cargoCheckText = `${state.tipo_carga || ''} ${state.cargo_type || ''} ${state.product || ''}`.toLowerCase();
                 const isReeferUi = state.isReefer || /reefer|pl[aá]tano|fruta/i.test(cargoCheckText);
                 
                 if (isReeferUi) {

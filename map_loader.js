@@ -272,7 +272,7 @@
 
     const STRICT_EXCLUSION_PATTERN = /\b(fishing|pesquero|pesca|trawler|trawl|drifter|seiner|longliner|fish factory|pesquero de arrastre|tug|tugboat|remolcador|remolque|towing|towage|pusher|pushboat|empujador|escort tug|support vessel|passenger|cruise|ferry|ropax|ro-pax|pasaje|pasajeros|crucero|pleasure craft|pleasure|recreational|recreo|yacht|superyacht|megayacht|yate|sailing|sailing vessel|sailboat|velero|sport fishing|dredger|dredging|draga|dragado|manned vts|vts|port hand mark|starboard hand mark|special mark|sea farm|special mark - sea farm|reference point|isolated danger|navigation mark|buoy|boya|baliza|military ops|military|warship|navy|patrol|patrullera|search and rescue|search & rescue|sar|rescue vessel|rescue|salvage|salvamento|guardacostas|coast guard|port service|servicio portuario|workboat|barco de trabajo|crew boat|pilot|pilot boat|prácticos|tender|port tender|diving|buceo|pontoon|ponton|anti-pollution|oil recovery|cable layer|pipe layer|research vessel|investigación|drillship|drilling|offshore supply|platform supply|platform|psv|ahts|other|unknown|desconocido|otros)\b/i;
 
-    const STRICT_COMMERCIAL_WHITELIST_PATTERN = /\b(bulk carrier|bulker|dry bulk|dry cargo|granelero|graneles|capesize|post-panamax|kamsarmax|panamax|ultramax|supramax|handymax|handysize|mini bulker|minibulker|mini-bulker|ore carrier|grain carrier|collier|wood chips carrier|self-unloading bulker|self unloader|general cargo|general cargo vessel|carguero|buque de carga|cargo ship|cargo|coaster|coastal cargo|cabotage|cabotaje|costero|freighter|merchant|motor vessel|mv|multipurpose|multi purpose|multi-purpose|mpp|mpv|mmpp|open hatch|box hold|multipropósito|container ship|container|containership|feeder|boxship|portacontenedores|tanker|oil tanker|chemical tanker|product tanker|crude oil tanker|petrolero|quimiquero|heavy load carrier|heavy lift|heavy load|heavy carrier|project cargo|carga pesada|break bulk|breakbulk|break-bulk|ro-ro cargo|roro cargo|ro-ro|roro|vehicle carrier|car carrier|cement carrier|cementero|cement|cemento|clinker carrier|clinker)\b/i;
+    const STRICT_COMMERCIAL_WHITELIST_PATTERN = /\b(bulk carrier|bulker|dry bulk|dry cargo|granelero|graneles|capesize|post-panamax|kamsarmax|panamax|ultramax|supramax|handymax|handysize|mini bulker|minibulker|mini-bulker|ore carrier|grain carrier|collier|wood chips carrier|self-unloading bulker|self unloader|general cargo|general cargo vessel|carguero|buque de carga|cargo ship|cargo|coaster|coastal cargo|cabotage|cabotaje|costero|freighter|merchant|motor vessel|mv|multipurpose|multi purpose|multi-purpose|mpp|mpv|mmpp|open hatch|box hold|multipropósito|container ship|container|containership|feeder|boxship|portacontenedores|tanker|oil tanker|chemical tanker|product tanker|crude oil tanker|petrolero|quimiquero|heavy load carrier|heavy lift|heavy load|heavy carrier|project cargo|carga pesada|break bulk|breakbulk|break-bulk|ro-ro cargo|roro cargo|ro-ro|roro|vehicle carrier|car carrier|cement carrier|cementero|cement|cemento|clinker carrier|clinker|refrigerated cargo|reefer)\b/i;
 
     function extractVesselClassificationStrings(ship) {
         if (!ship || typeof ship !== 'object') return [];
@@ -286,8 +286,10 @@
 
         return [
             ship.type,
+            ship.classes,
             ship.vesselType,
             ship.vessel_type,
+            ship.type_name,
             ship.vesselClass,
             ship.vessel_class,
             ship.clase,
@@ -370,7 +372,7 @@
             }
             // Codes 70-79: Cargo (Bulk, General, Container, Break Bulk, Heavy Lift, Ro-Ro)
             // Codes 80-89: Tankers
-            if ((numericCode >= 70 && numericCode <= 79) || (numericCode >= 80 && numericCode <= 89)) {
+            if ((numericCode >= 70 && numericCode <= 79) || (numericCode >= 80 && numericCode <= 89) || numericCode === 71 || numericCode === 81) {
                 return true;
             }
         }
