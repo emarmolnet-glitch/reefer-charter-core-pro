@@ -1888,26 +1888,26 @@
             if (breakEvenEl) breakEvenEl.textContent = moneyFormatter.format(result.break_even);
 
             // 3. SINCRONIZACIÓN COMERCIAL INTELIGENTE (Sección 8)
-            const isReefer = result.state?.isReefer || /reefer|pl[aá]tano|fruta/i.test(result.state?.tipo_carga || '');
-            if (isReefer) {
-                const buyInput = this.document.querySelector('input[id*="compra"], input[name*="compra"], input[id*="buy"]');
-                const sellInput = this.document.querySelector('input[id*="venta"], input[name*="venta"], input[id*="sell"]');
+            const isReeferSync = result.state?.isReefer || /reefer|pl[aá]tano|fruta/i.test(result.state?.tipo_carga || '');
+            if (isReeferSync) {
+                const buyInput = this.document.querySelector('input[id*="compra"], input[name*="compra"], input[id*="buy"], input[id*="armador"]');
+                const sellInput = this.document.querySelector('input[id*="venta"], input[name*="venta"], input[id*="sell"], input[id*="fletador"], input[id*="charterer"]');
                 
                 const costValueStr = Number(result.break_even || 0).toFixed(2);
                 const sellValueStr = Number(result.break_even ? result.break_even * 1.15 : 0).toFixed(2);
                 
-                // Freno anti-bucle: solo dispara el evento si el valor es nuevo
                 if (buyInput && buyInput.value !== costValueStr && Number(costValueStr) > 0) {
                     buyInput.value = costValueStr;
+                    buyInput.dispatchEvent(new Event('input', { bubbles: true }));
                     buyInput.dispatchEvent(new Event('change', { bubbles: true }));
                 }
                 
                 if (sellInput && sellInput.value !== sellValueStr && Number(sellValueStr) > 0) {
                     sellInput.value = sellValueStr;
+                    sellInput.dispatchEvent(new Event('input', { bubbles: true }));
                     sellInput.dispatchEvent(new Event('change', { bubbles: true }));
                 }
             }
-        }
 
         recalculate(options = {}) {
             if (this.isWriting) return null;
@@ -1925,6 +1925,28 @@
                 this.renderTugs(result.tugs);
                 this.renderCraneAlert(result.cranes);
                 if (options.renderTotals) this.renderTotals(result);
+                // --- FORZADO VISUAL DEFINITIVO: ALERTA DE VOLUMEN CBM ---
+                const cargoCheckText = `${state.tipo_carga || ''} ${state.cargo_type || ''} ${state.product || ''}`.toLowerCase();
+                const isReeferUi = state.isReefer || /reefer|pl[aá]tano|fruta/i.test(cargoCheckText);
+                
+                if (isReeferUi) {
+                    const dwtVal = Number(state.capacidad_dwt || 0);
+                    const cbmInput = this.document.querySelector('input[id*="cbm"], input[id*="vol"]');
+                    const cargoVolCBM = Number(state.cargoVolumeCBM || state.volumen_cbm || (cbmInput ? cbmInput.value : 0));
+                    const maxCubicCapacity = dwtVal * 1.35;
+                    
+                    if (dwtVal > 0 && cargoVolCBM > maxCubicCapacity) {
+                        result.isViable = false;
+                        result.viabilityWarning = 'INVIABLE (SOBREPASADO POR VOLUMEN): La carga excede la capacidad cúbica de las bodegas (estiba ligera).';
+                        
+                        const allDivs = Array.from(this.document.querySelectorAll('div'));
+                        const targetBanner = allDivs.find(el => el.textContent.includes('VIABLE (') && el.textContent.includes('DWT'));
+                        if (targetBanner) {
+                            targetBanner.textContent = result.viabilityWarning;
+                            targetBanner.className = 'rounded-lg border border-red-300 bg-red-50 p-3 text-xs font-bold text-red-800 text-center mb-4';
+                        }
+                    }
+                }
                 return result;
             } catch (error) {
                 console.error('Error en motor Core PRO:', error);
