@@ -1,7 +1,13 @@
 [[redirects]]
+  from = "/api/databridge-master-stats"
+  to = "https://neon-seachartercorepro-4ce09d.netlify.app/api/databridge-master-stats"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/databridge-port-tariff"
   to = "https://calm-shortbread-55bcfc.netlify.app/api/databridge-port-tariff"
-  status = 301
+  status = 200
   force = true
 
 [[redirects]]
