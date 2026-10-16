@@ -1941,14 +1941,14 @@
                         result.isViable = false;
                         result.viabilityWarning = 'INVIABLE (SOBREPASADO POR VOLUMEN): La carga excede la capacidad cúbica de las bodegas (estiba ligera).';
                         
-                        const allDivs = Array.from(this.document.querySelectorAll('div'));
-                        const targetBanner = allDivs.find(el => el.textContent.includes('VIABLE (') && el.textContent.includes('DWT'));
-                        if (targetBanner) {
-                            targetBanner.textContent = result.viabilityWarning;
-                            targetBanner.className = 'rounded-lg border border-red-300 bg-red-50 p-3 text-xs font-bold text-red-800 text-center mb-4';
-                        }
-                    }
-                }
+                        const allTextElements = this.document.querySelectorAll('div, span, p');
+    allTextElements.forEach(el => {
+        // Solo modifica el elemento si NO tiene hijos (es el elemento final) y contiene el texto erróneo
+        if (el.children.length === 0 && el.textContent.includes('VIABLE (') && el.textContent.includes('DWT')) {
+            el.textContent = result.viabilityWarning;
+            el.className = 'rounded-lg border border-red-300 bg-red-50 p-3 text-xs font-bold text-red-800 text-center mb-4';
+        }
+    });
 
                 return result;
             } catch (error) {
