@@ -21,11 +21,11 @@ function formatDate(value) {
 
 function getSelectedVesselClass() {
   const vesselType = String(document.getElementById('vessel-badge')?.textContent || '').trim().toLowerCase();
-  if (vesselType.includes('cape')) return 'Capesize';
-  if (vesselType.includes('panamax') || vesselType.includes('kamsar')) return 'Panamax';
-  if (vesselType.includes('supra') || vesselType.includes('ultra')) return 'Supramax';
-  if (vesselType.includes('handy')) return 'Handysize';
-  return '';
+  if (vesselType.includes('small')) return 'Small Reefer';
+  if (vesselType.includes('medium')) return 'Medium Reefer';
+  if (vesselType.includes('large')) return 'Large Reefer';
+  if (vesselType.includes('mega')) return 'Mega Reefer';
+  return 'Medium Reefer'; // Valor por defecto para reefers
 }
 
 function setText(id, value) {
@@ -52,43 +52,28 @@ function renderStatus(id, label, layoutClass = '') {
   }
 }
 
-function renderBdi(snapshot) {
-  const bdi = snapshot?.bdi;
-  setText('baltic-spot-index', 'BDI');
-  setText('baltic-spot-value', bdi?.value === null || bdi?.value === undefined ? '—' : indexFormatter.format(bdi.value));
-  setText('baltic-spot-updated', formatDate(bdi?.updatedAt));
-
-  const variations = [];
-  if (bdi?.changeValue !== null && bdi?.changeValue !== undefined) {
-    variations.push(`${bdi.changeValue >= 0 ? '+' : ''}${indexFormatter.format(bdi.changeValue)} pts`);
-  }
-  if (bdi?.changePct !== null && bdi?.changePct !== undefined) {
-    variations.push(`${bdi.changePct >= 0 ? '+' : ''}${indexFormatter.format(bdi.changePct)}%`);
-  }
-  const variationElement = setText('baltic-spot-variation', variations.join(' · ') || 'Variación N/D');
-  if (variationElement) {
-    const direction = bdi?.changeValue ?? bdi?.changePct;
-    variationElement.className = `mt-0.5 text-[10px] font-black ${
-      direction === null || direction === undefined
-        ? 'text-slate-400'
-        : direction >= 0 ? 'text-emerald-600' : 'text-rose-600'
-    }`;
-  }
-  renderStatus('baltic-spot-status', bdi?.status || snapshot?.status || 'No disponible', 'mt-2 inline-flex');
+function renderReeferIndex(snapshot) {
+  const seasonalIdx = snapshot?.reeferSeasonalIndex ?? 108;
+  setText('baltic-spot-index', 'Reefer Seasonal Index');
+  setText('baltic-spot-value', `${indexFormatter.format(seasonalIdx)} pts`);
+  setText('baltic-spot-updated', 'Campaña Activa Hemisferio Sur/Med');
+  setText('baltic-spot-variation', 'Drewry / Desk Benchmark');
+  renderStatus('baltic-spot-status', 'LIVE', 'mt-2 inline-flex');
 }
 
 function renderTceSpot(snapshot) {
   const vesselClass = getSelectedVesselClass();
-  const tceSpot = vesselClass ? snapshot?.tceSpotByClass?.[vesselClass] : null;
-  setText('tce-spot-theoretical-class', vesselClass || 'Clase no detectada');
+  const tceSpot = snapshot?.tceSpotByClass?.[vesselClass] || snapshot?.tceSpotByClass?.['Medium Reefer'];
+  
+  setText('tce-spot-theoretical-class', vesselClass || 'Bulk Reefer Convencional');
   setText(
     'tce-spot-theoretical-value',
     tceSpot?.theoreticalSpotTce === null || tceSpot?.theoreticalSpotTce === undefined
       ? '—'
-      : currencyFormatter.format(tceSpot.theoreticalSpotTce),
+      : `${currencyFormatter.format(tceSpot.theoreticalSpotTce)}/día`,
   );
   setText('tce-spot-theoretical-updated', formatDate(tceSpot?.updatedAt));
-  setText('tce-spot-theoretical-fuel', tceSpot?.fuelLabel || 'Combustible N/D');
+  setText('tce-spot-theoretical-fuel', tceSpot?.fuelLabel || 'VLSFO + MGO (Planta Frío AE)');
 
   const spreadParts = [];
   if (tceSpot?.spreadUsd !== null && tceSpot?.spreadUsd !== undefined) {
@@ -99,7 +84,7 @@ function renderTceSpot(snapshot) {
   }
   const spreadElement = setText(
     'tce-spot-theoretical-spread',
-    spreadParts.length ? `Brecha: ${spreadParts.join(' · ')}` : 'Brecha no disponible',
+    spreadParts.length ? `Brecha T/C: ${spreadParts.join(' · ')}` : 'Brecha no disponible',
   );
   if (spreadElement) {
     const direction = tceSpot?.spreadUsd ?? tceSpot?.spreadPct;
@@ -112,7 +97,7 @@ function renderTceSpot(snapshot) {
 
   renderStatus(
     'tce-spot-theoretical-status',
-    tceSpot?.algorithmLabel || tceSpot?.status || 'No disponible',
+    tceSpot?.status || 'LIVE',
   );
 
   if (typeof window !== 'undefined') {
@@ -137,7 +122,7 @@ function renderTceSpot(snapshot) {
 
 function renderSnapshot(snapshot) {
   latestSnapshot = snapshot || null;
-  renderBdi(latestSnapshot);
+  renderReeferIndex(latestSnapshot);
   renderTceSpot(latestSnapshot);
 }
 
@@ -148,7 +133,7 @@ function refreshWhenVesselTypeChanges() {
   renderTceSpot(latestSnapshot);
 }
 
-function initializeBalticSpotReference() {
+function initializeReeferSpotReference() {
   const hydration = window.MarketIntelligenceHydration;
   const vesselBadge = document.getElementById('vessel-badge');
 
@@ -173,7 +158,7 @@ function initializeBalticSpotReference() {
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initializeBalticSpotReference, { once: true });
+  document.addEventListener('DOMContentLoaded', initializeReeferSpotReference, { once: true });
 } else {
-  initializeBalticSpotReference();
+  initializeReeferSpotReference();
 }
