@@ -9601,34 +9601,40 @@
 </head>
 <body class="theme-light bg-slate-900 h-screen flex flex-col overflow-hidden" data-app-ready="false" aria-busy="true">
 
-    <div id="global-splash-screen" class="fixed inset-0 z-50 bg-slate-900" role="status" aria-live="polite" aria-label="SeaCharter Core PRO iniciando">
-        <div class="global-splash__content">
-            <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 16px;">
-              <!-- Sub-Brand: SeaCharter Core PRO -->
-              <svg width="84" height="84" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 6px 16px rgba(14, 58, 93, 0.15));">
-                <circle cx="60" cy="60" r="56" fill="#0E3A5D"/>
-                <path d="M 4 74 C 20 74, 28 60, 38 44 C 46 31, 58 26, 69 30 C 76 33, 81 40, 79 48 C 76 42, 70 39, 64 41 C 57 43, 54 52, 57 60 C 61 70, 74 75, 89 73 C 99 72, 108 67, 116 61 L 116 67 C 107 74, 96 79, 84 80 C 66 81, 51 73, 48 59 C 46 49, 50 39, 58 36 C 51 36, 44 42, 37 53 C 28 67, 18 79, 4 80 Z" fill="#FFFFFF"/>
-              </svg>
-              <div style="margin-top: 10px; text-align: center; font-family: 'Inter', system-ui, sans-serif; line-height: 1.12;">
-                <div style="font-size: 24px; font-weight: 800; color: #0E3A5D; letter-spacing: -0.02em;">SeaCharter</div>
-                <div style="font-size: 17px; font-weight: 700; color: #2898B8; letter-spacing: -0.01em; margin-top: 2px;">Core PRO</div>
-              </div>
-            </div>
-            <p class="global-splash__title">SeaCharter Core PRO - Iniciando motor...</p>
-            <p id="global-splash-status" class="global-splash__status">Preparando cartografía WebGL</p>
-            <div class="global-splash__progress" aria-hidden="true"></div>
-            <div style="display: flex; align-items: center; gap: 8px; justify-content: center; margin-top: 20px;">
-              <!-- Nuevo icono circular de la Master Brand unificada -->
-              <div style="width: 28px; height: 28px; border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #FFFFFF; box-shadow: 0 2px 6px rgba(10, 35, 44, 0.15);">
-                <img src="./assets/reefer-logo.jpg" alt="Reefer Charter Core PRO Logo" style="width: 100%; height: 100%; object-fit: cover;" />
-              </div>
-              <!-- Texto de la Master Brand -->
-              <div style="font-family: 'Inter', system-ui, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.05em; color: #0E3A5D; line-height: 1.1;">
-                CHARTER<br/><span style="color: #2898B8;">CORE PRO</span>
-              </div>
+    <div id="global-splash-screen" class="fixed inset-0 z-50 flex flex-col justify-between items-center bg-white py-12" role="status" aria-live="polite">
+    <!-- Espacio superior -->
+    <div class="flex-1"></div>
+
+    <!-- Centro: Logo Principal Reefer -->
+    <div class="flex flex-col items-center justify-center w-full max-w-md mx-auto text-center">
+        <!-- Logo central moderado -->
+        <img src="./reefer-logo.png" alt="Reefer Charter Logo" class="w-16 h-16 mb-4 object-contain" />
+        <h1 class="text-2xl font-extrabold text-[#0E3A5D] tracking-tight">Reefer Charter</h1>
+        <h2 class="text-sm font-bold text-[#2898B8] mb-6">Core PRO</h2>
+        
+        <p class="text-[11px] text-slate-500 font-mono mb-2">Reefer Charter Core PRO - Iniciando motor...</p>
+        <p id="global-splash-status" class="text-[9px] text-[#2898B8] tracking-[0.2em] uppercase font-bold">PREPARANDO CARTOGRAFÍA WEBGL</p>
+        
+        <div class="mt-4 w-48 h-[3px] bg-slate-100 rounded-full overflow-hidden" aria-hidden="true">
+            <div class="h-full bg-[#2898B8] w-full animate-pulse"></div>
+        </div>
+    </div>
+
+    <!-- Espacio inferior -->
+    <div class="flex-1"></div>
+
+    <!-- Abajo: Logo Corporativo Diminuto -->
+    <div class="flex flex-col items-center justify-end pb-4">
+        <div class="flex items-center gap-2 opacity-80">
+            <!-- Logo corporativo muy pequeño (w-5 h-5) -->
+            <img src="./core-pro-corporate.png" alt="Charter Core PRO Logo" class="w-5 h-5 object-contain" />
+            <div class="flex flex-col text-left leading-none">
+                <span class="text-[7px] font-bold text-[#0E3A5D] tracking-[0.1em] uppercase">CHARTER</span>
+                <span class="text-[7px] font-bold text-[#2898B8] tracking-[0.1em] uppercase mt-[2px]">CORE PRO</span>
             </div>
         </div>
     </div>
+</div>
 
     <!-- NAVBAR TOP -->
     <header class="app-header bg-white border-b border-slate-200 px-4 py-2 md:px-6 flex items-center justify-between shadow-md shrink-0 no-print z-50" role="banner" aria-label="Cabecera principal de navegación">
