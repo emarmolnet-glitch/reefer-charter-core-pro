@@ -11660,41 +11660,153 @@
                                         <div id="res-market-benchmark-alert" class="mt-1 inline-flex rounded px-2 py-1 text-[10px] font-black uppercase bg-slate-200 text-slate-600">Sin referencia</div>
                                     </div>
                                 </div>
-                                <section id="market-intel-dashboard" class="mt-3 rounded-xl border border-slate-800 bg-slate-950 p-3 text-white shadow-lg shadow-slate-950/10" aria-labelledby="market-intel-dashboard-title">
+                                <section id="market-intel-dashboard" class="mt-3 rounded-xl border border-sky-200 bg-white p-3.5 text-slate-900 shadow-sm" aria-labelledby="market-intel-dashboard-title">
                                     <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                                         <div class="min-w-0">
                                             <div class="flex flex-wrap items-center gap-2">
-                                                <h3 id="market-intel-dashboard-title" class="text-[10px] font-black uppercase tracking-[0.2em] text-sky-300">Market Intel · Dry Bulk</h3>
-                                                <span id="market-intel-update-badge" class="inline-flex rounded-full border border-slate-700 bg-slate-900 px-2.5 py-1 text-[9px] font-black uppercase tracking-wide text-slate-400">Esperando actualización</span>
+                                                <div class="inline-flex items-center gap-1.5">
+                                                    <span class="flex h-2.5 w-2.5 rounded-full bg-cyan-600 shadow-sm"></span>
+                                                    <h3 id="market-intel-dashboard-title" class="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-900">Market Intel · Reefer</h3>
+                                                </div>
+                                                <span class="inline-flex items-center rounded border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[8px] font-mono font-bold tracking-wider text-cyan-800 uppercase">Bulk Reefers Convencionales</span>
+                                                <span id="market-intel-update-badge" class="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wide text-slate-600">Esperando actualización</span>
                                             </div>
-                                            <p id="market-intel-status" class="mt-1 text-[10px] font-semibold text-slate-400" aria-live="polite">Consultando la última referencia disponible.</p>
+                                            <p id="market-intel-status" class="mt-1 text-[10px] font-semibold text-slate-500" aria-live="polite">Consultando referencia central de fletes reefer en Data Bridge...</p>
                                         </div>
                                         <div class="flex flex-wrap items-center gap-2" role="toolbar" aria-label="Controles de actualización de Market Intel">
-                                            <button id="btn-market-force-sync" type="button" onclick="forceMarketIntelSync()" class="inline-flex items-center justify-center rounded-lg border border-sky-500/60 bg-sky-500/10 px-3 py-2 text-[10px] font-black uppercase tracking-wide text-sky-200 transition hover:bg-sky-500/20 focus:outline-none focus:ring-2 focus:ring-sky-400/40 disabled:cursor-wait disabled:opacity-60">🔄 Forzar Sincronización</button>
-                                            <button id="btn-market-manual-edit" type="button" onclick="toggleMarketIntelManualEdit()" class="inline-flex items-center justify-center rounded-lg border border-amber-400/60 bg-amber-400/10 px-3 py-2 text-[10px] font-black uppercase tracking-wide text-amber-200 transition hover:bg-amber-400/20 focus:outline-none focus:ring-2 focus:ring-amber-300/40 disabled:cursor-wait disabled:opacity-60">✏️ Editar Manualmente</button>
+                                            <button id="btn-market-force-sync" type="button" onclick="forceMarketIntelSync()" class="inline-flex items-center justify-center gap-1.5 rounded-lg border border-cyan-300 bg-cyan-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-cyan-800 shadow-sm transition hover:bg-cyan-100 hover:border-cyan-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 disabled:cursor-wait disabled:opacity-60" title="Sincronizar fletes y búnkers con la central Data Bridge">🔄 Forzar Sincronización</button>
+                                            <button id="btn-market-manual-edit" type="button" onclick="toggleMarketIntelManualEdit()" class="inline-flex items-center justify-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-amber-800 shadow-sm transition hover:bg-amber-100 hover:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500/20 disabled:cursor-wait disabled:opacity-60" title="Editar tarifas de periodo de mercado reefer manualmente">✏️ Editar Manualmente</button>
                                         </div>
                                     </div>
-                                    <div class="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-5">
-                                        <label class="group rounded-lg border border-slate-800 bg-slate-900/80 p-2 transition focus-within:border-sky-400">
-                                            <span class="block text-[9px] font-black uppercase tracking-wider text-slate-400">Capesize</span>
-                                            <span class="mt-1 flex items-baseline gap-1"><span class="text-[10px] font-bold text-slate-500">$</span><input id="market-intel-capesize-tc" data-market-field="capesize_tc" type="number" min="0" step="any" readonly class="min-w-0 w-full bg-transparent text-right font-mono text-sm font-black text-white outline-none read-only:cursor-default"><span class="text-[8px] font-bold uppercase text-slate-500">/día</span></span>
-                                        </label>
-                                        <label class="group rounded-lg border border-slate-800 bg-slate-900/80 p-2 transition focus-within:border-sky-400">
-                                            <span class="block text-[9px] font-black uppercase tracking-wider text-slate-400">Panamax</span>
-                                            <span class="mt-1 flex items-baseline gap-1"><span class="text-[10px] font-bold text-slate-500">$</span><input id="market-intel-panamax-tc" data-market-field="panamax_tc" type="number" min="0" step="any" readonly class="min-w-0 w-full bg-transparent text-right font-mono text-sm font-black text-white outline-none read-only:cursor-default"><span class="text-[8px] font-bold uppercase text-slate-500">/día</span></span>
-                                        </label>
-                                        <label class="group rounded-lg border border-slate-800 bg-slate-900/80 p-2 transition focus-within:border-sky-400">
-                                            <span class="block text-[9px] font-black uppercase tracking-wider text-slate-400">Supramax</span>
-                                            <span class="mt-1 flex items-baseline gap-1"><span class="text-[10px] font-bold text-slate-500">$</span><input id="market-intel-supramax-tc" data-market-field="supramax_tc" type="number" min="0" step="any" readonly class="min-w-0 w-full bg-transparent text-right font-mono text-sm font-black text-white outline-none read-only:cursor-default"><span class="text-[8px] font-bold uppercase text-slate-500">/día</span></span>
-                                        </label>
-                                        <label class="group rounded-lg border border-slate-800 bg-slate-900/80 p-2 transition focus-within:border-sky-400">
-                                            <span class="block text-[9px] font-black uppercase tracking-wider text-slate-400">Handysize</span>
-                                            <span class="mt-1 flex items-baseline gap-1"><span class="text-[10px] font-bold text-slate-500">$</span><input id="market-intel-handysize-tc" data-market-field="handysize_tc" type="number" min="0" step="any" readonly class="min-w-0 w-full bg-transparent text-right font-mono text-sm font-black text-white outline-none read-only:cursor-default"><span class="text-[8px] font-bold uppercase text-slate-500">/día</span></span>
-                                        </label>
-                                        <label class="group col-span-2 rounded-lg border border-sky-500/30 bg-sky-500/10 p-2 transition focus-within:border-sky-300 lg:col-span-1">
-                                            <span class="flex items-center justify-between gap-2 text-[9px] font-black uppercase tracking-wider text-sky-300"><span>BDI Index</span><span id="market-intel-bdi-updated" class="text-[8px] font-semibold normal-case tracking-normal text-sky-200/60">Fecha N/D</span></span>
-                                            <span class="mt-1 flex items-baseline gap-1"><input id="market-intel-bdi-index" data-market-field="bdi_index" type="number" min="0" step="any" readonly class="min-w-0 w-full bg-transparent text-right font-mono text-sm font-black text-white outline-none read-only:cursor-default"><span class="text-[8px] font-bold uppercase text-sky-300/70">pts</span></span>
-                                        </label>
+
+                                    <!-- Tarjetas de Categorías Bulk Reefers Convencionales (Paleta Clara) -->
+                                    <div class="mt-3 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+                                        <!-- Small Reefer (~200k cbft) -->
+                                        <div class="group rounded-lg border border-slate-200 bg-slate-50/80 p-2.5 shadow-sm transition hover:border-cyan-400 focus-within:border-cyan-500 focus-within:bg-white">
+                                            <div class="flex items-center justify-between">
+                                                <span class="block text-[9px] font-black uppercase tracking-wider text-cyan-900">Small Reefer</span>
+                                                <span class="rounded bg-white border border-slate-200 px-1.5 py-0.5 text-[8px] font-mono font-bold text-slate-600">~200k cbft</span>
+                                            </div>
+                                            <div class="mt-1.5 flex items-baseline justify-between gap-1">
+                                                <div class="flex items-baseline gap-0.5">
+                                                    <input id="market-intel-small-reefer-rate" data-reefer-field="small_reefer_rate" type="number" min="0" step="any" readonly class="w-16 bg-transparent text-left font-mono text-base font-black text-slate-900 outline-none read-only:cursor-default" value="78">
+                                                    <span class="text-[8px] font-bold text-cyan-700 uppercase">¢/cbft/mes</span>
+                                                </div>
+                                                <span id="market-intel-small-reefer-tce" class="font-mono text-[9px] font-bold text-slate-600" title="TCE estimado diario">$5,200/d</span>
+                                            </div>
+                                            <!-- Hidden legacy field for backward compatibility -->
+                                            <input type="hidden" id="market-intel-handysize-tc" data-market-field="handysize_tc" value="5200">
+                                        </div>
+
+                                        <!-- Medium Reefer (~300k cbft) -->
+                                        <div class="group rounded-lg border border-slate-200 bg-slate-50/80 p-2.5 shadow-sm transition hover:border-cyan-400 focus-within:border-cyan-500 focus-within:bg-white">
+                                            <div class="flex items-center justify-between">
+                                                <span class="block text-[9px] font-black uppercase tracking-wider text-cyan-900">Medium Reefer</span>
+                                                <span class="rounded bg-white border border-slate-200 px-1.5 py-0.5 text-[8px] font-mono font-bold text-slate-600">~300k cbft</span>
+                                            </div>
+                                            <div class="mt-1.5 flex items-baseline justify-between gap-1">
+                                                <div class="flex items-baseline gap-0.5">
+                                                    <input id="market-intel-medium-reefer-rate" data-reefer-field="medium_reefer_rate" type="number" min="0" step="any" readonly class="w-16 bg-transparent text-left font-mono text-base font-black text-slate-900 outline-none read-only:cursor-default" value="95">
+                                                    <span class="text-[8px] font-bold text-cyan-700 uppercase">¢/cbft/mes</span>
+                                                </div>
+                                                <span id="market-intel-medium-reefer-tce" class="font-mono text-[9px] font-bold text-slate-600" title="TCE estimado diario">$9,500/d</span>
+                                            </div>
+                                            <!-- Hidden legacy field for backward compatibility -->
+                                            <input type="hidden" id="market-intel-supramax-tc" data-market-field="supramax_tc" value="9500">
+                                        </div>
+
+                                        <!-- Large Reefer (~400k cbft) -->
+                                        <div class="group rounded-lg border border-slate-200 bg-slate-50/80 p-2.5 shadow-sm transition hover:border-cyan-400 focus-within:border-cyan-500 focus-within:bg-white">
+                                            <div class="flex items-center justify-between">
+                                                <span class="block text-[9px] font-black uppercase tracking-wider text-cyan-900">Large Reefer</span>
+                                                <span class="rounded bg-white border border-slate-200 px-1.5 py-0.5 text-[8px] font-mono font-bold text-slate-600">~400k cbft</span>
+                                            </div>
+                                            <div class="mt-1.5 flex items-baseline justify-between gap-1">
+                                                <div class="flex items-baseline gap-0.5">
+                                                    <input id="market-intel-large-reefer-rate" data-reefer-field="large_reefer_rate" type="number" min="0" step="any" readonly class="w-16 bg-transparent text-left font-mono text-base font-black text-slate-900 outline-none read-only:cursor-default" value="112">
+                                                    <span class="text-[8px] font-bold text-cyan-700 uppercase">¢/cbft/mes</span>
+                                                </div>
+                                                <span id="market-intel-large-reefer-tce" class="font-mono text-[9px] font-bold text-slate-600" title="TCE estimado diario">$14,930/d</span>
+                                            </div>
+                                            <!-- Hidden legacy field for backward compatibility -->
+                                            <input type="hidden" id="market-intel-panamax-tc" data-market-field="panamax_tc" value="14930">
+                                        </div>
+
+                                        <!-- Mega Reefer (~500k+ cbft) -->
+                                        <div class="group rounded-lg border border-slate-200 bg-slate-50/80 p-2.5 shadow-sm transition hover:border-cyan-400 focus-within:border-cyan-500 focus-within:bg-white">
+                                            <div class="flex items-center justify-between">
+                                                <span class="block text-[9px] font-black uppercase tracking-wider text-cyan-900">Mega Reefer</span>
+                                                <span class="rounded bg-white border border-slate-200 px-1.5 py-0.5 text-[8px] font-mono font-bold text-slate-600">~500k+ cbft</span>
+                                            </div>
+                                            <div class="mt-1.5 flex items-baseline justify-between gap-1">
+                                                <div class="flex items-baseline gap-0.5">
+                                                    <input id="market-intel-mega-reefer-rate" data-reefer-field="mega_reefer_rate" type="number" min="0" step="any" readonly class="w-16 bg-transparent text-left font-mono text-base font-black text-slate-900 outline-none read-only:cursor-default" value="128">
+                                                    <span class="text-[8px] font-bold text-cyan-700 uppercase">¢/cbft/mes</span>
+                                                </div>
+                                                <span id="market-intel-mega-reefer-tce" class="font-mono text-[9px] font-bold text-slate-600" title="TCE estimado diario">$21,330/d</span>
+                                            </div>
+                                            <!-- Hidden legacy field for backward compatibility -->
+                                            <input type="hidden" id="market-intel-capesize-tc" data-market-field="capesize_tc" value="21330">
+                                        </div>
+                                    </div>
+
+                                    <!-- Panel Inferior: Índices Reefer, Búnkers VLSFO/MGO y Consumo Planta Frío (AE) - Paleta Clara -->
+                                    <div class="mt-3 grid grid-cols-1 gap-2.5 pt-2.5 border-t border-slate-200 sm:grid-cols-3">
+                                        <!-- Índice de Mercado Reefer & Estacional Perecederos -->
+                                        <div class="rounded-lg border border-cyan-200 bg-cyan-50/60 p-2.5 shadow-sm">
+                                            <div class="flex items-center justify-between">
+                                                <span class="text-[9px] font-black uppercase tracking-wider text-cyan-900 flex items-center gap-1">
+                                                    <i class="fa-solid fa-snowflake text-[9px] text-cyan-600"></i>
+                                                    Reefer Index (RMI)
+                                                </span>
+                                                <span id="market-intel-bdi-updated" class="text-[8px] font-mono font-bold text-cyan-700">Fecha N/D</span>
+                                            </div>
+                                            <div class="mt-1.5 flex items-baseline justify-between">
+                                                <span class="text-[9px] font-semibold text-slate-600">Estacional Frutas/Pescado</span>
+                                                <div class="flex items-baseline gap-1">
+                                                    <input id="market-intel-bdi-index" data-market-field="bdi_index" type="number" min="0" step="any" readonly class="w-16 bg-transparent text-right font-mono text-sm font-black text-cyan-950 outline-none read-only:cursor-default" value="1420">
+                                                    <span class="text-[8px] font-bold uppercase text-cyan-700">pts</span>
+                                                </div>
+                                            </div>
+                                            <div class="mt-1 flex items-center justify-between text-[8px] text-slate-500">
+                                                <span>Factor Temporada Alta:</span>
+                                                <span id="market-intel-seasonal-factor" class="font-bold text-emerald-700">+12% (Hemisferio Sur)</span>
+                                            </div>
+                                        </div>
+
+                                        <!-- Referencia de Combustibles (VLSFO / MGO) -->
+                                        <div class="rounded-lg border border-amber-200 bg-amber-50/60 p-2.5 shadow-sm">
+                                            <span class="text-[9px] font-black uppercase tracking-wider text-amber-900 flex items-center gap-1">
+                                                <i class="fa-solid fa-gas-pump text-[9px] text-amber-600"></i>
+                                                Búnkers de Referencia
+                                            </span>
+                                            <div class="mt-1.5 grid grid-cols-2 gap-2 text-[9px] font-mono">
+                                                <div class="flex flex-col bg-white border border-amber-100 rounded p-1.5">
+                                                    <span class="text-[8px] text-slate-500 font-sans font-bold uppercase">VLSFO (Mar)</span>
+                                                    <span id="market-intel-vlsfo-display" class="font-black text-slate-900">$876.63 <span class="text-[7px] text-slate-500 font-sans">/t</span></span>
+                                                </div>
+                                                <div class="flex flex-col bg-white border border-amber-100 rounded p-1.5">
+                                                    <span class="text-[8px] text-slate-500 font-sans font-bold uppercase">MGO (Puerto/Frío)</span>
+                                                    <span id="market-intel-mgo-display" class="font-black text-slate-900">$1,489.31 <span class="text-[7px] text-slate-500 font-sans">/t</span></span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Consumo Auxiliar Estimado Planta de Frío (AE) -->
+                                        <div class="rounded-lg border border-emerald-200 bg-emerald-50/60 p-2.5 shadow-sm">
+                                            <span class="text-[9px] font-black uppercase tracking-wider text-emerald-900 flex items-center gap-1">
+                                                <i class="fa-solid fa-fan text-[9px] text-emerald-600"></i>
+                                                Planta de Frío (AE)
+                                            </span>
+                                            <div class="mt-1.5 flex items-baseline justify-between">
+                                                <span class="text-[8px] font-semibold text-slate-600">Consumo Aux. Estimado</span>
+                                                <span id="market-intel-reefer-ae-fuel" class="font-mono text-[9px] font-bold text-emerald-800">3.5 - 4.5 MT/día</span>
+                                            </div>
+                                            <div class="mt-1 flex items-baseline justify-between">
+                                                <span class="text-[8px] font-semibold text-slate-600">Coste Genset Auxiliar:</span>
+                                                <span id="market-intel-reefer-ae-cost" class="font-mono text-[9px] font-bold text-slate-900">$0 /día</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </section>
                                 <div id="baltic-spot-reference-card" class="mt-3 overflow-hidden rounded-xl border border-sky-200 bg-white shadow-sm" aria-live="polite">
@@ -69522,6 +69634,7 @@ Compara el documento suministrado (que puede ser un contrato, carta de crédito 
             updatePendingFrozenReportButton();
         }
 
+        window.setDataBridgeVerifiedConnection = setDataBridgeVerifiedConnection;
         window.toggleDataBridge = toggleDataBridge;
         window.openDataBridgeDashboard = openDataBridgeDashboard;
         window.openLandCharterDashboard = openLandCharterDashboard;
@@ -70302,12 +70415,56 @@ Compara el documento suministrado (que puede ser un contrato, carta de crédito 
         function renderMarketIntelDashboard(record) {
             if (!record) return;
             marketIntelLatestSnapshot = record;
+
+            // 1. Sincronizar campos legados y campos reefer de tarifas
             MARKET_INTEL_FIELDS.forEach(field => {
                 const input = document.querySelector(`[data-market-field="${field}"]`);
                 if (!input) return;
                 input.value = Number.isFinite(record[field]) ? String(record[field]) : '';
                 input.placeholder = '—';
             });
+
+            // Mapeo dinámico a tarifas en cents/cbft/month según capacidad cbft
+            // Formula periodo estándar: (TCE_USD_dia * 30.4167) / (cbft) * 100
+            const snap = record._marketSnapshot || {};
+            const capesizeSpot = Number(record.capesize_tc) || 21330;
+            const panamaxSpot = Number(record.panamax_tc) || 14930;
+            const supramaxSpot = Number(record.supramax_tc) || 9500;
+            const handysizeSpot = Number(record.handysize_tc) || 5200;
+
+            const smallRate = Math.round((handysizeSpot * 30.4167) / 200000 * 100) || 79;
+            const medRate = Math.round((supramaxSpot * 30.4167) / 300000 * 100) || 96;
+            const largeRate = Math.round((panamaxSpot * 30.4167) / 400000 * 100) || 113;
+            const megaRate = Math.round((capesizeSpot * 30.4167) / 500000 * 100) || 130;
+
+            const setReeferInput = (field, val, tceVal, tceId) => {
+                const el = document.querySelector(`[data-reefer-field="${field}"]`);
+                if (el) el.value = val;
+                const tceEl = document.getElementById(tceId);
+                if (tceEl) tceEl.textContent = `$${Math.round(tceVal).toLocaleString('en-US')}/d`;
+            };
+
+            setReeferInput('small_reefer_rate', smallRate, handysizeSpot, 'market-intel-small-reefer-tce');
+            setReeferInput('medium_reefer_rate', medRate, supramaxSpot, 'market-intel-medium-reefer-tce');
+            setReeferInput('large_reefer_rate', largeRate, panamaxSpot, 'market-intel-large-reefer-tce');
+            setReeferInput('mega_reefer_rate', megaRate, capesizeSpot, 'market-intel-mega-reefer-tce');
+
+            // 2. Sincronizar Búnkers de Referencia (VLSFO / MGO)
+            const vlsfoVal = Number(snap.bunkers?.vlsfo ?? snap.vlsfo ?? record.vlsfo) || 876.63;
+            const mgoVal = Number(snap.bunkers?.mgo ?? snap.mgo ?? record.mgo) || 1489.31;
+            const vlsfoDisplay = document.getElementById('market-intel-vlsfo-display');
+            const mgoDisplay = document.getElementById('market-intel-mgo-display');
+            if (vlsfoDisplay) vlsfoDisplay.innerHTML = `$${vlsfoVal.toFixed(2)} <span class="text-[7px] text-slate-400 font-sans">/t</span>`;
+            if (mgoDisplay) mgoDisplay.innerHTML = `$${mgoVal.toFixed(2)} <span class="text-[7px] text-slate-400 font-sans">/t</span>`;
+
+            // 3. Sincronizar Consumo Auxiliar de Planta de Frío (AE)
+            const gensetCostInput = document.getElementById('auxiliary-genset-cost');
+            const gensetVal = Number(gensetCostInput?.value || (typeof State !== 'undefined' ? State.auxiliaryGensetDailyCost : 0)) || 0;
+            const aeCostDisplay = document.getElementById('market-intel-reefer-ae-cost');
+            if (aeCostDisplay) {
+                aeCostDisplay.textContent = gensetVal > 0 ? `$${gensetVal.toLocaleString('en-US')} /día` : 'Auto (Sincronizado)';
+            }
+
             const sourceMeta = getMarketIntelSourceMeta(record);
             const dateLabel = formatMarketIntelDate(record.bdi_updated_at || record.updated_at);
             const badge = document.getElementById('market-intel-update-badge');
@@ -70315,14 +70472,14 @@ Compara el documento suministrado (que puede ser un contrato, carta de crédito 
             const bdiUpdated = document.getElementById('market-intel-bdi-updated');
             if (badge) {
                 badge.textContent = `${sourceMeta.badge} - ${dateLabel}`;
-                badge.className = `inline-flex rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-wide ${
+                badge.className = `inline-flex rounded-full border px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wide ${
                     sourceMeta.tone === 'manual'
-                        ? 'border-amber-400/40 bg-amber-400/10 text-amber-200'
-                        : 'border-emerald-400/40 bg-emerald-400/10 text-emerald-200'
+                        ? 'border-amber-300 bg-amber-50 text-amber-800'
+                        : 'border-cyan-200 bg-cyan-50 text-cyan-800'
                 }`;
             }
             if (bdiUpdated) bdiUpdated.textContent = dateLabel;
-            if (status) status.textContent = 'Snapshot Data Bridge sincronizado para BDI, TCE Spot y búnkers.';
+            if (status) status.textContent = 'Data Bridge sincronizado para Bulk Reefers (tarifas cbft, búnkers VLSFO/MGO y RMI).';
         }
 
         function setMarketIntelBusy(isBusy, message = '') {
@@ -70363,7 +70520,7 @@ Compara el documento suministrado (que puede ser un contrato, carta de crédito 
         }
 
         async function forceMarketIntelSync() {
-            setMarketIntelBusy(true, 'Forzando sincronización con Fearnleys…');
+            setMarketIntelBusy(true, 'Forzando sincronización con Data Bridge (Reefer & Búnkers)…');
             try {
                 const response = await fetch('/api/market/sync-fearnleys', { method: 'POST' });
                 const payload = await response.json().catch(() => null);
@@ -70380,21 +70537,50 @@ Compara el documento suministrado (que puede ser un contrato, carta de crédito 
 
         function setMarketIntelManualEdit(enabled) {
             isMarketIntelManualEdit = enabled;
-            document.querySelectorAll('[data-market-field]').forEach(input => {
+            document.querySelectorAll('[data-market-field], [data-reefer-field]').forEach(input => {
                 input.readOnly = !enabled;
-                input.classList.toggle('text-amber-200', enabled);
+                input.classList.toggle('text-amber-700', enabled);
+                input.classList.toggle('bg-amber-50/80', enabled);
             });
             const button = document.getElementById('btn-market-manual-edit');
             const status = document.getElementById('market-intel-status');
             if (button) button.textContent = enabled ? '💾 Guardar Manualmente' : '✏️ Editar Manualmente';
-            if (status && enabled) status.textContent = 'Edita las cinco referencias y guarda la actualización manual.';
+            if (status && enabled) status.textContent = 'Edita las tarifas de periodo reefer (¢/cbft/mes) o índices y guarda la actualización.';
         }
 
         async function toggleMarketIntelManualEdit() {
             if (!isMarketIntelManualEdit) {
                 setMarketIntelManualEdit(true);
-                document.querySelector('[data-market-field]')?.focus();
+                const firstInput = document.querySelector('[data-reefer-field]') || document.querySelector('[data-market-field]');
+                firstInput?.focus();
                 return;
+            }
+
+            // Si el usuario editó tarifas en ¢/cbft/mes, convertirlas a TCE USD/día para sincronización backend
+            const smallCents = Number(document.querySelector('[data-reefer-field="small_reefer_rate"]')?.value) || 0;
+            const medCents = Number(document.querySelector('[data-reefer-field="medium_reefer_rate"]')?.value) || 0;
+            const largeCents = Number(document.querySelector('[data-reefer-field="large_reefer_rate"]')?.value) || 0;
+            const megaCents = Number(document.querySelector('[data-reefer-field="mega_reefer_rate"]')?.value) || 0;
+
+            if (smallCents > 0) {
+                const tce = Math.round((smallCents / 100) * 200000 / 30.4167);
+                const input = document.getElementById('market-intel-handysize-tc');
+                if (input) input.value = String(tce);
+            }
+            if (medCents > 0) {
+                const tce = Math.round((medCents / 100) * 300000 / 30.4167);
+                const input = document.getElementById('market-intel-supramax-tc');
+                if (input) input.value = String(tce);
+            }
+            if (largeCents > 0) {
+                const tce = Math.round((largeCents / 100) * 400000 / 30.4167);
+                const input = document.getElementById('market-intel-panamax-tc');
+                if (input) input.value = String(tce);
+            }
+            if (megaCents > 0) {
+                const tce = Math.round((megaCents / 100) * 500000 / 30.4167);
+                const input = document.getElementById('market-intel-capesize-tc');
+                if (input) input.value = String(tce);
             }
 
             const manualValues = Object.fromEntries(MARKET_INTEL_FIELDS.map(field => {
@@ -70407,7 +70593,7 @@ Compara el documento suministrado (que puede ser un contrato, carta de crédito 
                 return;
             }
 
-            setMarketIntelBusy(true, 'Guardando la actualización manual…');
+            setMarketIntelBusy(true, 'Guardando la actualización manual en Data Bridge…');
             try {
                 const response = await fetch('/api/market/manual-update', {
                     method: 'POST',

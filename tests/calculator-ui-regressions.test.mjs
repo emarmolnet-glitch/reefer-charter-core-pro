@@ -38,9 +38,11 @@ test('uses compact matching header controls', () => {
 });
 
 test('renders the unified Data Bridge snapshot and feeds the inverse TCE calculator', () => {
-  assert.match(indexSource, /Market Intel · Dry Bulk/);
+  assert.match(indexSource, /Market Intel · Reefer/);
   assert.match(indexSource, /🔄 Forzar Sincronización/);
   assert.match(indexSource, /✏️ Editar Manualmente/);
+  assert.match(indexSource, /data-reefer-field="small_reefer_rate"/);
+  assert.match(indexSource, /data-reefer-field="mega_reefer_rate"/);
   assert.match(indexSource, /data-market-field="capesize_tc"/);
   assert.match(indexSource, /data-market-field="panamax_tc"/);
   assert.match(indexSource, /data-market-field="supramax_tc"/);
