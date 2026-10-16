@@ -33,11 +33,11 @@ export default async (req: Request, context: BackgroundContext) => {
                 const pool = database.pool as any;
 
                 const STRICT_NOISE_RE = /\b(fishing|pesquero|pesca|trawler|tug|tugboat|remolcador|remolque|pusher|passenger|cruise|ferry|pleasure|yacht|sailing|dredger|vts|mark|point|danger|buoy|boya|military|sar|rescue|pilot|workboat|other|unknown)\b/i;
-                const STRICT_CARGO_RE = /\b(bulk|bulker|cargo|carguero|coaster|cabotaje|container|tanker|petrolero|quimiquero|heavy load|heavy lift|break bulk|breakbulk|ro-ro|roro|cement|cementero|clinker|mpp|mpv|mmpp|freighter|merchant)\b/i;
+                const STRICT_CARGO_RE = /\b(bulk|bulker|cargo|carguero|coaster|cabotaje|container|tanker|petrolero|quimiquero|heavy load|heavy lift|break bulk|breakbulk|ro-ro|roro|cement|cementero|clinker|mpp|mpv|mmpp|freighter|merchant|refrigerated cargo|reefer)\b/i;
                 
                 let savedCount = 0;
                 await Promise.all(vessels.map(async (ship: any) => {
-                    const rawType = String(ship.type || ship.vesselType || ship.vesselClass || ship.shipType || '').trim().toLowerCase();
+                    const rawType = String(ship.type || ship.classes || ship.vessel_type || ship.type_name || ship.vesselType || ship.vesselClass || ship.shipType || '').trim().toLowerCase();
                     const numType = Number(ship.type || ship.shipType || ship.ShipType);
 
                     // Categorical noise check
@@ -51,7 +51,7 @@ export default async (req: Request, context: BackgroundContext) => {
                     }
 
                     // Cargo whitelist validation
-                    const isCargoType = STRICT_CARGO_RE.test(rawType) || (Number.isFinite(numType) && ((numType >= 70 && numType <= 79) || (numType >= 80 && numType <= 89)));
+                    const isCargoType = STRICT_CARGO_RE.test(rawType) || (Number.isFinite(numType) && ((numType >= 70 && numType <= 79) || (numType >= 80 && numType <= 89) || numType === 71 || numType === 81));
                     const dwt = Number(ship.dwt) || null;
                     if (!isCargoType && (!dwt || dwt < 500)) {
                         return;
@@ -60,7 +60,7 @@ export default async (req: Request, context: BackgroundContext) => {
                     const imoClean = String(ship.imo || ship.imo_number || '').replace(/\D/g, '');
                     const mmsiClean = String(ship.mmsi || '').replace(/\D/g, '');
                     const vesselName = String(ship.name || ship.vesselName || ship.vessel_name || (imoClean ? `IMO ${imoClean}` : (mmsiClean ? `MMSI ${mmsiClean}` : 'COMMERCIAL VESSEL'))).trim().toUpperCase();
-                    const vesselType = String(ship.type || ship.vesselType || ship.vesselClass || 'GENERAL CARGO').trim().toUpperCase();
+                    const vesselType = String(ship.type || ship.classes || ship.vessel_type || ship.type_name || ship.vesselType || ship.vesselClass || 'GENERAL CARGO').trim().toUpperCase();
                     const lat = Number(ship.lat ?? ship.latitude);
                     const lon = Number(ship.lon ?? ship.lng ?? ship.longitude);
                     const validLat = Number.isFinite(lat) && lat >= -90 && lat <= 90 ? lat : null;

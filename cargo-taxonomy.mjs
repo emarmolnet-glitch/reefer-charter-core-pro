@@ -210,7 +210,7 @@ function classifyVesselDesign(shipType, vessel) {
 
 const NON_COMMERCIAL_TEXT_PATTERN = /\b(fishing|pesquero|pesca|trawler|trawl|drifter|seiner|longliner|fish factory|pesquero de arrastre|tug|tugboat|remolcador|remolque|towing|towage|pusher|pushboat|empujador|escort tug|support vessel|passenger|cruise|ferry|ropax|ro-pax|pasaje|pasajeros|crucero|pleasure craft|pleasure|recreational|recreo|yacht|superyacht|megayacht|yate|sailing|sailing vessel|sailboat|velero|sport fishing|dredger|dredging|draga|dragado|manned vts|vts|port hand mark|starboard hand mark|special mark|sea farm|special mark - sea farm|reference point|isolated danger|navigation mark|buoy|boya|baliza|military ops|military|warship|navy|patrol|patrullera|search and rescue|search & rescue|sar|rescue vessel|rescue|salvage|salvamento|guardacostas|coast guard|port service|servicio portuario|workboat|barco de trabajo|crew boat|pilot|pilot boat|prácticos|tender|port tender|diving|buceo|pontoon|ponton|anti-pollution|oil recovery|cable layer|pipe layer|research vessel|investigación|drillship|drilling|offshore supply|platform supply|platform|psv|ahts|other|unknown|desconocido|otros)\b/i;
 
-const COMMERCIAL_CARGO_TEXT_PATTERN = /\b(bulk carrier|bulker|dry bulk|dry cargo|granelero|graneles|capesize|post-panamax|kamsarmax|panamax|ultramax|supramax|handymax|handysize|mini bulker|minibulker|mini-bulker|ore carrier|grain carrier|collier|wood chips carrier|self-unloading bulker|self unloader|general cargo|general cargo vessel|carguero|buque de carga|cargo ship|cargo|coaster|coastal cargo|cabotage|cabotaje|costero|freighter|merchant|motor vessel|mv|multipurpose|multi purpose|multi-purpose|mpp|mpv|mmpp|open hatch|box hold|multipropósito|container ship|container|containership|feeder|boxship|portacontenedores|tanker|oil tanker|chemical tanker|product tanker|crude oil tanker|petrolero|quimiquero|heavy load carrier|heavy lift|heavy load|heavy carrier|project cargo|carga pesada|break bulk|breakbulk|break-bulk|ro-ro cargo|roro cargo|ro-ro|roro|vehicle carrier|car carrier|cement carrier|cementero|cement|cemento|clinker carrier|clinker)\b/i;
+const COMMERCIAL_CARGO_TEXT_PATTERN = /\b(bulk carrier|bulker|dry bulk|dry cargo|granelero|graneles|capesize|post-panamax|kamsarmax|panamax|ultramax|supramax|handymax|handysize|mini bulker|minibulker|mini-bulker|ore carrier|grain carrier|collier|wood chips carrier|self-unloading bulker|self unloader|general cargo|general cargo vessel|carguero|buque de carga|cargo ship|cargo|coaster|coastal cargo|cabotage|cabotaje|costero|freighter|merchant|motor vessel|mv|multipurpose|multi purpose|multi-purpose|mpp|mpv|mmpp|open hatch|box hold|multipropósito|container ship|container|containership|feeder|boxship|portacontenedores|tanker|oil tanker|chemical tanker|product tanker|crude oil tanker|petrolero|quimiquero|heavy load carrier|heavy lift|heavy load|heavy carrier|project cargo|carga pesada|break bulk|breakbulk|break-bulk|ro-ro cargo|roro cargo|ro-ro|roro|vehicle carrier|car carrier|cement carrier|cementero|cement|cemento|clinker carrier|clinker|refrigerated cargo|reefer)\b/i;
 
 export function isCommercialCargoVessel(vessel) {
   if (!vessel || typeof vessel !== "object") return false;
@@ -225,13 +225,13 @@ export function isCommercialCargoVessel(vessel) {
     }
   }
 
-  const rawType = findNestedValue(vessel, ["ShipType", "shipType", "Type", "type", "vesselType", "vessel_type"]);
+  const rawType = findNestedValue(vessel, ["ShipType", "shipType", "Type", "type", "classes", "vesselType", "vessel_type", "type_name"]);
   const numericType = Number(rawType);
   if (Number.isFinite(numericType)) {
     if ((numericType >= 20 && numericType < 70) || numericType === 0 || numericType >= 90) {
       return false;
     }
-    if ((numericType >= 70 && numericType <= 79) || (numericType >= 80 && numericType <= 89)) {
+    if ((numericType >= 70 && numericType <= 79) || (numericType >= 80 && numericType <= 89) || numericType === 71 || numericType === 81) {
       return true;
     }
   }

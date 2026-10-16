@@ -40,7 +40,9 @@ const AIS_SPECIAL_CLASS_BY_CODE = new Map([
   [58, 'Medical Transport'],
   [59, 'Noncombatant Vessel'],
   [70, 'General Cargo'],
+  [71, 'Refrigerated Cargo'],
   [80, 'Tanker'],
+  [81, 'Refrigerated Cargo'],
 ]);
 
 const verifiedClassesByImo = new Map();
