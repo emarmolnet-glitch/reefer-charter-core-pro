@@ -1,5 +1,7 @@
 import { ensureApplicationSchema, getPool } from "./index.js";
 
+let isSchemaReady = false;
+
 export const SESSION_SYNC_USER_ID = "1c8db801b-b053-4847-bbc4-edd7d0abbe0e";
 export const SESSION_SYNC_ACTION_MODULE = "CORE_PRO_MATCHING";
 
@@ -90,7 +92,10 @@ function mapSessionSyncRow(row: SessionSyncDatabaseRow): SessionSyncRow {
 }
 
 export async function upsertSessionSync(input: SessionSyncInput) {
-  await ensureApplicationSchema();
+  if (!isSchemaReady) {
+    await ensureApplicationSchema();
+    isSchemaReady = true;
+  }
   const syncId = typeof input.lastSyncData.syncId === "string" ? input.lastSyncData.syncId.trim() : "";
   if (!syncId) {
     throw new Error("last_sync_data.syncId must be a non-empty string");
@@ -124,7 +129,10 @@ export async function upsertSessionSync(input: SessionSyncInput) {
 }
 
 export async function fetchFleetRows() {
-  await ensureApplicationSchema();
+  if (!isSchemaReady) {
+    await ensureApplicationSchema();
+    isSchemaReady = true;
+  }
   const result = await getPool().query<SessionSyncDatabaseRow>(`
     SELECT user_id, sync_id, last_sync_data, last_action_module, updated_at
     FROM session_sync
@@ -135,7 +143,10 @@ export async function fetchFleetRows() {
 }
 
 export async function getFleetRow(userId = SESSION_SYNC_USER_ID) {
-  await ensureApplicationSchema();
+  if (!isSchemaReady) {
+    await ensureApplicationSchema();
+    isSchemaReady = true;
+  }
   const result = await getPool().query<SessionSyncDatabaseRow>(
     `
       SELECT user_id, sync_id, last_sync_data, last_action_module, updated_at
@@ -150,7 +161,10 @@ export async function getFleetRow(userId = SESSION_SYNC_USER_ID) {
 }
 
 export async function getFleetRowBySyncId(syncId: string, userId = SESSION_SYNC_USER_ID) {
-  await ensureApplicationSchema();
+  if (!isSchemaReady) {
+    await ensureApplicationSchema();
+    isSchemaReady = true;
+  }
   const normalizedSyncId = syncId.trim();
   if (!normalizedSyncId) return undefined;
 

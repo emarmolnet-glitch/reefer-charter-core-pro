@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 import type { PoolClient } from "pg";
 import { ensureApplicationSchema, getPool } from "./index.js";
 
+let isSchemaReady = false;
+
 export type RadarVesselMasterInput = {
   imoNumber: string | null;
   mmsi: string | null;
@@ -263,7 +265,10 @@ export async function upsertRadarVesselsMaster(rows: RadarVesselMasterInput[]) {
   const vessels = rows.map(normalizeMasterVessel).filter((row): row is NormalizedMasterVessel => row !== null);
   if (vessels.length === 0) return 0;
 
-  await ensureApplicationSchema();
+  if (!isSchemaReady) {
+    await ensureApplicationSchema();
+    isSchemaReady = true;
+  }
 
   const client = await getPool().connect();
   let persistedCount = 0;

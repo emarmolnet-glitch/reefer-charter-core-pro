@@ -4,6 +4,8 @@ import { db, ensureApplicationSchema } from "../../db/index.js";
 import { appConfig } from "../../db/schema.js";
 import { createCorsHeaders } from "./_shared/cors.js";
 
+let isSchemaReady = false;
+
 const ESTIMATIONS_CONFIG_PREFIX = "estimation_";
 const DEFAULT_ESTIMATION_KEY = "latest_estimation";
 const MAX_ESTIMATION_PAYLOAD_BYTES = 512_000;
@@ -35,7 +37,10 @@ export default async (req: Request) => {
 
   if (req.method === "GET") {
     try {
-      await ensureApplicationSchema();
+      if (!isSchemaReady) {
+        await ensureApplicationSchema();
+        isSchemaReady = true;
+      }
       const [row] = await db
         .select({ value: appConfig.value, updatedAt: appConfig.updatedAt })
         .from(appConfig)
@@ -76,7 +81,10 @@ export default async (req: Request) => {
       return Response.json({ success: false, error: "Estimation payload is too large" }, { status: 413, headers });
     }
 
-    await ensureApplicationSchema();
+    if (!isSchemaReady) {
+      await ensureApplicationSchema();
+      isSchemaReady = true;
+    }
     await db
       .insert(appConfig)
       .values({ key: storageKey, value, updatedAt: new Date() })

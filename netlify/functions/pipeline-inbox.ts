@@ -1,6 +1,8 @@
 import type { Config } from "@netlify/functions";
 import { ensureApplicationSchema, getPool } from "../../db/index.js";
 
+let isSchemaReady = false;
+
 const jsonHeaders = {
   "content-type": "application/json; charset=utf-8",
   "access-control-allow-origin": "*",
@@ -44,7 +46,10 @@ export async function insertPipelineInboxBatches(
   vessels: Record<string, unknown>[],
   sourceName = "CORE_PRO",
 ) {
-  await ensureApplicationSchema();
+  if (!isSchemaReady) {
+    await ensureApplicationSchema();
+    isSchemaReady = true;
+  }
 
   if (!Array.isArray(vessels) || vessels.length === 0) return 0;
 

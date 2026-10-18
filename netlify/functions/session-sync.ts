@@ -1,4 +1,5 @@
 import type { Config } from "@netlify/functions";
+import { ensureApplicationSchema } from "../../db/index.js";
 import {
   fetchFleetRows,
   normalizeSessionSyncVessels,
@@ -6,6 +7,8 @@ import {
   SESSION_SYNC_USER_ID,
   upsertSessionSync,
 } from "../../db/session-sync.js";
+
+let isSchemaReady = false;
 
 type SessionSyncRequest = {
   user_id?: unknown;
@@ -30,6 +33,10 @@ function payloadTooLarge() {
 
 export default async (req: Request) => {
   if (req.method === "GET") {
+    if (!isSchemaReady) {
+      await ensureApplicationSchema();
+      isSchemaReady = true;
+    }
     const rows = await fetchFleetRows();
     return Response.json({ success: true, session_sync: rows }, { headers });
   }
@@ -100,6 +107,11 @@ export default async (req: Request) => {
       vessels: normalizedVessels.vessels,
       updated_at: lastSyncData.updated_at,
     };
+
+    if (!isSchemaReady) {
+      await ensureApplicationSchema();
+      isSchemaReady = true;
+    }
 
     const savedSync = await upsertSessionSync({
       userId: SESSION_SYNC_USER_ID,

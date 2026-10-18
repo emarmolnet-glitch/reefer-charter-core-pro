@@ -18,7 +18,10 @@ function resolveDatabaseUrl() {
     || process.env.NETLIFY_DB_URL;
 }
 
+let isSchemaReady = false;
+
 async function ensureTableExists() {
+  if (isSchemaReady) return;
   const url = resolveDatabaseUrl();
   if (!url) return;
   const sqlClient = neon(url);
@@ -55,6 +58,7 @@ async function ensureTableExists() {
     );
   `;
   await sqlClient`CREATE INDEX IF NOT EXISTS idx_laytime_contract ON laytime_statements (UPPER(contract_ref));`;
+  isSchemaReady = true;
 }
 
 function responseError(status: number, error: string, details?: unknown) {
@@ -195,7 +199,10 @@ export default async (request: Request, context: Context) => {
   if (!CONTRACT_PATTERN.test(contractRef)) return responseError(400, "La referencia contractual no es válida.");
 
   try {
-    await ensureTableExists();
+    if (!isSchemaReady) {
+      await ensureTableExists();
+      isSchemaReady = true;
+    }
     if (request.method === "GET") return await getStatements(contractRef, request);
     if (request.method === "PUT" || request.method === "POST") {
       const body = await request.json().catch(() => null) as StatementBody | null;

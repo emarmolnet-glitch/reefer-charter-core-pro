@@ -5,6 +5,8 @@ import { netlifyDb as db } from "../../db/netlify.js";
 import { pdaEstimations } from "../../db/schema.js";
 import { createCorsHeaders } from "./_shared/cors.js";
 
+let isSchemaReady = false;
+
 const MAX_PAYLOAD_BYTES = 128_000;
 
 const headersFor = (req: Request) => ({
@@ -62,7 +64,10 @@ export default async (req: Request) => {
       if (estimationId) filters.push(eq(pdaEstimations.estimationId, estimationId));
       if (sessionId) filters.push(eq(pdaEstimations.sessionId, sessionId));
 
-      await ensureApplicationSchema();
+      if (!isSchemaReady) {
+        await ensureApplicationSchema();
+        isSchemaReady = true;
+      }
       const [row] = await db
         .select()
         .from(pdaEstimations)
@@ -139,7 +144,10 @@ export default async (req: Request) => {
       updatedAt: now,
     };
 
-    await ensureApplicationSchema();
+    if (!isSchemaReady) {
+      await ensureApplicationSchema();
+      isSchemaReady = true;
+    }
     const [estimation] = await db
       .insert(pdaEstimations)
       .values(values)

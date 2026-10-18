@@ -2,6 +2,7 @@ import { Pool, type Pool as PgPool } from "pg";
 
 let pool: PgPool | null = null;
 let schemaReady: Promise<void> | null = null;
+let isSchemaReady = false;
 
 function getPool() {
   if (pool) return pool;
@@ -21,6 +22,7 @@ function getPool() {
 }
 
 async function ensureSchema() {
+  if (isSchemaReady) return;
   schemaReady ??= getPool().query(`
     CREATE TABLE IF NOT EXISTS data_bridge_vessel_ingestions (
       id serial PRIMARY KEY,
@@ -34,7 +36,9 @@ async function ensureSchema() {
       error_message text,
       created_at timestamp with time zone DEFAULT now() NOT NULL
     )
-  `).then(() => undefined);
+  `).then(() => {
+    isSchemaReady = true;
+  });
 
   return schemaReady;
 }
@@ -51,7 +55,10 @@ type DataBridgeIngestionInput = {
 };
 
 export async function createDataBridgeVesselIngestion(input: DataBridgeIngestionInput) {
-  await ensureSchema();
+  if (!isSchemaReady) {
+    await ensureSchema();
+    isSchemaReady = true;
+  }
 
   const result = await getPool().query<{ id: number }>(
     `
