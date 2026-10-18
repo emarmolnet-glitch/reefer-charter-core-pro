@@ -2,6 +2,8 @@ import { and, desc, eq, ilike, or } from "drizzle-orm";
 import { db, ensureApplicationSchema } from "../../db/index.js";
 import { charterDossiers } from "../../db/schema.js";
 
+let isSchemaReady = false;
+
 const MAX_PAYLOAD_BYTES = 4_000_000;
 const VALID_STATUSES = new Set(["BORRADOR", "COTIZADO", "FIJADO"]);
 
@@ -52,7 +54,10 @@ export default async (req: Request) => {
   const id = dossierIdFromUrl(url);
 
   try {
-    await ensureApplicationSchema();
+    if (!isSchemaReady) {
+      await ensureApplicationSchema();
+      isSchemaReady = true;
+    }
 
     if (req.method === "GET" && id) {
       const key = accountKey(req);

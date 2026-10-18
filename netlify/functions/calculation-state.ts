@@ -4,6 +4,8 @@ import { db, ensureApplicationSchema } from "../../db/index.js";
 import { appConfig } from "../../db/schema.js";
 import { createCorsHeaders } from "./_shared/cors.js";
 
+let isSchemaReady = false;
+
 const CALCULATION_STATE_CONFIG_KEY = "latest_calculation_state";
 const MAX_CALCULATION_PAYLOAD_BYTES = 256_000;
 const baseHeaders = {
@@ -67,7 +69,10 @@ export default async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers });
   if (req.method === "GET") {
     try {
-      await ensureApplicationSchema();
+      if (!isSchemaReady) {
+        await ensureApplicationSchema();
+        isSchemaReady = true;
+      }
       const [row] = await db
         .select({ value: appConfig.value, updatedAt: appConfig.updatedAt })
         .from(appConfig)
@@ -105,7 +110,10 @@ export default async (req: Request) => {
       return Response.json({ success: false, error: "Calculation payload is too large" }, { status: 413, headers });
     }
 
-    await ensureApplicationSchema();
+    if (!isSchemaReady) {
+      await ensureApplicationSchema();
+      isSchemaReady = true;
+    }
     await db
       .insert(appConfig)
       .values({ key: CALCULATION_STATE_CONFIG_KEY, value, updatedAt: new Date() })

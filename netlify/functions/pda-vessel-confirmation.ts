@@ -3,6 +3,8 @@ import { db, ensureApplicationSchema } from "../../db/index.js";
 import { pdaVesselConfirmations } from "../../db/schema.js";
 import { createCorsHeaders } from "./_shared/cors.js";
 
+let isSchemaReady = false;
+
 const headersFor = (req: Request) => ({
   "content-type": "application/json; charset=utf-8",
   "cache-control": "no-store",
@@ -36,7 +38,10 @@ export default async (req: Request) => {
       return Response.json({ success: false, error: "vesselName is required" }, { status: 400, headers });
     }
 
-    await ensureApplicationSchema();
+    if (!isSchemaReady) {
+      await ensureApplicationSchema();
+      isSchemaReady = true;
+    }
     const [confirmation] = await db.insert(pdaVesselConfirmations).values({
       estimationId: cleanText(body.estimationId, 120) || null,
       vesselName,

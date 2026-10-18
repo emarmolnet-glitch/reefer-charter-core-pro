@@ -1,5 +1,7 @@
 import { getPool, ensureApplicationSchema } from "./index.js";
 
+let isSchemaReady = false;
+
 export interface CategoryMarketSummary {
   category: "Minerales" | "Carga Siderúrgica" | "Fertilizantes" | "Biomasa" | "Breakbulk";
   dominantVesselType: string;
@@ -178,7 +180,10 @@ export async function aggregateLast7DaysMarketData(): Promise<MarketReportData> 
   }> = [];
 
   try {
-    await ensureApplicationSchema();
+    if (!isSchemaReady) {
+      await ensureApplicationSchema();
+      isSchemaReady = true;
+    }
     const pool = getPool();
 
     // Query 1: session_sync

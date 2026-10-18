@@ -4,7 +4,12 @@ import { requireDatabaseConnectionString } from "./connection-string.js";
 import * as schema from "./schema.js";
 
 let pool: PgPool | null = null;
+export let isSchemaReady = false;
 let applicationSchemaReady: Promise<void> | null = null;
+
+export function getIsSchemaReady() {
+  return isSchemaReady;
+}
 
 export function getPool() {
   if (pool) return pool;
@@ -24,7 +29,10 @@ export function getPool() {
 export const db = drizzle({ client: getPool(), schema });
 
 export async function ensureApplicationSchema() {
-  applicationSchemaReady ??= getPool().query(`
+  if (isSchemaReady) return;
+  if (applicationSchemaReady) return applicationSchemaReady;
+
+  applicationSchemaReady = getPool().query(`
     CREATE TABLE IF NOT EXISTS "AppConfig" (
       "key" TEXT PRIMARY KEY,
       "value" TEXT NOT NULL,
@@ -408,8 +416,11 @@ export async function ensureApplicationSchema() {
       ON multimodal_operations (referencia);
     CREATE INDEX IF NOT EXISTS multimodal_operations_created_at_idx
       ON multimodal_operations (created_at DESC);
-  `).then(() => undefined).catch((error: unknown) => {
+  `).then(() => {
+    isSchemaReady = true;
+  }).catch((error: unknown) => {
     applicationSchemaReady = null;
+    isSchemaReady = false;
     throw error;
   });
 

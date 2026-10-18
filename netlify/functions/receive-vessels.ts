@@ -50,6 +50,7 @@ type PersistenceIssue = {
   message: string;
 };
 
+let isSchemaReady = false;
 let vesselsMasterSchemaReady: Promise<void> | null = null;
 
 const REQUIRED_VESSELS_MASTER_COLUMNS = [
@@ -200,7 +201,9 @@ function normalizeVessel(value: unknown, index: number) {
 }
 
 async function ensureVesselsMasterSchema() {
-  vesselsMasterSchemaReady ??= getPool().query<{ column_name: string }>(
+  if (isSchemaReady) return;
+  if (vesselsMasterSchemaReady) return vesselsMasterSchemaReady;
+  vesselsMasterSchemaReady = getPool().query<{ column_name: string }>(
     `
       SELECT column_name
       FROM information_schema.columns
@@ -238,8 +241,10 @@ async function ensureVesselsMasterSchema() {
       END
       $migration$;
     `);
+    isSchemaReady = true;
   }).catch((error: unknown) => {
     vesselsMasterSchemaReady = null;
+    isSchemaReady = false;
     throw error;
   });
   return vesselsMasterSchemaReady;
@@ -286,7 +291,10 @@ function validateVesselsBeforePersistence(vessels: VesselRow[]) {
 }
 
 async function upsertVesselBatch(vessels: VesselRow[]) {
-  await ensureVesselsMasterSchema();
+  if (!isSchemaReady) {
+    await ensureVesselsMasterSchema();
+    isSchemaReady = true;
+  }
   const client = await getPool().connect();
   const persistenceErrors: PersistenceIssue[] = [];
   let processedCount = 0;
@@ -356,7 +364,10 @@ async function upsertVesselBatch(vessels: VesselRow[]) {
 }
 
 async function saveVesselSync(syncId: string, persistedImoNumbers: string[], rejectedCount: number) {
-  await ensureVesselsMasterSchema();
+  if (!isSchemaReady) {
+    await ensureVesselsMasterSchema();
+    isSchemaReady = true;
+  }
   await getPool().query(
     `
       INSERT INTO databridge_vessel_syncs (sync_id, persisted_imo_numbers, rejected_count)

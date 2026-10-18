@@ -1,6 +1,8 @@
 import type { Config } from "@netlify/functions";
 import { ensureApplicationSchema, getPool } from "../../db/index.js";
 
+let isSchemaReady = false;
+
 const jsonHeaders = {
   "Cache-Control": "no-store",
   "Content-Type": "application/json; charset=utf-8",
@@ -40,7 +42,10 @@ export default async (req: Request) => {
   // GET: Consultar operaciones multimodal registradas en Ledger SaaS (soporta filtro por referencia o id)
   if (req.method === "GET") {
     try {
-      await ensureApplicationSchema();
+      if (!isSchemaReady) {
+        await ensureApplicationSchema();
+        isSchemaReady = true;
+      }
       const pool = getPool();
       const url = new URL(req.url);
       const refParam = cleanText(url.searchParams.get("ref") || url.searchParams.get("referencia") || "");
@@ -116,7 +121,10 @@ export default async (req: Request) => {
     }
 
     try {
-      await ensureApplicationSchema();
+      if (!isSchemaReady) {
+        await ensureApplicationSchema();
+        isSchemaReady = true;
+      }
       const pool = getPool();
       const updateResult = await pool.query(
         `UPDATE multimodal_operations
@@ -183,7 +191,10 @@ export default async (req: Request) => {
     let insertedRow = null;
 
     try {
-      await ensureApplicationSchema();
+      if (!isSchemaReady) {
+        await ensureApplicationSchema();
+        isSchemaReady = true;
+      }
       const pool = getPool();
       const insertResult = await pool.query(
         `INSERT INTO multimodal_operations (

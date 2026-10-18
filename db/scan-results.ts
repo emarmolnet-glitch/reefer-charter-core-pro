@@ -1,5 +1,7 @@
 import { ensureApplicationSchema, getPool } from "./index.js";
 
+let isSchemaReady = false;
+
 type ScanResultRow = {
   scan_id: string;
   result_created_at: Date;
@@ -60,7 +62,10 @@ export function requiresUnitizedCargoExclusions(payload: Record<string, unknown>
 }
 
 export async function getLatestScanResults(payload: Record<string, unknown> = {}): Promise<LatestScanResults> {
-  await ensureApplicationSchema();
+  if (!isSchemaReady) {
+    await ensureApplicationSchema();
+    isSchemaReady = true;
+  }
   const excludePassengerTypes = requiresUnitizedCargoExclusions(payload);
   const result = await getPool().query<ScanResultRow>(
     `

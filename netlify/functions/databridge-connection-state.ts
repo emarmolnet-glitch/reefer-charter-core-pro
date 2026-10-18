@@ -4,6 +4,8 @@ import { appConfig } from "../../db/schema.js";
 import { createCorsHeaders } from "./_shared/cors.js";
 import { createResponseCacheHeaders, getOrSetCachedJson } from "./_shared/response-cache.js";
 
+let isSchemaReady = false;
+
 const DATA_BRIDGE_CONNECTION_CONFIG_KEY = "databridge_connection_state";
 const baseHeaders = {
   "content-type": "application/json; charset=utf-8",
@@ -41,7 +43,10 @@ async function loadFreshDataBridgeConnectionState(req: Request) {
   }
 
   try {
-    await ensureApplicationSchema();
+    if (!isSchemaReady) {
+      await ensureApplicationSchema();
+      isSchemaReady = true;
+    }
     const [row] = await db
       .select({ value: appConfig.value, updatedAt: appConfig.updatedAt })
       .from(appConfig)

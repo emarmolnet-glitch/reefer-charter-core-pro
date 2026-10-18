@@ -92,7 +92,10 @@ function extractImoFromValue(val: unknown): string {
   return "";
 }
 
+let isSchemaReady = false;
+
 async function ensureAppStateTable() {
+  if (isSchemaReady) return;
   const pool = getPool();
   try {
     await pool.query(`
@@ -130,7 +133,9 @@ async function ensureAppStateTable() {
           NULL;
       END $$;
     `);
+    isSchemaReady = true;
   } catch (error: any) {
+    isSchemaReady = false;
     console.error("[app-state] ensureAppStateTable error:", error);
     throw error;
   }
@@ -147,7 +152,10 @@ export default async (req: Request) => {
 
   if (req.method === "DELETE") {
     try {
-      await ensureAppStateTable();
+      if (!isSchemaReady) {
+        await ensureAppStateTable();
+        isSchemaReady = true;
+      }
       const pool = getPool();
       let deleteKey = (url.searchParams.get("key") || url.searchParams.get("id") || "").trim();
       if (!deleteKey) {
@@ -200,7 +208,10 @@ export default async (req: Request) => {
 
   if (req.method === "GET") {
     try {
-      await ensureAppStateTable();
+      if (!isSchemaReady) {
+        await ensureAppStateTable();
+        isSchemaReady = true;
+      }
       const pool = getPool();
       const requestedKey = (url.searchParams.get("key") || url.searchParams.get("id") || "").trim();
       const isCustomKey = Boolean(requestedKey && requestedKey !== DEFAULT_STATE_KEY && requestedKey !== "current_session" && requestedKey !== "core_pro_active_session");
@@ -402,7 +413,10 @@ export default async (req: Request) => {
     const customKey = explicitKey || (imoInBody ? "core_pro_pending_imo" : "");
     const isCustomKey = Boolean(customKey && customKey !== "core_pro_active_session" && customKey !== "current_session");
 
-    await ensureAppStateTable();
+    if (!isSchemaReady) {
+      await ensureAppStateTable();
+      isSchemaReady = true;
+    }
     const pool = getPool();
 
     if (isCustomKey) {
