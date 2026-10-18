@@ -159,12 +159,19 @@ class DualTradingCharteringView extends HTMLElement {
         const exportContext = typeof this.getExportContext === 'function'
             ? this.getExportContext() ?? {}
             : {};
+        const defaultView = sourceDocument.defaultView || (typeof window !== 'undefined' ? window : null);
+        const globalMode = typeof defaultView?.getGlobalViewMode === 'function'
+            ? defaultView.getGlobalViewMode()
+            : (sourceDocument.body?.dataset?.globalViewMode || 'owner');
+        const cargoProduct = readFirstValue('cargo-product', 'cargo-type', 'input-commodity', 'comp-cargo-type') || 'Bananas / Tropical Fruits';
 
         return Object.freeze({
             operation: Object.freeze({
                 syncid: exportContext.syncid,
                 id: exportContext.id,
             }),
+            role: exportContext.role || globalMode,
+            perspective: exportContext.perspective || globalMode,
             route: Object.freeze({
                 loadPort: readFirstValue('port-pol', 'map-port-pol', 'sync-pol-label'),
                 dischargePort: readFirstValue('port-pod', 'map-port-pod', 'sync-pod-label'),
@@ -179,6 +186,9 @@ class DualTradingCharteringView extends HTMLElement {
                 tonnage: this.#toneladasTotales,
                 tolerance: this.#toleranciaCarga,
                 toleranceType: exportContext.toleranceType,
+                product: cargoProduct,
+                type: cargoProduct,
+                commodity: readFirstValue('input-commodity', 'cargo-product', 'cargo-type') || cargoProduct,
             }),
             trading: Object.freeze({
                 fobPrice: sessionDraft.precioFOB,

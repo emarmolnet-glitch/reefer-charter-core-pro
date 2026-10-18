@@ -20,6 +20,7 @@ const legacyAssets = [
   "wpi.csv",
   "Ancla Load.svg",
   "Ancla Discharge.svg",
+  "clause-matrix.js",
 ];
 
 function copyLegacyAssets() {
@@ -59,7 +60,7 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes("jspdf") || id.includes("html2pdf") || id.includes("html2canvas") || id.includes("pdf-export-service")) {
+          if (id.includes("jspdf") || id.includes("html2pdf") || id.includes("html2canvas") || id.includes("pdf-export-service") || id.includes("clause-matrix")) {
             return "pdf-generators";
           }
           if (id.includes("npl-data-analysis-engine") || id.includes("npl-secret-module")) {
