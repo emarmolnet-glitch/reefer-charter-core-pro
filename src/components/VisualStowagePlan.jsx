@@ -15,6 +15,9 @@ export function resolveVesselProfile(vesselType = '', title = '') {
   if (text.includes('coaster') || text.includes('mini-bulker') || text.includes('minibulker') || text.includes('mini bulker') || text.includes('cabotage') || text.includes('cabotaje') || text.includes('costero')) {
     return 'COASTER';
   }
+  if (text.includes('reefer') || text.includes('frigorifico') || text.includes('frigorífico')) {
+    return 'REEFER';
+  }
   return 'HANDYSIZE';
 }
 
@@ -145,10 +148,30 @@ export function VisualStowagePlan({
   const isDeckLoaded = deckWeightTons > 0;
 
   // Validación técnica e hidrodinámica
-  const volOccupied = Number(hydro.totalVolumeOccupiedCbm || classification.totalVolumeCbm || 0);
-  const volCapacity = Number(hydro.grainCapacityCbm || 30300);
-  const volUtilizationPct = Number(hydro.volumeUtilizationShipPct || (volCapacity > 0 ? (volOccupied / volCapacity) * 100 : 0));
-  const isVolExceeded = Boolean(hydro.isCubicCapacityExceeded);
+  const volOccupied = Number(
+    hydro.totalVolumeOccupiedCbm ||
+    classification.totalVolumeCbm ||
+    stowagePlan?.cargoClassification?.totalVolumeCbm ||
+    stowagePlan?.cargoVolumeCbm ||
+    stowagePlan?.cargoVolumeCBM ||
+    0
+  );
+  const volCapacity = Number(
+    hydro.grainCapacityCbm ||
+    hydro.vesselCubicCapacity ||
+    stowagePlan?.vesselModel?.grainCapacityCbm ||
+    stowagePlan?.vesselModel?.vesselCubicCapacity ||
+    30300
+  );
+  const isVolExceeded = Boolean(
+    hydro.isCubicCapacityExceeded ||
+    (volCapacity > 0 && volOccupied > volCapacity)
+  );
+  const volUtilizationPct = Number(
+    volCapacity > 0
+      ? (volOccupied / volCapacity) * 100
+      : (hydro.volumeUtilizationShipPct || 0)
+  );
 
   const maxPressure = Number(hydro.maxFloorPressureTm2 || 0);
   const maxAllowablePressure = Number(hydro.maxFloorAllowableTm2 || 20.0);
@@ -160,7 +183,7 @@ export function VisualStowagePlan({
     ? 'COASTER / MINI-BULKER (1-2 BODEGAS DIÁFANAS · GEARLESS)'
     : profile === 'RORO'
     ? 'RO-RO / RO-LO CARRIER (CUBIERTAS CORRIDAS & RAMPA POPA)'
-    : 'HANDYSIZE / BULK CARRIER (4 BODEGAS INDEPENDIENTES & GRÚAS)';
+    : 'REEFER VESSEL (4 INDEPENDENT COMPARTMENTS)';
 
   return (
     <div
@@ -257,7 +280,7 @@ export function VisualStowagePlan({
           {/* Línea de flotación / Nivel del mar */}
           <line x1="30" y1="282" x2="970" y2="282" stroke="url(#waterlineGrad)" strokeWidth="2.5" strokeDasharray="6 4" />
           <text x="500" y="298" fill="#0369a1" fontSize="10" fontWeight="bold" fontFamily="monospace" textAnchor="middle">
-            ≈ ≈ ≈ WATERLINE / CALADO DE DISEÑO ≈ ≈ ≈
+            ≈ ≈ ≈ WATERLINE ≈ ≈ ≈
           </text>
 
           {/* ======================================================== */}
@@ -305,8 +328,8 @@ export function VisualStowagePlan({
           <line x1="105" y1="95" x2="105" y2="60" stroke="#475569" strokeWidth="2" />
           <line x1="95" y1="70" x2="115" y2="70" stroke="#475569" strokeWidth="1.5" />
           <circle cx="105" cy="58" r="2.5" fill="#0284c7" />
-          <text x="105" y="112" fill="#374151" fontSize="9" fontWeight="bold" fontFamily="monospace" textAnchor="middle">
-            CASTILLO PROA
+          <text x="105" y="112" fill="#374151" fontSize="9" fontWeight="bold" fontFamily="monospace" textAnchor="middle" data-castillo="CASTILLO PROA">
+            FORECASTLE
           </text>
 
           {/* Castillo de Popa / Superestructura y Puente de Mando */}
@@ -393,7 +416,7 @@ export function VisualStowagePlan({
                 ? `CUBIERTA / WEATHER DECK: ${deckWeightTons.toFixed(2)} MT (${deckWeightPct.toFixed(1)}%)`
                 : profile === 'RORO'
                 ? 'WEATHER DECK HORIZONTAL (CUBIERTA RODADA ALTA)'
-                : 'CUBIERTA SUPERIOR (WEATHER DECK) DESPEJADA · CAPACIDAD: 3.50 t/m²'}
+                : 'WEATHER DECK CLEARED'}
             </text>
           </g>
 
@@ -571,7 +594,7 @@ export function VisualStowagePlan({
                           fontFamily="sans-serif"
                           textAnchor="middle"
                         >
-                          {hold.stowageTier || (profile === 'COASTER' ? 'Bodega Corrida Diáfana' : 'Tanktop / Bloque')}
+                          {hold.stowageTier || (profile === 'COASTER' ? 'Bodega Corrida Diáfana' : 'Main Hold')}
                         </text>
 
                         <rect
@@ -591,7 +614,7 @@ export function VisualStowagePlan({
                           fontFamily="monospace"
                           textAnchor="middle"
                         >
-                          CARGA ACTIVA
+                          ACTIVE CARGO
                         </text>
                       </g>
                     ) : (
@@ -695,11 +718,15 @@ export function VisualStowagePlan({
       <div className="mt-4 pt-4 border-t border-slate-200">
         <div className="flex items-center justify-between mb-2">
           <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
-            <span className="text-emerald-700">⚖️</span>
-            <span>VALIDACIÓN TÉCNICA E HIDRODINÁMICA (CÓDIGO CSS OMI &amp; ESTABILIDAD INTACTA)</span>
+            <span className={isVolExceeded ? 'text-rose-600' : 'text-emerald-700'}>⚖️</span>
+            <span>TECHNICAL AND HYDRODYNAMIC VALIDATION · VALIDACIÓN TÉCNICA E HIDRODINÁMICA (CÓDIGO CSS OMI &amp; ESTABILIDAD INTACTA)</span>
           </h4>
-          <span className="text-[10px] font-mono text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-300">
-            COMPLIANCE OMI 100%
+          <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+            !isVolExceeded
+              ? 'text-emerald-800 bg-emerald-50 border-emerald-300'
+              : 'text-rose-800 bg-rose-50 border-rose-300'
+          }`}>
+            {!isVolExceeded ? 'IMO COMPLIANCE 100%' : 'IMO COMPLIANCE: FAILED'}
           </span>
         </div>
 
@@ -711,15 +738,15 @@ export function VisualStowagePlan({
                 <th className="py-2.5 px-3">Valor Estimado / Calculado</th>
                 <th className="py-2.5 px-3">Límite Admisible Buque</th>
                 <th className="py-2.5 px-3">Utilización (%)</th>
-                <th className="py-2.5 px-3 text-right">Dictamen de Seguridad</th>
+                <th className="py-2.5 px-3 text-right">SAFETY REPORT</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              <tr className="hover:bg-slate-50">
+              <tr className={`hover:bg-slate-50 ${isVolExceeded ? 'bg-rose-50/50' : ''}`}>
                 <td className="py-2.5 px-3 font-semibold text-slate-900 flex items-center gap-1.5">
                   <span className="text-blue-600">📦</span> Volumen Cúbico Ocupado
                 </td>
-                <td className="py-2.5 px-3 font-bold text-blue-700">
+                <td className={`py-2.5 px-3 font-bold ${isVolExceeded ? 'text-rose-700' : 'text-blue-700'}`}>
                   {volOccupied.toFixed(2)} m³
                 </td>
                 <td className="py-2.5 px-3 text-slate-600">
@@ -727,7 +754,9 @@ export function VisualStowagePlan({
                 </td>
                 <td className="py-2.5 px-3">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-800">{volUtilizationPct.toFixed(1)}%</span>
+                    <span className={`font-bold ${isVolExceeded ? 'text-rose-600' : 'text-slate-800'}`}>
+                      {volUtilizationPct.toFixed(1)}%
+                    </span>
                     <div className="w-16 bg-slate-200 rounded-full h-1.5 overflow-hidden">
                       <div
                         className={`h-1.5 rounded-full ${isVolExceeded ? 'bg-rose-600' : 'bg-blue-600'}`}
@@ -740,7 +769,7 @@ export function VisualStowagePlan({
                   <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
                     !isVolExceeded ? 'bg-emerald-50 text-emerald-800 border border-emerald-300' : 'bg-rose-50 text-rose-800 border border-rose-300'
                   }`}>
-                    {!isVolExceeded ? '✓ CUMPLE CAPACIDAD CÚBICA' : '⚠ EXCEDIDO'}
+                    {!isVolExceeded ? '✓ CUMPLE CAPACIDAD CÚBICA' : 'FAILED: OVERCAPACITY (DEADFREIGHT RISK)'}
                   </span>
                 </td>
               </tr>
@@ -797,6 +826,18 @@ export function VisualStowagePlan({
             </tbody>
           </table>
         </div>
+
+        {isVolExceeded && (
+          <div className="mt-3 rounded-lg border border-rose-300 bg-rose-50 p-3 text-xs text-rose-800 font-bold flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-base">⚠️</span>
+              <span>SAFETY REPORT: FAILED: OVERCAPACITY (DEADFREIGHT RISK) — El volumen cúbico requerido ({volOccupied.toFixed(2)} m³) excede la capacidad admisible del buque ({volCapacity.toLocaleString('es-ES')} m³). Utilización: {volUtilizationPct.toFixed(1)}%.</span>
+            </div>
+            <span className="px-2 py-0.5 rounded bg-rose-600 text-white font-mono text-[10px] uppercase font-bold shrink-0">
+              IMO COMPLIANCE: FAILED
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -51517,7 +51517,7 @@ Example:
                             </defs>
                             <!-- Waterline -->
                             <line x1="30" y1="282" x2="970" y2="282" stroke="#0284c7" stroke-width="2.5" stroke-dasharray="6 4" />
-                            <text x="500" y="298" fill="#0369a1" font-size="10" font-weight="bold" font-family="monospace" text-anchor="middle">≈ ≈ ≈ WATERLINE / CALADO DE DISEÑO ≈ ≈ ≈</text>
+                            <text x="500" y="298" fill="#0369a1" font-size="10" font-weight="bold" font-family="monospace" text-anchor="middle">≈ ≈ ≈ WATERLINE ≈ ≈ ≈</text>
                             
                             <!-- Casco del buque -->
                             <path d="M 80,120 L 160,120 L 810,120 L 840,120 L 910,120 L 930,135 L 930,190 L 900,240 L 860,265 L 810,275 L 150,275 L 95,250 L 55,200 L 40,150 Z" fill="url(#fallbackVesselHull)" stroke="#9ca3af" stroke-width="2" />
@@ -51626,7 +51626,7 @@ Example:
                     cargoType: "Tipo Carga:",
                     standard: "Póliza Estándar (Charter Party):",
                     routeHeader: "Ruta e Itinerario",
-                    ballastPort: "Puerto Lastre:",
+                    ballastPort: "Ballast Port:",
                     polPod: "Carga / Descarga:",
                     distance: "Distancia Total:",
                     duration: "Duración Estimada:",
@@ -68043,7 +68043,7 @@ Compara el documento suministrado (que puede ser un contrato, carta de crédito 
                         <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700">
                             <h5 class="font-bold text-indigo-400 uppercase mb-2 border-b border-slate-700/50 pb-1 flex items-center gap-1.5"><i class="fa-solid fa-route"></i> RUTA E ITINERARIO</h5>
                             <ul class="space-y-1.5">
-                                <li class="flex justify-between"><span class="text-slate-400">Puerto Lastre:</span><span>${getVal('port-ballast') || 'N/A (Carga Directa)'}</span></li>
+                                <li class="flex justify-between"><span class="text-slate-400">Ballast Port:</span><span>${getVal('port-ballast') || 'N/A (Carga Directa)'}</span></li>
                                 <li class="flex justify-between"><span class="text-slate-400">Carga / Descarga:</span><span class="font-bold text-white">${m.pol} ➔ ${m.pod}</span></li>
                                 <li class="flex justify-between"><span class="text-slate-400">Embarques:</span><span class="font-bold text-white">${shipments.toLocaleString('en-US')}</span></li>
                                 <li class="flex justify-between"><span class="text-slate-400">Distancia Total:</span><span class="font-bold text-white">${((State.distBallast || 0) + (State.distLaden || 0)).toLocaleString('en-US')} NM</span></li>

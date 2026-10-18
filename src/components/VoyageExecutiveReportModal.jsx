@@ -61,14 +61,28 @@ export default function VoyageExecutiveReportModal({
 
   // Memoizar el plan de estiba para evitar re-cálculos o desmontajes innecesarios al alternar isClientMode
   const stowagePlan = useMemo(() => {
-    return data.stowagePlan || buildVoyageStowagePlan({
-      ...data,
-      vesselType: resolvedVesselType,
-      shipProfile,
-      class: vesselClass,
-      dwt,
-      cargo: cargoTons,
-    });
+    const frontendCbm = Number(
+      data.cargoVolumeCBM ||
+      data.cargo_volume_cbm ||
+      data.cargoVolumeCbm ||
+      data.requiredVolumeCbm ||
+      (typeof window !== 'undefined' && window.State ? window.State.cargoVolumeCBM : 0) ||
+      0
+    );
+
+    let plan = data.stowagePlan;
+    if (!plan || (frontendCbm > 0 && plan.hydrodynamicsAndSafety?.totalVolumeOccupiedCbm !== frontendCbm)) {
+      plan = buildVoyageStowagePlan({
+        ...data,
+        vesselType: resolvedVesselType,
+        shipProfile,
+        class: vesselClass,
+        dwt,
+        cargo: cargoTons,
+        cargoVolumeCbm: frontendCbm > 0 ? frontendCbm : undefined,
+      });
+    }
+    return plan;
   }, [data, resolvedVesselType, shipProfile, vesselClass, dwt, cargoTons]);
 
   // Manejo de impresión reactivo sin setTimeout mágicos
@@ -224,7 +238,7 @@ export default function VoyageExecutiveReportModal({
                 <i className="fa-solid fa-route text-blue-600 print:hidden"></i> RUTA E ITINERARIO
               </h5>
               <ul className="space-y-1.5">
-                <li className="flex justify-between"><span className="text-slate-600">Puerto Lastre:</span> <span className="font-bold text-slate-900">{ballastPort}</span></li>
+                <li className="flex justify-between"><span className="text-slate-600">Ballast Port:</span> <span className="font-bold text-slate-900">{ballastPort}</span></li>
                 <li className="flex justify-between"><span className="text-slate-600">Carga / Descarga:</span> <span className="font-bold text-slate-900">{pol} ➔ {pod}</span></li>
                 <li className="flex justify-between"><span className="text-slate-600">Distancia Total:</span> <span className="font-bold text-slate-900">{distTotal.toLocaleString('en-US')} NM</span></li>
                 <li className="flex justify-between"><span className="text-slate-600">Duración Estimada:</span> <span className="font-bold text-slate-900">{totalDays.toFixed(2)} Días</span></li>
