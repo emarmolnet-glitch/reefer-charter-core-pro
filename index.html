@@ -35254,11 +35254,14 @@ function createRouteAnchorElement(type) {
 
         async function handleMasterValidationAndCalculate(event = null) {
             event?.preventDefault?.();
+            event?.stopPropagation?.();
+            event?.stopImmediatePropagation?.();
             if (isCalculatingMaster || (typeof window !== 'undefined' && window.isEngineCalculating)) return null;
 
             isCalculatingMaster = true;
             if (typeof window !== 'undefined') {
                 window.isEngineCalculating = true;
+                console.log("Execution lock activado - Previniendo recálculo redundante");
             }
             setMasterCalculationLoading(true);
 
@@ -38997,6 +39000,8 @@ function createRouteAnchorElement(type) {
 
         function handleFreightMasterTrigger(role, event = null) {
             event?.preventDefault?.();
+            event?.stopPropagation?.();
+            event?.stopImmediatePropagation?.();
             console.log('DEBUG: Botón clicado, disparando evento...');
             useAlgorithmicFreight(role);
             const calculation = buildCalculationEventPayload(role);
@@ -40174,6 +40179,7 @@ function scheduleReactiveEngine() {
 
         // --- DEBOUNCED CALCULATION CONTROLLER FOR INP & RE-RENDER OPTIMIZATION ---
         let pendingCalculationTimer = null;
+        let engineDebounceTimer = null;
         let isExecutingDebouncedBatch = false;
 
         function isInputInteraction() {
@@ -40182,14 +40188,16 @@ function scheduleReactiveEngine() {
         }
 
         function scheduleDebouncedCalculation(delay = 300) {
-            if (typeof window !== 'undefined' && window.isEngineCalculating) {
-                return;
-            }
             if (pendingCalculationTimer) {
                 clearTimeout(pendingCalculationTimer);
+                pendingCalculationTimer = null;
             }
             pendingCalculationTimer = setTimeout(() => {
                 pendingCalculationTimer = null;
+                if (typeof window !== 'undefined' && window.isEngineCalculating) {
+                    scheduleDebouncedCalculation(50);
+                    return;
+                }
                 flushDebouncedCalculation();
             }, delay);
         }
@@ -40281,6 +40289,10 @@ function scheduleReactiveEngine() {
             if (pendingCalculationTimer) {
                 clearTimeout(pendingCalculationTimer);
                 pendingCalculationTimer = null;
+            }
+            if (engineDebounceTimer) {
+                clearTimeout(engineDebounceTimer);
+                engineDebounceTimer = null;
             }
             executeBatchedCalculationsCore();
         }
@@ -40498,6 +40510,24 @@ function scheduleReactiveEngine() {
                 || options.deferStoreCommit === true
                 || options.force === true;
 
+            // Debounce real (300ms) antes de evaluar el lock: si llegan 50 eventos seguidos, 49 se anulan
+            if (!isBatchExecution) {
+                if (engineDebounceTimer) {
+                    clearTimeout(engineDebounceTimer);
+                    engineDebounceTimer = null;
+                }
+                engineDebounceTimer = setTimeout(() => {
+                    engineDebounceTimer = null;
+                    if (typeof window !== 'undefined' && window.isEngineCalculating) {
+                        // Reintenta cuando concluya la ejecución activa sin dejar el evento hambriento
+                        runEngine(options);
+                        return;
+                    }
+                    runEngine({ ...options, force: true });
+                }, 300);
+                return;
+            }
+
             if (typeof window !== 'undefined' && window.isEngineCalculating && !isBatchExecution) {
                 return;
             }
@@ -40506,10 +40536,11 @@ function scheduleReactiveEngine() {
             const wasEngineCalculating = typeof window !== 'undefined' && Boolean(window.isEngineCalculating);
             if (typeof window !== 'undefined') {
                 window.isEngineCalculating = true;
+                console.log("Execution lock activado - Previniendo recálculo redundante");
             }
             try {
             const deferStoreCommit = options.deferStoreCommit === true;
-            if (typeof isInputInteraction === 'function' && isInputInteraction()) {
+            if (!options.force && typeof isInputInteraction === 'function' && isInputInteraction()) {
                 scheduleDebouncedCalculation(300);
                 return;
             }

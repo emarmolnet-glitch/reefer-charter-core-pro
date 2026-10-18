@@ -39,7 +39,7 @@ test('2. autoCalculateDistances and synchronizeMasterRouteCalculations guard aga
 
 test('3. runEngine enforces execution lock on secondary triggers while permitting batch cores', () => {
   const runEngineStart = indexSource.indexOf('function runEngine()');
-  const runEngineSnippet = indexSource.slice(runEngineStart, runEngineStart + 900);
+  const runEngineSnippet = indexSource.slice(runEngineStart, runEngineStart + 1800);
 
   assert.match(runEngineSnippet, /if \(isRunningEngine\) return;/);
   assert.match(runEngineSnippet, /const isBatchExecution =/);
@@ -169,4 +169,58 @@ test('5. Simulation: Full master calculation cycle triggers runEngine exactly on
 
   assert.equal(runEngineCallCount, 1, 'runEngine must execute exactly ONCE during the entire master calculation pipeline');
   assert.equal(result.breakEven, 30);
+});
+
+test('6. Debounce + Lock: Burst of 50 rapid calls to runEngine collapses into a single execution', async () => {
+  let executions = 0;
+  let engineDebounceTimer = null;
+  let isExecutingDebouncedBatch = false;
+  let isRunningEngine = false;
+  const fakeWindow = { isEngineCalculating: false };
+
+  function simulateRunEngine(options = {}) {
+    if (isRunningEngine) return;
+    const isBatchExecution = isExecutingDebouncedBatch
+      || options.deferStoreCommit === true
+      || options.force === true;
+
+    if (!isBatchExecution) {
+      if (engineDebounceTimer) {
+        clearTimeout(engineDebounceTimer);
+        engineDebounceTimer = null;
+      }
+      engineDebounceTimer = setTimeout(() => {
+        engineDebounceTimer = null;
+        if (fakeWindow.isEngineCalculating) {
+          simulateRunEngine(options);
+          return;
+        }
+        simulateRunEngine({ ...options, force: true });
+      }, 50);
+      return;
+    }
+
+    if (fakeWindow.isEngineCalculating && !isBatchExecution) return;
+
+    isRunningEngine = true;
+    fakeWindow.isEngineCalculating = true;
+    try {
+      executions++;
+    } finally {
+      isRunningEngine = false;
+      fakeWindow.isEngineCalculating = false;
+    }
+  }
+
+  // Simulate burst of 50 rapid calls
+  for (let i = 0; i < 50; i++) {
+    simulateRunEngine();
+  }
+
+  assert.equal(executions, 0, 'No execution should occur synchronously while debouncing');
+
+  await new Promise(r => setTimeout(r, 80));
+
+  assert.equal(executions, 1, 'Burst of 50 calls must collapse into exactly 1 execution');
+  assert.equal(fakeWindow.isEngineCalculating, false, 'Lock must be released');
 });
