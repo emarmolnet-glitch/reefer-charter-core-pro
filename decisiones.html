@@ -3222,6 +3222,68 @@
                 ['ARBITRATION', 'THIS RECAP AND SUBSEQUENT CHARTERPARTY SHALL BE GOVERNED BY ENGLISH LAW AND ANY DISPUTE ARISEN SHALL BE REFERRED TO ARBITRATION IN LONDON IN ACCORDANCE WITH LMAA TERMS.']
             ];
 
+            const resolveInlineClauses = (cargoVal, roleVal) => {
+                const normRole = String(
+                    roleVal ||
+                    (typeof window !== 'undefined' && typeof window.getGlobalViewMode === 'function' ? window.getGlobalViewMode() : '') ||
+                    'owner'
+                ).toLowerCase().trim();
+                const isChr = normRole.includes('charterer') || normRole.includes('fletador') || normRole.includes('chr');
+                const title = isChr
+                    ? "STIPULATED OPERATIONAL CLAUSES (CHARTERERS' TERMS)"
+                    : "STIPULATED OPERATIONAL CLAUSES (OWNERS' TERMS)";
+                const normCargo = String(cargoVal || '').toLowerCase().trim();
+                let clauses;
+                if (normCargo.includes('banana') || normCargo.includes('platano') || normCargo.includes('plátano') || normCargo.includes('tropical') || normCargo.includes('10')) {
+                    clauses = isChr ? [
+                        "Prior to NOR, holds must be pre-cooled to 13.5ºC, completely clean, dry, and absolutely free of taint, subject to independent surveyor approval.",
+                        "Owners fully guarantee constant carrying temperature of 13.5ºC and required fresh air exchanges to prevent ethylene buildup.",
+                        "Master to provide full temperature datalogs upon completion of discharge."
+                    ] : [
+                        "Loading rates strictly guaranteed at 1,500 MT/WWD and discharging at 2,000 MT/WWD. All port and stevedoring overtime for Charterers' account.",
+                        "Pallets strictly limited to a maximum height of 2.20m. Charterers/Shippers are entirely responsible for safe handling, compact stowage with dunnage, and leaving gratings unobstructed.",
+                        "All loading and discharging operations are at Charterers' risk and expense."
+                    ];
+                } else if (normCargo.includes('citric') || normCargo.includes('cítric') || normCargo.includes('naranja') || normCargo.includes('limon')) {
+                    clauses = isChr ? [
+                        "Vessel holds to be thoroughly pre-cooled to +4.0ºC and certified clean by surveyor prior to NOR.",
+                        "Continuous cold treatment (CT) logging maintained by vessel and submitted daily to Charterers.",
+                        "Owners to replace any cartons damaged by improper crew handling or mechanical failure."
+                    ] : [
+                        "Loading and discharging under WWD SHINC terms. Temperature maintenance range +4.0ºC to +6.0ºC.",
+                        "Shippers to ensure proper carton venting and pallet securing prior to loading.",
+                        "All dunnage, lashing, and shore cranes at Charterers' expense."
+                    ];
+                } else if (normCargo.includes('congelad') || normCargo.includes('pescad') || normCargo.includes('carne') || normCargo.includes('20')) {
+                    clauses = isChr ? [
+                        "Holds to be pre-cooled to -22.0ºC prior to loading commencement and inspected for cleanliness.",
+                        "Owners guarantee temperature maintenance at -20.0ºC or below throughout voyage without fluctuation exceeding 1.5ºC.",
+                        "Full thermograph charts and datalogger records to be handed over immediately at discharge port."
+                    ] : [
+                        "Deep freeze carriage guaranteed at -20.0ºC. Loading rates subject to port cold storage throughput.",
+                        "Cargo to be delivered in sound frozen condition; Master may reject thawed packages.",
+                        "Stevedoring damage and refrigeration delays at berth for Charterers' account unless vessel equipment breakdown."
+                    ];
+                } else {
+                    clauses = isChr ? [
+                        "Vessel's holds to be swept clean, dry, and odor-free, ready in all respects to receive cargo.",
+                        "Vessel's gear to be fully operational with valid test certificates provided before loading.",
+                        "Owners guarantee seaworthiness and cargo care in accordance with Hague-Visby rules."
+                    ] : [
+                        "Loading and discharging under FIOST terms. All stevedoring and lashing for Charterers' account.",
+                        "Cargo to be presented in seaworthy packing suitable for ocean carriage.",
+                        "Demurrage payable at agreed daily rate pro rata for any time lost at ports."
+                    ];
+                }
+                return { title, clauses };
+            };
+
+            const opClausesData = (typeof getOperationalClauses === 'function' ? getOperationalClauses(safeState) : null)
+                || (typeof window !== 'undefined' && typeof window.getOperationalClauses === 'function' ? window.getOperationalClauses(safeState) : null)
+                || resolveInlineClauses(commodity || safeState.cargoProduct || safeState.cargoType, safeState.role || safeState.perspective || safeState.commercialRole);
+
+            const safeHtml = (str) => String(str ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
             return `
 <div style="font-family: 'Courier New', Courier, monospace; color: #0f172a; line-height: 1.55; font-size: 9.5pt; background: #ffffff; padding: 15px; max-width: 800px; margin: 0 auto;">
     <style>
@@ -3300,6 +3362,16 @@
         </h4>
         <ul class="recap-list" style="list-style: none; margin: 0; padding-left: 0;">
             ${recapRows(specialClauses)}
+        </ul>
+    </div>
+
+    <!-- 5. STIPULATED OPERATIONAL CLAUSES -->
+    <div class="recap-section" style="margin-bottom: 14px; border: 1px solid #cbd5e1; border-radius: 4px; padding: 10px; background: #f8fafc; break-inside: avoid; page-break-inside: avoid;">
+        <h4 class="recap-title" style="font-weight: bold; font-size: 9.5pt; text-transform: uppercase; border-bottom: 1px solid #94a3b8; padding-bottom: 4px; margin-top: 0; margin-bottom: 8px; color: #0f172a; break-after: avoid; page-break-after: avoid;">
+            5. ${opClausesData.title}
+        </h4>
+        <ul style="margin: 0; padding-left: 20px; list-style-type: disc; color: #1e293b; font-size: 9pt; line-height: 1.5;">
+            ${opClausesData.clauses.map(clause => `<li style="margin-bottom: 4px;">${safeHtml(clause)}</li>`).join('\n            ')}
         </ul>
     </div>
 
