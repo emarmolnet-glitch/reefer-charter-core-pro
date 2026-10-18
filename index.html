@@ -261,6 +261,7 @@
             global.aceptarContratoCliente = global.aceptarContratoCliente || function() {};
 
             // 3. Global Engine & Calculation Function Stubs (prevents early ReferenceError before full scripts load)
+            global.isEngineCalculating = false;
             global.runEngine = global.runEngine || function runEngineGlobal(...args) {
                 if (typeof global.__actualRunEngine === 'function') {
                     return global.__actualRunEngine(...args);
@@ -20416,7 +20417,7 @@ async function applyMapRouteToCalculator(forceGeocode = false) {
     if (forceGeocode && typeof geocodeAllPorts === 'function') {
         await geocodeAllPorts();
     } else if (typeof autoCalculateDistances === 'function') {
-        await autoCalculateDistances();
+        await autoCalculateDistances({ deferEngine: true });
     }
     if (typeof applyPortIntelligenceToSmartCalculations === 'function') {
         applyPortIntelligenceToSmartCalculations();
@@ -33406,8 +33407,8 @@ function createRouteAnchorElement(type) {
             return true;
         }
 
-        async function autoCalculateDistances() {
-            const result = await calculateVoyageRouteService();
+        async function autoCalculateDistances(options = {}) {
+            const result = await calculateVoyageRouteService(options);
             applyRouteServiceResult(result);
             if (isMasterRouteMapMounted()) {
                 renderMasterRouteMap(result);
@@ -33419,7 +33420,12 @@ function createRouteAnchorElement(type) {
                 if (weatherSec) weatherSec.classList.add('hidden');
             }
             autoPopulateRouteLimits();
-            runEngine();
+            const shouldSkipEngine = options?.deferEngine === true
+                || (typeof window !== 'undefined' && window.isEngineCalculating)
+                || (typeof isCalculatingMaster !== 'undefined' && isCalculatingMaster);
+            if (!shouldSkipEngine && typeof runEngine === 'function') {
+                runEngine();
+            }
             if (typeof window.updateAisDetectedVesselsPol === 'function') {
                 window.updateAisDetectedVesselsPol();
             }
@@ -35207,10 +35213,15 @@ function createRouteAnchorElement(type) {
             };
         }
 
-        async function synchronizeMasterRouteCalculations() {
-            if (typeof recalcularDiasPuerto === 'function') recalcularDiasPuerto();
+        async function synchronizeMasterRouteCalculations(options = {}) {
+            if (typeof recalcularDiasPuerto === 'function') recalcularDiasPuerto(null, { deferEngine: true });
             if (typeof calculateAdjustedEtaAndDays === 'function') calculateAdjustedEtaAndDays();
-            if (typeof runEngine === 'function') runEngine();
+            const shouldSkipEngine = options?.deferEngine === true
+                || (typeof window !== 'undefined' && window.isEngineCalculating)
+                || (typeof isCalculatingMaster !== 'undefined' && isCalculatingMaster);
+            if (!shouldSkipEngine && typeof runEngine === 'function') {
+                runEngine();
+            }
 
             const branch = resolveMasterVesselCalculationBranch();
             if (branch.mode === 'BALTIC_SPOT_TCE') {
@@ -35243,9 +35254,12 @@ function createRouteAnchorElement(type) {
 
         async function handleMasterValidationAndCalculate(event = null) {
             event?.preventDefault?.();
-            if (isCalculatingMaster) return null;
+            if (isCalculatingMaster || (typeof window !== 'undefined' && window.isEngineCalculating)) return null;
 
             isCalculatingMaster = true;
+            if (typeof window !== 'undefined') {
+                window.isEngineCalculating = true;
+            }
             setMasterCalculationLoading(true);
 
             try {
@@ -35297,6 +35311,9 @@ function createRouteAnchorElement(type) {
                 return null;
             } finally {
                 isCalculatingMaster = false;
+                if (typeof window !== 'undefined') {
+                    window.isEngineCalculating = false;
+                }
                 setMasterCalculationLoading(false);
             }
         }
@@ -40165,6 +40182,9 @@ function scheduleReactiveEngine() {
         }
 
         function scheduleDebouncedCalculation(delay = 300) {
+            if (typeof window !== 'undefined' && window.isEngineCalculating) {
+                return;
+            }
             if (pendingCalculationTimer) {
                 clearTimeout(pendingCalculationTimer);
             }
@@ -40473,9 +40493,21 @@ function scheduleReactiveEngine() {
 
         function runEngine() {
             if (isRunningEngine) return;
-            isRunningEngine = true;
-            try {
             const options = arguments[0] || {};
+            const isBatchExecution = (typeof isExecutingDebouncedBatch !== 'undefined' && isExecutingDebouncedBatch)
+                || options.deferStoreCommit === true
+                || options.force === true;
+
+            if (typeof window !== 'undefined' && window.isEngineCalculating && !isBatchExecution) {
+                return;
+            }
+
+            isRunningEngine = true;
+            const wasEngineCalculating = typeof window !== 'undefined' && Boolean(window.isEngineCalculating);
+            if (typeof window !== 'undefined') {
+                window.isEngineCalculating = true;
+            }
+            try {
             const deferStoreCommit = options.deferStoreCommit === true;
             if (typeof isInputInteraction === 'function' && isInputInteraction()) {
                 scheduleDebouncedCalculation(300);
@@ -42152,7 +42184,9 @@ function scheduleReactiveEngine() {
             });
             syncGencon();
             syncAsbatankvoy();
-            if (typeof syncCalculatorAndMatching === 'function') syncCalculatorAndMatching('calculator');
+            if (!deferStoreCommit && typeof syncCalculatorAndMatching === 'function') {
+                syncCalculatorAndMatching('calculator');
+            }
             syncPrintPolicyClass();
             updateChartererNegotiationSimulator();
 
@@ -42160,11 +42194,6 @@ function scheduleReactiveEngine() {
             const currentLang = document.getElementById('language-selector')?.value || 'es';
             if (currentLang !== 'es') {
                 translatePage(currentLang);
-            }
-
-            // Sync with matching tab
-            if (typeof syncCalculatorAndMatching === 'function') {
-                syncCalculatorAndMatching('calculator');
             }
 
             if (typeof actualizarDesdeFormulario === 'function') {
@@ -42233,9 +42262,13 @@ function scheduleReactiveEngine() {
             notifyPendingDraftRecalculation();
             } finally {
                 isRunningEngine = false;
+                if (typeof window !== 'undefined' && !wasEngineCalculating) {
+                    window.isEngineCalculating = false;
+                }
             }
         }
         if (typeof window !== 'undefined') {
+            window.isEngineCalculating = false;
             window.runEngine = runEngine;
             window.__actualRunEngine = runEngine;
         }
@@ -69974,7 +70007,7 @@ Compara el documento suministrado (que puede ser un contrato, carta de crédito 
                 }
 
                 if (typeof autoCalculateDistances === 'function') {
-                    const routeResult = await autoCalculateDistances();
+                    const routeResult = await autoCalculateDistances({ deferEngine: managedByMaster });
                     if (!routeResult || !routeResult.routes?.laden) {
                         const error = new Error('No se pudo calcular la distancia marítima entre POL y POD. Revisa ambos puertos.');
                         if (managedByMaster) throw error;
@@ -69987,7 +70020,7 @@ Compara el documento suministrado (que puede ser un contrato, carta de crédito 
                     ? applyPortIntelligenceToSmartCalculations()
                     : false;
 
-                if (!managedByMaster && typeof runEngine === 'function') {
+                if (!managedByMaster && !(typeof window !== 'undefined' && window.isEngineCalculating) && typeof runEngine === 'function') {
                     runEngine();
                 }
                 calculateAdjustedEtaAndDays();
