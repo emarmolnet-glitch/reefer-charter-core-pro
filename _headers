@@ -6,5 +6,15 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
+/api/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Headers: Content-Type, Authorization
+  Access-Control-Allow-Methods: GET, POST, OPTIONS
+
+/.netlify/functions/*
+  Access-Control-Allow-Origin: *
+  Access-Control-Allow-Headers: Content-Type, Authorization
+  Access-Control-Allow-Methods: GET, POST, OPTIONS
+
 /*
   Content-Security-Policy: default-src * 'unsafe-inline' 'unsafe-eval'; script-src * 'unsafe-inline' 'unsafe-eval' blob:; worker-src * 'self' blob: data:; connect-src * wss: https:; img-src * data: blob:; style-src * 'unsafe-inline';

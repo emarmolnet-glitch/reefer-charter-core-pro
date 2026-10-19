@@ -21,6 +21,9 @@ const legacyAssets = [
   "Ancla Load.svg",
   "Ancla Discharge.svg",
   "clause-matrix.js",
+  "MADRE.png",
+  "assets/MADRE.png",
+  "assets/css/madre-panel.css",
 ];
 
 function copyLegacyAssets() {

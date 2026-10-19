@@ -130,27 +130,32 @@ export function buildVoyageStowagePlan(voyageState = {}) {
     ? explicitCapacity
     : (dwt > 0 ? Math.round(dwt * 1.25) : 30300);
 
-  const rawVesselName = voyageState.vessel || voyageState.vesselName || voyageState.name || voyageState.nombre || '';
+  const rawVesselName = voyageState.vessel ?? voyageState.vesselName ?? voyageState.name ?? voyageState.nombre ?? '';
+  const normalizedVesselName = typeof rawVesselName === 'string'
+    ? rawVesselName.trim().toUpperCase()
+    : String(rawVesselName?.name || rawVesselName?.vesselName || '').trim().toUpperCase();
+
   const isTbn = Boolean(
     voyageState.isTbn ||
-    (rawVesselName && (
-      String(rawVesselName).trim().toUpperCase() === 'TBN' ||
-      String(rawVesselName).toUpperCase().includes('TO BE NAMED') ||
-      String(rawVesselName).toUpperCase().includes('TO BE NOMINATED')
-    ))
+    normalizedVesselName === '' ||
+    normalizedVesselName === 'TBN' ||
+    normalizedVesselName.includes('TBN') ||
+    normalizedVesselName.includes('TO BE NAMED') ||
+    normalizedVesselName.includes('TO BE NOMINATED')
   );
 
   const optimalDwt = isTbn && cargoVolumeCbm > 0
     ? Math.ceil(((cargoVolumeCbm / 1.25) * 1.05) / 100) * 100
     : 0;
 
-  const effectiveCubicCapacity = isTbn && optimalDwt > 0
-    ? Math.max(vesselCubicCapacity, Math.round(optimalDwt * 1.25))
+  // If isTbn is true (including empty names), Optimal_DWT MUST override the capacity before the volumetric check
+  const effectiveCubicCapacity = isTbn
+    ? (optimalDwt > 0 ? Math.max(vesselCubicCapacity, Math.round(optimalDwt * 1.25)) : Math.max(vesselCubicCapacity, Math.round((dwt > 0 ? dwt : 30300) * 1.25)))
     : vesselCubicCapacity;
 
   // Regla estricta: IF (Cargo_CBM > Vessel_Cubic_Capacity) { return ERROR } (desactivada para buques TBN auto-dimensionados)
   const volumetricCheck = isTbn ? 'OK' : validateCubicCapacity(cargoVolumeCbm, effectiveCubicCapacity);
-  const isCubicCapacityExceeded = !isTbn && volumetricCheck === 'ERROR';
+  const isCubicCapacityExceeded = isTbn ? false : (volumetricCheck === 'ERROR');
   const volumeUtilizationShipPct = effectiveCubicCapacity > 0
     ? (cargoVolumeCbm / effectiveCubicCapacity) * 100
     : 0;
