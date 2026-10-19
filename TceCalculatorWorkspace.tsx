@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { voyageStore } from './src/stores/voyage-store.js';
 import { getApiUrl } from './src/utils/apiConfig.js';
 import { useReeferAutoSizing } from './src/hooks/useReeferAutoSizing.js';
+import { calculateSuggestedFreight, calculateOverPalletMargin } from './src/utils/calculator.js';
 import {
   useDataBridgeSpotConnection,
   getMarketSpeedVesselClass,
@@ -553,6 +554,16 @@ export function calculateReverseTceResults(values: ReverseCalculatorState) {
   const chartererMarginPercent = safeNumber(values.chartererMarginPercent);
   const coreFreight = calculateCoreFreight(values);
   const totalDays = coreFreight.totalDays;
+  const minFreightRate = coreFreight.minFreightRate; // Asegurarnos de que minFreightRate ya existe
+  // Integración global dinámica (detecta automáticamente la región de la ruta o usa valor por defecto mundial)
+  const regionRuta = (typeof window !== 'undefined' && (window.activeVoyage?.loadingRegion || window.activeVoyage?.region)) || "South America"; 
+  const fleteSugeridoInteligente = calculateSuggestedFreight({
+    ownerBaseCost: minFreightRate,
+    commercialMargin: ownerMarginPercent / 100,
+    region: regionRuta,
+    commodity: "Reefer",
+    month: new Date().getMonth() + 1
+  });
   const etsTotalCost = coreFreight.etsTotalCost ?? 0;
   const marketBunkerIndexPrice = getAverageBunkerIndexPrice({
     vlsfo: vlsfoPrice,
