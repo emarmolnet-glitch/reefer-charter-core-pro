@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 
-export const MADRE_API_ENDPOINT = "https://neon-seachartercorepro-4ce09d.netlify.app/api/madre-chat";
+export const MADRE_API_ENDPOINT = "https://neon-seachartercorepro-4ce09d.netlify.app/.netlify/functions/madre-chat";
 
 export function MadrePanel({
   referenciaMadre,
@@ -112,6 +112,15 @@ export function MadrePanel({
     setLoading(true);
 
     try {
+      // Extract dynamic reference from URL query parameters (e.g. ?ref=RDM/2026/6314 or hash params)
+      const urlParams = new URLSearchParams(window.location.search);
+      let activeRef = urlParams.get('ref');
+      if (!activeRef && window.location.hash.includes('?')) {
+        const hashQuery = window.location.hash.split('?')[1];
+        activeRef = new URLSearchParams(hashQuery).get('ref');
+      }
+      const finalProjectRef = referenciaMadre || activeRef || "RDM/2026-TBN";
+
       const response = await fetch(MADRE_API_ENDPOINT, {
         method: "POST",
         mode: "cors",
@@ -123,7 +132,7 @@ export function MadrePanel({
           mensajeUsuario: texto,
           context: {
             origin: "Reefer Charter Core PRO",
-            projectRef: referenciaMadre || "RDM/2026-TBN",
+            projectRef: finalProjectRef,
           },
         }),
       });

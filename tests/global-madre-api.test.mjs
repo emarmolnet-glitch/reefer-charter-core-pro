@@ -4,11 +4,11 @@ import { readFileSync } from 'node:fs';
 
 const drawerSource = readFileSync(new URL('../src/components/GlobalMadreDrawer.jsx', import.meta.url), 'utf8');
 
-test('1. Global MADRE defines the Data Bridge /api/madre-chat endpoint', () => {
+test('1. Global MADRE defines the direct Data Bridge Netlify function endpoint', () => {
   assert.match(
     drawerSource,
-    /const\s+MADRE_API_ENDPOINT\s*=\s*["']https:\/\/neon-seachartercorepro-4ce09d\.netlify\.app\/api\/madre-chat["']/,
-    'Must define MADRE_API_ENDPOINT pointing to /api/madre-chat'
+    /const\s+MADRE_API_ENDPOINT\s*=\s*["']https:\/\/neon-seachartercorepro-4ce09d\.netlify\.app\/\.netlify\/functions\/madre-chat["']/,
+    'Must define MADRE_API_ENDPOINT bypassing rewrite with direct .netlify/functions path'
   );
 });
 
@@ -20,7 +20,7 @@ test('2. handleSubmit sends strict CORS POST request with clean headers and mens
   assert.match(drawerSource, /"Accept":\s*["']application\/json["']/);
   assert.match(drawerSource, /mensajeUsuario:\s*texto/);
   assert.match(drawerSource, /origin:\s*["']Reefer Charter Core PRO["']/);
-  assert.match(drawerSource, /projectRef:\s*referenciaMadre\s*\|\|\s*["']RDM\/2026-TBN["']/);
+  assert.match(drawerSource, /projectRef:\s*finalProjectRef/);
 });
 
 test('3. Message objects conform to specifications for user and assistant', () => {
@@ -52,4 +52,12 @@ test('6. Form and quick commands are wired to handleSubmit', () => {
   assert.match(drawerSource, /<form[^>]*onSubmit=\{handleSubmit\}/);
   assert.match(drawerSource, /onClick=\{\(\)\s*=>\s*handleQuickCommandClick\(cmd\)\}/);
   assert.match(drawerSource, /handleSubmit\(null,\s*cmdText\)/);
+});
+
+test('7. Dynamic URL project reference extraction syncs active session reference', () => {
+  assert.match(drawerSource, /new URLSearchParams\(window\.location\.search\)/);
+  assert.match(drawerSource, /urlParams\.get\(['"]ref['"]\)/);
+  assert.match(drawerSource, /window\.location\.hash\.includes\(['"]\?['"]\)/);
+  assert.match(drawerSource, /new URLSearchParams\(hashQuery\)\.get\(['"]ref['"]\)/);
+  assert.match(drawerSource, /finalProjectRef\s*=\s*referenciaMadre\s*\|\|\s*activeRef\s*\|\|\s*["']RDM\/2026-TBN["']/);
 });
