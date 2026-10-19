@@ -169,10 +169,13 @@ export function GlobalMadreDrawer({
           mensajeUsuario: trimmed,
           message: trimmed,
           prompt: trimmed,
-          history: messages.map((m) => ({
-            role: m.role || (m.sender === 'user' ? 'user' : 'assistant'),
-            content: m.text,
-          })),
+         history: messages
+            .filter((m) => m.text && !m.isError)
+            .map((m) => ({
+              role: m.role || (m.sender === 'user' ? 'user' : 'assistant'),
+              content: m.text,
+            }))
+            .filter((msg, index, arr) => index > 0 || msg.role === 'user'),
           context: {
             origin: "Reefer Charter Core PRO",
             projectRef: finalProjectRef,
