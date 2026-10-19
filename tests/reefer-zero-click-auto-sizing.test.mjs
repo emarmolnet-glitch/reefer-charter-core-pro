@@ -86,3 +86,27 @@ test('4. UI templates and components contain dynamic UI badge and suppress red a
   assert.match(workspaceSource, /useReeferAutoSizing/);
   assert.match(workspaceSource, /⚡ Buque auto-dimensionado a \{optimalDwt\} DWT según exigencias volumétricas\./);
 });
+
+test('5. Default TBN state, empty input fallback, and reactive prop bindings', async () => {
+  const [storeSource, workspaceSource] = await Promise.all([
+    readFile(new URL('../src/stores/voyage-store.js', import.meta.url), 'utf8'),
+    readFile(new URL('../TceCalculatorWorkspace.tsx', import.meta.url), 'utf8'),
+  ]);
+
+  // Empty string input fallback
+  assert.equal(isTbnVessel(''), true);
+  assert.equal(isTbnVessel('   '), true);
+  assert.equal(isTbnVessel({ name: '' }), true);
+  assert.equal(isTbnVessel({ name: '   ' }), true);
+  assert.equal(isTbnVessel({ vesselName: '' }), true);
+
+  // Default vessel strictly to 'TBN' in store
+  assert.match(storeSource, /vessel:\s*'TBN'/);
+  assert.match(storeSource, /vesselName:\s*'TBN'/);
+
+  // Reactive hook call in TceCalculatorWorkspace
+  assert.match(
+    workspaceSource,
+    /useReeferAutoSizing\(\{\s*vessel:\s*currentVesselNameState,\s*cargoWeight:\s*currentCargoWeightState,\s*stowageFactor:\s*currentSfState/
+  );
+});

@@ -62,7 +62,8 @@ const EMPTY_DRAFT = Object.freeze({
     distanceNm: null,
     routeGeometry: null,
     weather: null,
-    vessel: null,
+    vessel: 'TBN',
+    vesselName: 'TBN',
     cargoVolumeCBM: 0,
     palletQuantity: 0,
     deckHeight: 2.2,
@@ -211,6 +212,7 @@ export function hasOperationalDraft(draft) {
 }
 
 export const voyageStore = createStore(subscribeWithSelector((set, get) => ({
+    vesselName: 'TBN',
     cargoVolumeCBM: 0,
     palletQuantity: 0,
     deckHeight: 2.2,

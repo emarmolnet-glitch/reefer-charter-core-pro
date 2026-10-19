@@ -16,11 +16,12 @@ export function calculateOptimalDwt(cargoWeight, stowageFactor) {
  * Determines whether a vessel is in 'TBN (To Be Named)' mode.
  */
 export function isTbnVessel(vessel) {
+  if (vessel === null || vessel === undefined) return true;
   const name = typeof vessel === 'string'
     ? vessel
     : (vessel?.name || vessel?.vesselName || vessel?.vessel_name || vessel?.nombre || '');
   const normalized = String(name || '').trim().toUpperCase();
-  return !normalized || normalized === 'TBN' || normalized.includes('TBN') || normalized.includes('TO BE NAMED') || normalized.includes('TO BE NOMINATED');
+  return normalized === '' || !normalized || normalized === 'TBN' || normalized.includes('TBN') || normalized.includes('TO BE NAMED') || normalized.includes('TO BE NOMINATED');
 }
 
 /**
