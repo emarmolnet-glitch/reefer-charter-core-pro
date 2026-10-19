@@ -163,7 +163,22 @@ export function VisualStowagePlan({
     stowagePlan?.vesselModel?.vesselCubicCapacity ||
     30300
   );
-  const isVolExceeded = Boolean(
+  const currentVesselName = stowagePlan?.vesselModel?.name || stowagePlan?.vesselModel?.vesselName || vesselType || (typeof window !== 'undefined' && window.State ? (window.State.vessel || window.State.vesselName) : '') || '';
+  const isTbn = Boolean(
+    stowagePlan?.isTbn ||
+    stowagePlan?.vesselModel?.isTbn ||
+    (currentVesselName && (
+      String(currentVesselName).trim().toUpperCase() === 'TBN' ||
+      String(currentVesselName).toUpperCase().includes('TO BE NAMED') ||
+      String(currentVesselName).toUpperCase().includes('TO BE NOMINATED')
+    ))
+  );
+
+  const optimalDwt = isTbn && volOccupied > 0
+    ? Math.ceil(((volOccupied / 1.25) * 1.05) / 100) * 100
+    : 0;
+
+  const isVolExceeded = isTbn ? false : Boolean(
     hydro.isCubicCapacityExceeded ||
     (volCapacity > 0 && volOccupied > volCapacity)
   );
@@ -835,6 +850,18 @@ export function VisualStowagePlan({
             </div>
             <span className="px-2 py-0.5 rounded bg-rose-600 text-white font-mono text-[10px] uppercase font-bold shrink-0">
               IMO COMPLIANCE: FAILED
+            </span>
+          </div>
+        )}
+
+        {isTbn && optimalDwt > 0 && (
+          <div className="tbn-auto-sizing-badge mt-3 rounded-lg border border-teal-300 bg-teal-50 p-3 text-xs text-teal-800 font-bold flex items-center justify-between" role="status">
+            <div className="flex items-center gap-2">
+              <span className="text-base">⚡</span>
+              <span>⚡ Buque auto-dimensionado a {optimalDwt} DWT según exigencias volumétricas.</span>
+            </div>
+            <span className="px-2 py-0.5 rounded bg-teal-600 text-white font-mono text-[10px] uppercase font-bold shrink-0">
+              AUTO-SIZED DWT
             </span>
           </div>
         )}

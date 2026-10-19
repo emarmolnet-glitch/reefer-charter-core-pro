@@ -644,6 +644,7 @@ export function useHeaderVisibility(defaultVisible = true) {
 }
 
 import { ProjectProvider, ProjectContext, useProject, useProjectRef, generateRandomProjectRef } from './context/ProjectContext.jsx';
+import { useReeferAutoSizing } from './hooks/useReeferAutoSizing.js';
 
 export function AppLayout({ children }) {
   const [currentView, setCurrentView] = useState(() => (typeof window !== 'undefined' ? window.currentView || '' : ''));
@@ -651,6 +652,7 @@ export function AppLayout({ children }) {
   useSeaCharterSync();
   useUrlImoAutoLookup();
   usePendingImoSync();
+  useReeferAutoSizing();
 
   useEffect(() => {
     const handleViewChange = (event) => {

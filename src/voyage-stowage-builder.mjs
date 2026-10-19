@@ -130,11 +130,29 @@ export function buildVoyageStowagePlan(voyageState = {}) {
     ? explicitCapacity
     : (dwt > 0 ? Math.round(dwt * 1.25) : 30300);
 
-  // Regla estricta: IF (Cargo_CBM > Vessel_Cubic_Capacity) { return ERROR }
-  const volumetricCheck = validateCubicCapacity(cargoVolumeCbm, vesselCubicCapacity);
-  const isCubicCapacityExceeded = volumetricCheck === 'ERROR';
-  const volumeUtilizationShipPct = vesselCubicCapacity > 0
-    ? (cargoVolumeCbm / vesselCubicCapacity) * 100
+  const rawVesselName = voyageState.vessel || voyageState.vesselName || voyageState.name || voyageState.nombre || '';
+  const isTbn = Boolean(
+    voyageState.isTbn ||
+    (rawVesselName && (
+      String(rawVesselName).trim().toUpperCase() === 'TBN' ||
+      String(rawVesselName).toUpperCase().includes('TO BE NAMED') ||
+      String(rawVesselName).toUpperCase().includes('TO BE NOMINATED')
+    ))
+  );
+
+  const optimalDwt = isTbn && cargoVolumeCbm > 0
+    ? Math.ceil(((cargoVolumeCbm / 1.25) * 1.05) / 100) * 100
+    : 0;
+
+  const effectiveCubicCapacity = isTbn && optimalDwt > 0
+    ? Math.max(vesselCubicCapacity, Math.round(optimalDwt * 1.25))
+    : vesselCubicCapacity;
+
+  // Regla estricta: IF (Cargo_CBM > Vessel_Cubic_Capacity) { return ERROR } (desactivada para buques TBN auto-dimensionados)
+  const volumetricCheck = isTbn ? 'OK' : validateCubicCapacity(cargoVolumeCbm, effectiveCubicCapacity);
+  const isCubicCapacityExceeded = !isTbn && volumetricCheck === 'ERROR';
+  const volumeUtilizationShipPct = effectiveCubicCapacity > 0
+    ? (cargoVolumeCbm / effectiveCubicCapacity) * 100
     : 0;
 
   const safetyReport = isCubicCapacityExceeded
@@ -276,6 +294,9 @@ export function buildVoyageStowagePlan(voyageState = {}) {
       error: resultError,
       safetyReport,
       imoCompliance,
+      isTbn,
+      optimalDwt,
+      autoSizingBadge: isTbn && optimalDwt > 0 ? `⚡ Buque auto-dimensionado a ${optimalDwt} DWT según exigencias volumétricas.` : null,
       maxFloorPressureTm2: dwt > 0 ? Math.min(20, Math.max(10, (cargoTons / dwt) * 16)) : 14.5,
       maxFloorAllowableTm2: 20.0,
       isPermissibleLoadExceeded: false,
@@ -284,9 +305,11 @@ export function buildVoyageStowagePlan(voyageState = {}) {
     vesselModel: {
       type: vesselClass,
       profile,
-      dwt,
-      grainCapacityCbm: vesselCubicCapacity,
-      vesselCubicCapacity,
+      dwt: isTbn && optimalDwt > 0 ? optimalDwt : dwt,
+      isTbn,
+      optimalDwt,
+      grainCapacityCbm: effectiveCubicCapacity,
+      vesselCubicCapacity: effectiveCubicCapacity,
     },
     executiveJustification: justification,
   };
