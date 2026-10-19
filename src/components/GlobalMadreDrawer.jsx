@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-export const MADRE_API_ENDPOINT = "https://calm-shortbread-55bcfc.netlify.app/api/madre-chat";
+export const MADRE_API_ENDPOINT = "https://calm-shortbread-55bcfc.netlify.app/.netlify/functions/madre-chat";
 
 export function GlobalMadreDrawer({
   isOpen = true,
