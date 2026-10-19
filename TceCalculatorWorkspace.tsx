@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { voyageStore } from './src/stores/voyage-store.js';
 import { getApiUrl } from './src/utils/apiConfig.js';
 import { useReeferAutoSizing } from './src/hooks/useReeferAutoSizing.js';
-import { calculateSuggestedFreight, calculateOverPalletMargin } from './src/utils/calculator.js';
 import {
   useDataBridgeSpotConnection,
   getMarketSpeedVesselClass,
@@ -169,6 +168,35 @@ type BunkerIndexCache = {
   ifo380: number;
   mgo: number;
   date: string;
+};
+
+const MATRIZ_ESTACIONAL_GLOBAL: Record<string, Record<string, Record<number, number>>> = {
+  WEST_AFRICA: { Reefer: { 1: 1.15, 2: 1.15, 3: 1.18, 10: 1.20, 11: 1.20, 12: 1.20 }, Grain: { 10: 1.22, 11: 1.25 } },
+  SOUTH_AMERICA: { Reefer: { 1: 1.30, 2: 1.32, 3: 1.35 }, Grain: { 3: 1.30, 4: 1.38 } },
+  MEDITERRANEAN: { Citrus: { 0: 1.15, 1: 1.18, 11: 1.15, 12: 1.15 } },
+  SOUTH_EAST_ASIA: { Rice: { 10: 1.16, 11: 1.18 } }
+};
+
+function normalizeRegion(regionInput: unknown): string {
+  const reg = String(regionInput || '').toUpperCase();
+  if (reg.includes('AFRICA') || reg === 'WAF') return 'WEST_AFRICA';
+  if (reg.includes('AMERICA') || reg === 'ECSA') return 'SOUTH_AMERICA';
+  if (reg.includes('MED') || reg.includes('SPAIN')) return 'MEDITERRANEAN';
+  if (reg.includes('ASIA')) return 'SOUTH_EAST_ASIA';
+  return 'DEFAULT';
+}
+
+function calculateSuggestedFreight({ ownerBaseCost, commercialMargin, region, commodity, month }: { ownerBaseCost: number; commercialMargin: number; region: string; commodity: string; month: number; }) {
+  const normalizedRegion = normalizeRegion(region);
+  const factorEstacional = MATRIZ_ESTACIONAL_GLOBAL[normalizedRegion]?.[commodity]?.[month] || 1.0;
+  const fleteSugerido = (ownerBaseCost * (1 + commercialMargin)) * factorEstacional;
+  return Number(fleteSugerido.toFixed(2));
+}
+
+export {
+  MATRIZ_ESTACIONAL_GLOBAL,
+  normalizeRegion,
+  calculateSuggestedFreight,
 };
 
 const DEFAULT_VALUES: ReverseCalculatorState = {
@@ -553,10 +581,12 @@ export function calculateReverseTceResults(values: ReverseCalculatorState) {
   const ownerMarginPercent = safeNumber(values.ownerMarginPercent);
   const chartererMarginPercent = safeNumber(values.chartererMarginPercent);
   const coreFreight = calculateCoreFreight(values);
+  // Extract safe references first
   const totalDays = coreFreight.totalDays;
-  const minFreightRate = coreFreight.minFreightRate; // Asegurarnos de que minFreightRate ya existe
-  // Integración global dinámica (detecta automáticamente la región de la ruta o usa valor por defecto mundial)
-  const regionRuta = (typeof window !== 'undefined' && (window.activeVoyage?.loadingRegion || window.activeVoyage?.region)) || "South America"; 
+  const minFreightRate = coreFreight.minFreightRate;
+
+  // Global Dynamic Integration
+  const regionRuta = (typeof window !== 'undefined' && ((window as any).activeVoyage?.loadingRegion || (window as any).activeVoyage?.region)) || "South America"; 
   const fleteSugeridoInteligente = calculateSuggestedFreight({
     ownerBaseCost: minFreightRate,
     commercialMargin: ownerMarginPercent / 100,
@@ -616,9 +646,8 @@ export function calculateReverseTceResults(values: ReverseCalculatorState) {
   const bunkerDailyPortCost = daysPort > 0 ? portFuelCost / daysPort : safeNumber(values.bunkerDailyPortCost);
   const etsCostPerMt = cargoVolume > 0 ? etsTotalCost / cargoVolume : 0;
   const targetRevenue = coreFreight.targetRevenue;
-  const minFreightRate = coreFreight.minFreightRate;
-  const suggestedOwnerSale = roundMoney(minFreightRate * (1 + ownerMarginPercent / 100));
-  const suggestedChartererSale = roundMoney(suggestedOwnerSale * (1 + chartererMarginPercent / 100));
+  const suggestedOwnerSale = fleteSugeridoInteligente;
+  const suggestedChartererSale = roundMoney(fleteSugeridoInteligente * (1 + chartererMarginPercent / 100));
   const isSuggestedSaleBelowTceTarget = suggestedOwnerSale < minFreightRate || suggestedChartererSale < minFreightRate;
   const negotiationSpread = suggestedChartererSale - suggestedOwnerSale;
   const negotiationMarginPct = suggestedOwnerSale > 0 ? (negotiationSpread / suggestedOwnerSale) * 100 : 0;
@@ -667,8 +696,8 @@ export function calculateReverseTceResults(values: ReverseCalculatorState) {
     tceTarget,
     targetRevenue,
     minFreightRate,
-    suggestedOwnerSale,
-    suggestedChartererSale,
+    suggestedOwnerSale: fleteSugeridoInteligente,
+    suggestedChartererSale: roundMoney(fleteSugeridoInteligente * (1 + chartererMarginPercent / 100)),
     isSuggestedSaleBelowTceTarget,
     negotiationMarginPct,
     isNegotiationMarginCritical,
