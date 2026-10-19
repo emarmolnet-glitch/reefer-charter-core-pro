@@ -148,7 +148,7 @@
         // Silences errors from third-party / hosting monitoring workers (e.g. monitoring.vendor.js)
         // ensuring they never crash or block the main thread or React rendering.
         (function installMonitoringShield() {
-            if (typeof window === 'undefined') return;
+            if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return;
 
             window.addEventListener('error', function (event) {
                 try {
@@ -920,6 +920,7 @@
     <link rel="stylesheet" href="./compatibilidad.css">
     <link rel="stylesheet" href="./assets/css/sea-assistant.css?v=20260820-chat-footer">
     <link rel="stylesheet" href="./assets/css/provider-tariff-sidebar.css">
+    <link rel="stylesheet" href="./assets/css/madre-panel.css">
     <script defer src="./network-resilience.js?v=20260807-circuit-breaker"></script>
     <script type="module" src="./cargo-taxonomy.mjs"></script>
     <script type="module" src="./clause-matrix.js"></script>
@@ -981,6 +982,7 @@
     <script type="module" src="./src/forwarder-workspace-entry.jsx"></script>
     <script type="module" src="./src/provider-tariff-sidebar-entry.jsx"></script>
     <script type="module" src="./src/voyage-executive-report-entry.jsx"></script>
+    <script type="module" src="./src/global-madre-entry.jsx"></script>
     <script type="module" src="./dual-mode-overlay.js"></script>
 
     <style>
@@ -9006,6 +9008,10 @@
                 display: none !important;
             }
 
+            header.app-header #btn-collapse-header {
+                display: inline-flex !important;
+            }
+
             header.app-header > .header-left .header-app-title {
                 display: none !important;
             }
@@ -9707,6 +9713,32 @@
 
         <!-- DERECHA: BOTONES DE ACCIÓN (FAQ, OWN/CHR, COLAPSAR) -->
         <div class="header-actions-right hidden md:flex items-center gap-1.5 shrink-0">
+            <!-- DISPARADOR SUPERIOR MADRE (TOPBAR TRIGGER) -->
+            <button
+                id="madre-topbar-button"
+                type="button"
+                class="madre-topbar-btn relative flex items-center justify-center w-10 h-10 rounded-full p-0 bg-transparent border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-slate-900 group"
+                style="background: transparent; border: none; padding: 0;"
+                aria-label="Abrir panel MADRE"
+                title="MADRE"
+                aria-expanded="false"
+                onclick="if (window.MadrePanelUI?.toggle) { window.MadrePanelUI.toggle(); } else { window.dispatchEvent(new CustomEvent('madre:toggle')); }"
+            >
+                <div
+                    id="madre-topbar-glow"
+                    class="madre-topbar-glow absolute inset-0 rounded-full animate-pulse bg-cyan-500 blur-md pointer-events-none opacity-80"
+                    style="display: none;"
+                    aria-hidden="true"
+                ></div>
+                <img
+                    id="madre-topbar-img"
+                    src="/MADRE.png"
+                    alt="MADRE"
+                    class="madre-topbar-img w-10 h-10 rounded-full relative z-10 object-contain transition-all duration-300 grayscale opacity-70 scale-100 hover:opacity-90"
+                />
+                <span class="sr-only"><span class="tracking-wide">MADRE</span></span>
+            </button>
+
             <!-- Botón FAQ / Manual -->
             <button
                 id="btn-open-faq-modal"
@@ -10533,7 +10565,7 @@
                             <div class="input-group">
                                 <label id="label-vessel-dwt" class="text-blue-400 flex items-center min-h-[28px]">Capacidad DWT (TM)</label>
                                 <input type="number" id="vessel-dwt" class="input-gc font-bold text-blue-300" value="0" step="any" oninput="updateSection2LocalState('vessel-dwt', this.value); handleDWTChange(true, false)" onblur="detectVesselSegmentFromInputs()">
-                                <div id="tbn-auto-sizing-badge" class="hidden mt-1 text-[11px] font-bold text-teal-400 bg-teal-900/40 border border-teal-500/40 rounded px-2 py-0.5">⚡ Buque auto-dimensionado a 0 DWT según exigencias volumétricas.</div>
+                                <div id="tbn-auto-sizing-badge" class="hidden mt-1 block text-[11px] font-bold text-teal-300 bg-slate-900 px-2 py-1 rounded border border-teal-500 shadow-sm">⚡ Buque auto-dimensionado a 0 DWT según exigencias volumétricas.</div>
                             </div>
                             <div class="input-group">
                                 <label for="vessel-has-scrubber-no" class="text-blue-400 flex items-center gap-1 min-h-[28px]">
@@ -34720,6 +34752,59 @@ function createRouteAnchorElement(type) {
             if (id) {
                 window.section2LocalState[id] = value;
             }
+            if (id === 'nombre-buque-calculadora' || id === 'vessel-name') {
+                if (typeof State !== 'undefined' && State) {
+                    State.vessel = value;
+                    State.vesselName = value;
+                }
+                if (window.voyageStore?.getState()?.patchSection2Vessel) {
+                    window.voyageStore.getState().patchSection2Vessel({
+                        name: value,
+                        vesselName: value,
+                    });
+                }
+                const vStr = String(value || '').trim().toUpperCase();
+                const isTbn = vStr === '' || vStr === 'TBN' || vStr.includes('TO BE NAMED') || vStr.includes('TO BE NOMINATED');
+                if (isTbn) {
+                    const cWeight = Number(State?.cargo) || Number(State?.cargoQty) || (typeof document !== 'undefined' ? (parseFloat(document.getElementById('cargo-qty')?.value) || parseFloat(document.getElementById('pallet-quantity')?.value) || 0) : 0);
+                    const sfVal = parseFloat(document.getElementById('cargo-sf')?.value) || Number(State?.stowageFactor) || (State?.cargoVolumeCBM && cWeight > 0 ? (State.cargoVolumeCBM / cWeight) : 1.35) || 1.35;
+                    const reqCbm = Number(State?.cargoVolumeCBM) > 0 ? Number(State.cargoVolumeCBM) : (cWeight * sfVal);
+                    if (reqCbm > 0) {
+                        const optimalDwt = Math.ceil(((reqCbm / 1.25) * 1.05) / 100) * 100;
+                        if (optimalDwt > 0) {
+                            if (State) {
+                                State.vesselDwt = optimalDwt;
+                                State.dwt = optimalDwt;
+                                State.capacidad_dwt = optimalDwt;
+                            }
+                            const dwtInput = document.getElementById('vessel-dwt');
+                            if (dwtInput && Number(dwtInput.value) !== optimalDwt) {
+                                dwtInput.value = String(optimalDwt);
+                            }
+                            const idDwtInput = document.getElementById('vessel-identity-dwt');
+                            if (idDwtInput && Number(idDwtInput.value) !== optimalDwt) {
+                                idDwtInput.value = String(optimalDwt);
+                            }
+                            const badgeEl = document.getElementById('tbn-auto-sizing-badge');
+                            if (badgeEl) {
+                                badgeEl.classList.remove('hidden');
+                                badgeEl.textContent = `⚡ Buque auto-dimensionado a ${optimalDwt} DWT según exigencias volumétricas.`;
+                            }
+                            if (typeof handleDWTChange === 'function') {
+                                handleDWTChange(true, false);
+                            }
+                            if (typeof runEngine === 'function') {
+                                runEngine();
+                            }
+                        }
+                    }
+                } else {
+                    const badgeEl = document.getElementById('tbn-auto-sizing-badge');
+                    if (badgeEl) {
+                        badgeEl.classList.add('hidden');
+                    }
+                }
+            }
         }
         window.updateSection2LocalState = updateSection2LocalState;
 
@@ -34802,8 +34887,10 @@ function createRouteAnchorElement(type) {
             }
 
             // Zero-Click Auto-Sizing (Inferencia de DWT) para buques TBN
-            const vName = (document.getElementById('nombre-buque-calculadora')?.value || document.getElementById('vessel-name')?.value || State.vessel || 'TBN').trim().toUpperCase();
-            const isTbn = !vName || vName === 'TBN' || vName.includes('TO BE NAMED') || vName.includes('TO BE NOMINATED');
+            const domVesselEl = document.getElementById('nombre-buque-calculadora') || document.getElementById('vessel-name');
+            const rawVName = domVesselEl ? domVesselEl.value : (State.vessel || 'TBN');
+            const vName = String(rawVName || '').trim().toUpperCase();
+            const isTbn = vName === '' || vName === 'TBN' || vName.includes('TO BE NAMED') || vName.includes('TO BE NOMINATED');
             if (isTbn) {
                 const cWeight = effectiveWeight > 0 ? effectiveWeight : (Number(State.cargo) || Number(State.cargoQty) || (typeof document !== 'undefined' ? (parseFloat(document.getElementById('cargo-qty')?.value) || 0) : 0));
                 const sfVal = parseFloat(document.getElementById('cargo-sf')?.value) || Number(State.stowageFactor) || (State.cargoVolumeCBM && cWeight > 0 ? (State.cargoVolumeCBM / cWeight) : 1.35) || 1.35;
@@ -48406,11 +48493,20 @@ function scheduleReactiveEngine() {
                     }
 
                     if (!response.ok) {
+                        if (response.status === 504) {
+                            const timeoutError = new Error(
+                                'El análisis de la Auditoría Legal ha superado el tiempo de espera (504 Gateway Timeout). El servidor de IA está procesando un volumen elevado de cláusulas. Por favor, pulsa en "Reintentar" para continuar el análisis.'
+                            );
+                            timeoutError.code = 'GATEWAY_TIMEOUT_504';
+                            timeoutError.status = 504;
+                            throw timeoutError;
+                        }
                         const rawPreview = rawBody.slice(0, 160).replace(/\s+/g, ' ').trim();
                         const requestError = new Error(
                             responseBody.error?.message || `Error HTTP ${response.status}${rawPreview ? `: ${rawPreview}` : ''}`
                         );
                         requestError.code = responseBody.error?.code || '';
+                        requestError.status = response.status;
                         throw requestError;
                     }
 
@@ -48483,8 +48579,17 @@ function scheduleReactiveEngine() {
                 throw new Error(task.message || 'Reporte no disponible');
             }
             if (!response.ok || !task.task_id) {
+                if (response.status === 504) {
+                    const timeoutError = new Error(
+                        'Tiempo de espera agotado (504 Gateway Timeout). La tarea de auditoría legal está tardando más de lo previsto en iniciar. Por favor, reinténtalo.'
+                    );
+                    timeoutError.code = 'GATEWAY_TIMEOUT_504';
+                    timeoutError.status = 504;
+                    throw timeoutError;
+                }
                 const requestError = new Error(task.error?.message || `No se pudo iniciar la auditoría (${response.status}).`);
                 requestError.code = task.error?.code || '';
+                requestError.status = response.status;
                 throw requestError;
             }
             localStorage.setItem('legal_audit_task_id', task.task_id);
@@ -56617,10 +56722,20 @@ Compara el documento suministrado (que puede ser un contrato, carta de crédito 
 
             } catch (error) {
                 console.error(error);
-                document.getElementById('errorBox').innerText = error.message;
-                document.getElementById('errorBox').classList.remove('hidden');
+                const isTimeout504 = error?.status === 504 || error?.code === 'GATEWAY_TIMEOUT_504' || /504|timeout|timed\s*out/i.test(error?.message || '');
+                const displayMsg = isTimeout504
+                    ? '⚠️ Tiempo de espera agotado (504 Gateway Timeout). El análisis exhaustivo de cláusulas requiere más tiempo debido a la alta carga del servicio. Por favor, pulsa en "Reintentar Auditoría" para procesar el expediente.'
+                    : error.message;
+                const errorBox = document.getElementById('errorBox');
+                if (errorBox) {
+                    errorBox.innerHTML = `<div>${displayMsg}</div>${isTimeout504 ? '<div class="mt-2"><button type="button" onclick="ejecutarAuditoriaContrato()" class="px-3 py-1 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded text-xs transition cursor-pointer">Reintentar Auditoría</button></div>' : ''}`;
+                    errorBox.classList.remove('hidden');
+                }
                 document.getElementById('loadingState').classList.add('hidden');
                 document.getElementById('emptyState').classList.remove('hidden');
+                if (typeof showToast === 'function') {
+                    showToast(isTimeout504 ? '⚠️ Error 504: Tiempo de espera agotado en la Auditoría. Reintenta la operación.' : `❌ ${error.message}`, false, 'error');
+                }
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = originalBtnHtml;
@@ -76806,6 +76921,39 @@ window.actualizarGrabCapacityVisibility = function() {
         }
       } catch (e) {}
     })();
+  </script>
+  <script>
+    // Aggressive DOM Sync for TBN Auto-Sizing
+    setInterval(() => {
+      const vInput = document.getElementById('nombre-buque-calculadora') || document.getElementById('vessel-name');
+      const dwtInput = document.getElementById('vessel-dwt');
+      const badge = document.getElementById('tbn-auto-sizing-badge');
+      
+      if (vInput && dwtInput) {
+        const vName = vInput.value.trim().toUpperCase();
+        const isTbn = (vName === '' || vName === 'TBN' || vName.includes('TO BE NAMED') || vName.includes('TO BE NOMINATED'));
+        
+        if (isTbn) {
+          // Find CBM volume safely
+          const cbmInput = document.getElementById('volumen-cbm') || document.querySelector('input[id*="cbm"]');
+          const reqCbm = (cbmInput ? parseFloat(cbmInput.value) : 0) || Number(window.State?.cargoVolumeCBM) || 0;
+          
+          if (reqCbm > 0) {
+            const optimal = Math.ceil(((reqCbm / 1.25) * 1.05) / 100) * 100;
+            if (Number(dwtInput.value) !== optimal) {
+              dwtInput.value = optimal;
+              if (window.State) { window.State.capacidad_dwt = optimal; window.State.dwt = optimal; window.State.vesselDwt = optimal; }
+              if (badge) {
+                badge.classList.remove('hidden');
+                badge.innerText = `⚡ Buque auto-dimensionado a ${optimal} DWT según exigencias volumétricas.`;
+              }
+            }
+          }
+        } else if (badge && !badge.classList.contains('hidden')) {
+          badge.classList.add('hidden');
+        }
+      }
+    }, 800);
   </script>
 </body>
 </html>

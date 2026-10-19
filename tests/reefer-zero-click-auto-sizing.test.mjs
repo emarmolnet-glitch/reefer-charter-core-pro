@@ -29,10 +29,14 @@ test('2. isTbnVessel accurately identifies TBN, To Be Named, and default states'
   assert.equal(isTbnVessel('TBN (To Be Named)'), true);
   assert.equal(isTbnVessel('TO BE NOMINATED'), true);
   assert.equal(isTbnVessel(''), true);
+  assert.equal(isTbnVessel('   '), true);
   assert.equal(isTbnVessel(null), true);
   assert.equal(isTbnVessel(undefined), true);
   assert.equal(isTbnVessel({ name: 'TBN' }), true);
   assert.equal(isTbnVessel({ vesselName: 'MV TBN' }), true);
+  assert.equal(isTbnVessel({ name: '' }), true);
+  assert.equal(isTbnVessel({ name: '   ' }), true);
+  assert.equal(isTbnVessel({ vesselName: '' }), true);
 
   // Named vessel is not TBN
   assert.equal(isTbnVessel('COOL SPIRIT'), false);
@@ -109,4 +113,25 @@ test('5. Default TBN state, empty input fallback, and reactive prop bindings', a
     workspaceSource,
     /useReeferAutoSizing\(\{\s*vessel:\s*currentVesselNameState,\s*cargoWeight:\s*currentCargoWeightState,\s*stowageFactor:\s*currentSfState/
   );
+});
+
+test('6. buildVoyageStowagePlan strictly treats empty string vessel name as TBN, overriding capacity with Optimal_DWT', () => {
+  const emptyNameVoyage = {
+    vessel: '',
+    cargo: 4000,
+    cargoVolumeCBM: 10000,
+    vesselCubicCapacity: 5750,
+    cargoType: 'Frutas Tropicales y Exóticas',
+    vesselType: 'Reefer Vessel',
+    dwt: 6000,
+  };
+
+  const plan = buildVoyageStowagePlan(emptyNameVoyage);
+
+  assert.equal(plan.status, 'OK', 'Empty vessel name should be treated as TBN with status OK');
+  assert.equal(plan.hydrodynamicsAndSafety.isCubicCapacityExceeded, false, 'isCubicCapacityExceeded must be false for empty vessel name');
+  assert.equal(plan.hydrodynamicsAndSafety.safetyReport, '✓ CUMPLE CAPACIDAD CÚBICA');
+  assert.equal(plan.hydrodynamicsAndSafety.imoCompliance, '100%');
+  assert.equal(plan.hydrodynamicsAndSafety.isTbn, true);
+  assert.ok(plan.hydrodynamicsAndSafety.optimalDwt > 0);
 });

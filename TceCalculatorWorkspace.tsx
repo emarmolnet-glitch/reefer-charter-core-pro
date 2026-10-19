@@ -1322,10 +1322,10 @@ export function ReverseTceCalculator({
 
   const [currentVesselNameState, setCurrentVesselNameState] = useState<string>(() => {
     return voyageStore.getState()?.draft?.vessel?.name
-      || voyageStore.getState()?.draft?.vesselName
-      || voyageStore.getState()?.vesselName
-      || (typeof window !== 'undefined' ? (window.State?.vessel || window.State?.vesselName) : '')
-      || 'TBN';
+      ?? voyageStore.getState()?.draft?.vesselName
+      ?? voyageStore.getState()?.vesselName
+      ?? (typeof window !== 'undefined' ? (window.State?.vessel ?? window.State?.vesselName) : '')
+      ?? '';
   });
 
   const currentCargoWeightState = Number(reeferState.palletQuantity) > 0
@@ -1342,9 +1342,9 @@ export function ReverseTceCalculator({
 
   useEffect(() => {
     const unsub = voyageStore.subscribe((state) => {
-      const vName = state?.draft?.vessel?.name || state?.draft?.vesselName || state?.vesselName;
+      const vName = state?.draft?.vessel?.name ?? state?.draft?.vesselName ?? state?.vesselName;
       if (vName !== undefined) {
-        setCurrentVesselNameState(vName || 'TBN');
+        setCurrentVesselNameState(vName ?? '');
       }
       const draft = state.draft || state;
       setReeferState((prev) => {
@@ -2769,13 +2769,13 @@ export function VesselPricingRouter({
   const [calculationRefreshSignal, setCalculationRefreshSignal] = useState(0);
   const previousModeRef = useRef<VesselCalculationMode | null>(null);
 
-  // Default vessel name strictly to "TBN"
+  // Default vessel name strictly to "TBN" or empty string when cleared
   const [currentVesselNameState, setCurrentVesselNameState] = useState<string>(() => {
     return voyageStore.getState()?.draft?.vessel?.name
-      || voyageStore.getState()?.draft?.vesselName
-      || voyageStore.getState()?.vesselName
-      || (typeof window !== 'undefined' ? (window.State?.vessel || window.State?.vesselName) : '')
-      || 'TBN';
+      ?? voyageStore.getState()?.draft?.vesselName
+      ?? voyageStore.getState()?.vesselName
+      ?? (typeof window !== 'undefined' ? (window.State?.vessel ?? window.State?.vesselName) : '')
+      ?? '';
   });
 
   const [currentCargoWeightState, setCurrentCargoWeightState] = useState<number>(() => {
@@ -2793,9 +2793,9 @@ export function VesselPricingRouter({
 
   useEffect(() => {
     const unsub = voyageStore.subscribe((state) => {
-      const vName = state?.draft?.vessel?.name || state?.draft?.vesselName || state?.vesselName;
+      const vName = state?.draft?.vessel?.name ?? state?.draft?.vesselName ?? state?.vesselName;
       if (vName !== undefined) {
-        setCurrentVesselNameState(vName ?? 'TBN');
+        setCurrentVesselNameState(vName ?? '');
       }
       const weight = Number(state?.palletQuantity || state?.draft?.palletQuantity) || 0;
       if (weight > 0) {
@@ -2813,10 +2813,14 @@ export function VesselPricingRouter({
   });
 
   useEffect(() => {
-    setLocalDwt(vesselDwt);
-  }, [vesselDwt]);
+    if (isAutoSized && optimalDwt > 0) {
+      setLocalDwt(optimalDwt);
+    } else {
+      setLocalDwt(vesselDwt);
+    }
+  }, [vesselDwt, isAutoSized, optimalDwt]);
 
-  const activeDwt = safeNumber(localDwt);
+  const activeDwt = safeNumber(isAutoSized && optimalDwt > 0 ? optimalDwt : localDwt);
   const vesselClass = getVesselClass(activeDwt);
   const currentMode = vesselClass.type;
   const isReverseTceMode = currentMode === 'TCE Inverso';
@@ -2894,14 +2898,27 @@ export function VesselPricingRouter({
           <input
             type="number"
             step="any"
-            value={localDwt}
-            onChange={(event) => setLocalDwt(Number(event.target.value))}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-right text-sm font-black text-slate-900 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
+            id="workspace-vessel-dwt-input"
+            value={isAutoSized && optimalDwt > 0 ? optimalDwt : localDwt}
+            readOnly={Boolean(isAutoSized && optimalDwt > 0)}
+            onChange={(event) => {
+              if (!isAutoSized) {
+                setLocalDwt(Number(event.target.value));
+              }
+            }}
+            className={`w-full rounded-lg border px-3 py-2 text-right text-sm font-black outline-none transition-all ${
+              isAutoSized && optimalDwt > 0
+                ? 'border-teal-500 bg-teal-950/20 text-teal-300 ring-2 ring-teal-500/20 cursor-not-allowed'
+                : 'border-slate-300 bg-white text-slate-900 focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15'
+            }`}
           />
           {isAutoSized && optimalDwt > 0 && (
-            <span id="tbn-auto-sizing-badge-router" className="mt-1 block text-[10px] font-bold text-teal-600">
-              ⚡ Buque auto-dimensionado a {optimalDwt} DWT según exigencias volumétricas.
-            </span>
+            <div
+              id="tbn-auto-sizing-badge-router"
+              className="mt-1 block text-[11px] font-bold text-teal-300 bg-slate-900 px-2 py-1 rounded border border-teal-500 shadow-sm"
+            >
+              {badgeText ? badgeText : <>⚡ Buque auto-dimensionado a {optimalDwt} DWT según exigencias volumétricas.</>}
+            </div>
           )}
         </label>
         <div className="min-w-[16rem]">
@@ -2980,10 +2997,10 @@ export default function TceCalculatorWorkspace({
 
   const [currentVesselNameState, setCurrentVesselNameState] = useState<string>(() => {
     return voyageStore.getState()?.draft?.vessel?.name
-      || voyageStore.getState()?.draft?.vesselName
-      || voyageStore.getState()?.vesselName
-      || (typeof window !== 'undefined' ? (window.State?.vessel || window.State?.vesselName) : '')
-      || 'TBN';
+      ?? voyageStore.getState()?.draft?.vesselName
+      ?? voyageStore.getState()?.vesselName
+      ?? (typeof window !== 'undefined' ? (window.State?.vessel ?? window.State?.vesselName) : '')
+      ?? '';
   });
 
   const currentCargoWeightState = Number(safeNumber(cargoVolume) * 0.5 || 0);

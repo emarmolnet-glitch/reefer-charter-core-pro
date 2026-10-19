@@ -14,14 +14,22 @@ export function calculateOptimalDwt(cargoWeight, stowageFactor) {
 
 /**
  * Determines whether a vessel is in 'TBN (To Be Named)' mode.
+ * Strictly evaluates empty strings, null, and undefined as true.
  */
 export function isTbnVessel(vessel) {
-  if (vessel === null || vessel === undefined) return true;
+  if (vessel === null || vessel === undefined || vessel === '') return true;
   const name = typeof vessel === 'string'
     ? vessel
-    : (vessel?.name || vessel?.vesselName || vessel?.vessel_name || vessel?.nombre || '');
-  const normalized = String(name || '').trim().toUpperCase();
-  return normalized === '' || !normalized || normalized === 'TBN' || normalized.includes('TBN') || normalized.includes('TO BE NAMED') || normalized.includes('TO BE NOMINATED');
+    : (vessel?.name ?? vessel?.vesselName ?? vessel?.vessel_name ?? vessel?.nombre ?? '');
+  if (name === null || name === undefined) return true;
+  const normalized = String(name).trim().toUpperCase();
+  return (
+    normalized === '' ||
+    normalized === 'TBN' ||
+    normalized.includes('TBN') ||
+    normalized.includes('TO BE NAMED') ||
+    normalized.includes('TO BE NOMINATED')
+  );
 }
 
 /**
@@ -55,9 +63,16 @@ export function useReeferAutoSizing({
       ? propStowageFactor
       : (winState.stowageFactor || (typeof document !== 'undefined' ? parseFloat(document.getElementById('cargo-sf')?.value) : 1.35) || 1.35);
 
-    const rawVessel = propVessel !== undefined
-      ? propVessel
-      : (storeState.draft?.vessel || winState.vessel || winState.vesselName || (typeof document !== 'undefined' ? (document.getElementById('nombre-buque-calculadora')?.value || document.getElementById('vessel-name')?.value) : 'TBN'));
+    let rawVessel = propVessel;
+    if (rawVessel === undefined && typeof document !== 'undefined') {
+      const vInput = document.getElementById('nombre-buque-calculadora') || document.getElementById('vessel-name');
+      if (vInput) {
+        rawVessel = vInput.value;
+      }
+    }
+    if (rawVessel === undefined) {
+      rawVessel = storeState.draft?.vessel ?? winState.vessel ?? winState.vesselName ?? '';
+    }
 
     const weight = Number(rawWeight) || 0;
     const sf = Number(rawSf) || 1.35;
@@ -70,44 +85,52 @@ export function useReeferAutoSizing({
       if (isTbn && calculatedDwt > 0) {
         setIsAutoSized(true);
 
+        // Forcefully update vanilla HTML DOM directly on every evaluation
+        if (typeof document !== 'undefined') {
+          const dwtInput = document.getElementById('vessel-dwt');
+          if (dwtInput && Number(dwtInput.value) !== calculatedDwt) {
+            dwtInput.value = calculatedDwt;
+            if (typeof window.updateSection2LocalState === 'function') {
+              window.updateSection2LocalState('vessel-dwt', calculatedDwt);
+            }
+            if (typeof window.handleDWTChange === 'function') {
+              window.handleDWTChange(true, false);
+            }
+          }
+          const identityDwtInput = document.getElementById('vessel-identity-dwt');
+          if (identityDwtInput && Number(identityDwtInput.value) !== calculatedDwt) {
+            identityDwtInput.value = String(calculatedDwt);
+          }
+          const badgeEl = document.getElementById('tbn-auto-sizing-badge');
+          if (badgeEl) {
+            badgeEl.classList.remove('hidden');
+            badgeEl.textContent = `⚡ Buque auto-dimensionado a ${calculatedDwt} DWT según exigencias volumétricas.`;
+          }
+        }
+
+        // 1. Inject into voyageStore
+        if (typeof vStore?.getState?.()?.patchSection2Vessel === 'function') {
+          vStore.getState().patchSection2Vessel({
+            dwt: calculatedDwt,
+            vesselDwt: calculatedDwt,
+            name: typeof rawVessel === 'string' && rawVessel.trim() === '' ? '' : 'TBN',
+            vesselName: typeof rawVessel === 'string' && rawVessel.trim() === '' ? '' : 'TBN',
+          });
+        }
+
+        // 2. Inject into window.State
+        if (typeof window !== 'undefined' && window.State) {
+          window.State.vesselDwt = calculatedDwt;
+          window.State.dwt = calculatedDwt;
+          window.State.capacidad_dwt = calculatedDwt;
+        }
+
+        if (typeof onDwtChange === 'function') {
+          onDwtChange(calculatedDwt);
+        }
+
         if (lastInjectedDwtRef.current !== calculatedDwt) {
           lastInjectedDwtRef.current = calculatedDwt;
-
-          // 1. Inject into voyageStore
-          if (typeof vStore?.getState?.()?.patchSection2Vessel === 'function') {
-            vStore.getState().patchSection2Vessel({
-              dwt: calculatedDwt,
-              vesselDwt: calculatedDwt,
-              name: 'TBN',
-            });
-          }
-
-          // 2. Inject into window.State
-          if (typeof window !== 'undefined' && window.State) {
-            window.State.vesselDwt = calculatedDwt;
-            window.State.dwt = calculatedDwt;
-            window.State.capacidad_dwt = calculatedDwt;
-          }
-
-          // 3. Update DOM inputs if present
-          if (typeof document !== 'undefined') {
-            const dwtInput = document.getElementById('vessel-dwt');
-            if (dwtInput && Number(dwtInput.value) !== calculatedDwt) {
-              dwtInput.value = String(calculatedDwt);
-              if (typeof window.updateSection2LocalState === 'function') {
-                window.updateSection2LocalState('vessel-dwt', calculatedDwt);
-              }
-            }
-            const identityDwtInput = document.getElementById('vessel-identity-dwt');
-            if (identityDwtInput && Number(identityDwtInput.value) !== calculatedDwt) {
-              identityDwtInput.value = String(calculatedDwt);
-            }
-            const badgeEl = document.getElementById('tbn-auto-sizing-badge');
-            if (badgeEl) {
-              badgeEl.classList.remove('hidden');
-              badgeEl.textContent = `⚡ Buque auto-dimensionado a ${calculatedDwt} DWT según exigencias volumétricas.`;
-            }
-          }
 
           // 4. Trigger calculations (runEngine / pricing router)
           if (typeof window !== 'undefined') {
@@ -117,10 +140,6 @@ export function useReeferAutoSizing({
             if (typeof window.updateVesselPricingRouter === 'function') {
               window.updateVesselPricingRouter();
             }
-          }
-
-          if (typeof onDwtChange === 'function') {
-            onDwtChange(calculatedDwt);
           }
         }
       } else {

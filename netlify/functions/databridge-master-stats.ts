@@ -5,9 +5,19 @@ type MasterStatsRow = QueryResultRow & {
   total_vessels: number | string;
 };
 
+const corsHeaders: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+};
+
 export default async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 200, headers: corsHeaders });
+  }
+
   if (req.method !== "GET") {
-    return Response.json({ success: false, error: "Method not allowed" }, { status: 405 });
+    return Response.json({ success: false, error: "Method not allowed" }, { status: 405, headers: corsHeaders });
   }
 
   try {
@@ -22,10 +32,16 @@ export default async (req: Request) => {
     return Response.json({
       success: true,
       totalVessels: Number(row?.total_vessels || 0),
-    }, { status: 200, headers: { "cache-control": "no-store" } });
+    }, {
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        "cache-control": "no-store",
+      },
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown database error";
     console.error("[databridge-master-stats] Query failed", error);
-    return Response.json({ success: false, error: message }, { status: 500 });
+    return Response.json({ success: false, error: message }, { status: 500, headers: corsHeaders });
   }
 };

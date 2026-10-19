@@ -645,9 +645,11 @@ export function useHeaderVisibility(defaultVisible = true) {
 
 import { ProjectProvider, ProjectContext, useProject, useProjectRef, generateRandomProjectRef } from './context/ProjectContext.jsx';
 import { useReeferAutoSizing } from './hooks/useReeferAutoSizing.js';
+import { GlobalMadreDrawer, MadrePanel } from './components/GlobalMadreDrawer.jsx';
 
 export function AppLayout({ children }) {
   const [currentView, setCurrentView] = useState(() => (typeof window !== 'undefined' ? window.currentView || '' : ''));
+  const { isHeaderVisible, toggleHeader } = useHeaderVisibility();
 
   useSeaCharterSync();
   useUrlImoAutoLookup();
@@ -663,10 +665,25 @@ export function AppLayout({ children }) {
     return () => window.removeEventListener('navigation:view-change', handleViewChange);
   }, []);
 
-  return currentView === 'FORWARDERS' ? (
-    <ForwarderWorkspace />
-  ) : (
-    children
+  return (
+    <div
+      className={`seacharter-core-pro-app ${isHeaderVisible ? 'header-visible' : 'header-collapsed'}`}
+      data-header-visible={isHeaderVisible}
+    >
+      <button
+        id="react-header-toggle-btn"
+        className="hidden"
+        style={{ display: 'none' }}
+        onClick={toggleHeader}
+        aria-expanded={isHeaderVisible}
+      />
+      {currentView === 'FORWARDERS' ? (
+        <ForwarderWorkspace />
+      ) : (
+        children
+      )}
+      <GlobalMadreDrawer showTrigger={false} />
+    </div>
   );
 }
 
@@ -744,6 +761,40 @@ export function TopNav() {
           />
         </div>
       </div>
+
+      {/* DERECHA: BOTONES DE ACCIÓN Y DISPARADOR MADRE */}
+      <div className="header-actions-right flex items-center gap-2 shrink-0">
+        <button
+          id="madre-topbar-button"
+          type="button"
+          onClick={() => {
+            if (window.MadrePanelUI?.toggle) {
+              window.MadrePanelUI.toggle();
+            } else {
+              window.dispatchEvent(new CustomEvent('madre:toggle'));
+            }
+          }}
+          aria-label="Abrir panel MADRE"
+          title="MADRE"
+          aria-expanded="false"
+          className="madre-topbar-btn relative flex items-center justify-center w-10 h-10 rounded-full p-0 bg-transparent border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-slate-900 group"
+          style={{ background: 'transparent', border: 'none', padding: 0 }}
+        >
+          <div
+            id="madre-topbar-glow"
+            className="madre-topbar-glow absolute inset-0 rounded-full animate-pulse bg-cyan-500 blur-md pointer-events-none opacity-80"
+            style={{ display: 'none' }}
+            aria-hidden="true"
+          />
+          <img
+            id="madre-topbar-img"
+            src="/MADRE.png"
+            alt="MADRE"
+            className="madre-topbar-img w-10 h-10 rounded-full relative z-10 object-contain transition-all duration-300 grayscale opacity-70 scale-100 hover:opacity-90"
+          />
+          <span className="sr-only"><span className="tracking-wide">MADRE</span></span>
+        </button>
+      </div>
     </header>
   );
 }
@@ -751,4 +802,5 @@ export function TopNav() {
 export { HashRouter, HashRouter as BrowserRouter };
 export { ProjectProvider, ProjectContext, useProject, useProjectRef, generateRandomProjectRef };
 export { default as VoyageExecutiveReportModal, buildVoyageStowagePlan } from './components/VoyageExecutiveReportModal.jsx';
+export { GlobalMadreDrawer, MadrePanel };
 
