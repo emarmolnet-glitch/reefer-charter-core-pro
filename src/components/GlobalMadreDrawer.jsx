@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 
-export const MADRE_API_ENDPOINT = "https://neon-seachartercorepro-4ce09d.netlify.app/.netlify/functions/madre-chat";
+export const MADRE_API_ENDPOINT = "https://neon-seachartercorepro-4ce09d.netlify.app/api/madre-chat";
 
 export function MadrePanel({
   referenciaMadre,
