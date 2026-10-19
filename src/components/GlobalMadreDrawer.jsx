@@ -111,7 +111,7 @@ export function GlobalMadreDrawer({
   const handleMicClick = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert('El reconocimiento de voz no está soportado en este navegador.');
+      alert('El reconocimiento de voz no está soportado en este navegador. Utiliza Google Chrome.');
       return;
     }
     const recognition = new SpeechRecognition();
@@ -122,7 +122,10 @@ export function GlobalMadreDrawer({
 
     recognition.onstart = () => setIsListening(true);
     recognition.onend = () => setIsListening(false);
-    recognition.onerror = () => setIsListening(false);
+    recognition.onerror = (err) => {
+      console.error('Error de micrófono:', err);
+      setIsListening(false);
+    };
     recognition.onresult = (event) => {
       const speechText = event.results[0][0].transcript;
       setInputValue(speechText);
@@ -130,7 +133,6 @@ export function GlobalMadreDrawer({
 
     recognition.start();
   };
-
   const handleSubmit = async (e) => {
     if (e && typeof e.preventDefault === 'function') {
       e.preventDefault();
