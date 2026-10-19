@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 
+export const MADRE_API_ENDPOINT = "https://neon-seachartercorepro-4ce09d.netlify.app/.netlify/functions/madre-chat";
+
 export function MadrePanel({
   referenciaMadre,
   origen = "Core PRO",
@@ -37,6 +39,11 @@ export function MadrePanel({
       setTimeout(() => inputRef.current?.focus(), 150);
     }
   }, [isOpen]);
+
+  // Auto-scroll whenever messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [mensajes]);
 
   // Window API and custom events synchronization
   useEffect(() => {
@@ -85,13 +92,15 @@ export function MadrePanel({
     };
   }, [isOpen, isListening]);
 
-  const handleSendMessage = (e) => {
-    e?.preventDefault?.();
-    const texto = inputTexto.trim();
+  const handleSubmit = async (e, quickCommandText = null) => {
+    if (e?.preventDefault) {
+      e.preventDefault();
+    }
+    const texto = (typeof quickCommandText === "string" ? quickCommandText : inputTexto).trim();
     if (!texto) return;
 
     const userMsg = {
-      id: Date.now().toString(),
+      id: Date.now(),
       rol: "user",
       autor: "Operador",
       texto,
@@ -102,24 +111,60 @@ export function MadrePanel({
     setInputTexto("");
     setLoading(true);
 
-    setTimeout(() => {
-      setMensajes((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          rol: "assistant",
-          autor: "MADRE Core",
-          texto: `Directiva procesada: "${texto}". Supervisión holística de fletes, buques, arbitraje y escudos preventivos activa.`,
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    try {
+      const response = await fetch(MADRE_API_ENDPOINT, {
+        method: "POST",
+        mode: "cors",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
         },
-      ]);
+        body: JSON.stringify({
+          mensajeUsuario: texto,
+          context: {
+            origin: "Reefer Charter Core PRO",
+            projectRef: referenciaMadre || "RDM/2026-TBN",
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      const replyText =
+        data?.reply || data?.response || data?.message || "Directiva procesada.";
+
+      const assistantMsg = {
+        id: Date.now() + 1,
+        rol: "assistant",
+        autor: "MADRE Core",
+        texto: replyText,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      };
+
+      setMensajes((prev) => [...prev, assistantMsg]);
+    } catch (err) {
+      console.error("MADRE Connection Error:", err);
+      const errorMsg = {
+        id: Date.now() + 1,
+        rol: "assistant",
+        autor: "MADRE Core",
+        texto: "Error de conexión con el Cerebro Central en Data Bridge. Verifica los permisos CORS o reintenta.",
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      };
+      setMensajes((prev) => [...prev, errorMsg]);
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
+  const handleSendMessage = handleSubmit;
+
   const handleQuickCommandClick = (cmd) => {
-    setInputTexto(cmd.texto);
-    inputRef.current?.focus();
+    const cmdText = cmd?.texto || cmd;
+    handleSubmit(null, cmdText);
   };
 
   return (
@@ -203,12 +248,12 @@ export function MadrePanel({
                 <button
                   id="madre-mute-button"
                   type="button"
-                  onClick={() => setIsMuted(!isMuted)}
                   className={`madre-mute-btn shrink-0 flex-shrink-0 text-white flex items-center justify-center w-8 h-8 rounded-md transition ${
                     isMuted
                       ? "text-rose-400 hover:text-rose-300 hover:bg-slate-800"
                       : "text-white hover:text-cyan-300 hover:bg-slate-800"
                   }`}
+                  onClick={() => setIsMuted(!isMuted)}
                   title={isMuted ? "Activar voz de MADRE" : "Silenciar voz de MADRE"}
                   aria-label={isMuted ? "Activar voz de MADRE" : "Silenciar voz de MADRE"}
                 >
@@ -217,8 +262,8 @@ export function MadrePanel({
                 <button
                   id="madre-reset-button"
                   type="button"
-                  onClick={() => setMensajes([])}
                   className="madre-reset-btn shrink-0 flex-shrink-0 text-white flex items-center justify-center w-8 h-8 p-1.5 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition text-xs"
+                  onClick={() => setMensajes([])}
                   title="Reiniciar conversación"
                   aria-label="Reiniciar conversación"
                 >
@@ -227,8 +272,8 @@ export function MadrePanel({
                 <button
                   id="madre-close-button"
                   type="button"
-                  onClick={() => setIsOpen(false)}
                   className="madre-close-btn shrink-0 flex-shrink-0 text-white flex items-center justify-center w-8 h-8 rounded-md hover:text-slate-200 hover:bg-slate-800 transition"
+                  onClick={() => setIsOpen(false)}
                   aria-label="Cerrar panel MADRE"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -339,7 +384,7 @@ export function MadrePanel({
                   <span id="madre-voice-transcript" className="italic truncate max-w-[180px] text-[10px] opacity-80"></span>
                 </div>
               )}
-              <form onSubmit={handleSendMessage} className="madre-input-form flex items-center gap-2 w-full">
+              <form onSubmit={handleSubmit} className="madre-input-form flex items-center gap-2 w-full">
                 <button
                   id="madre-mic-button"
                   type="button"

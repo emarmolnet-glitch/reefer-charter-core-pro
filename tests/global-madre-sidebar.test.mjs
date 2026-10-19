@@ -136,10 +136,14 @@ test('9. MADRE UI Polish: Z-index 2147483647, left-slide, header text text-white
   assert.match(madrePanelCssSource, /z-index:\s*2147483646\s*!important/);
 
   // Header Text
+  const headerContent = globalMadreDrawerSource.slice(
+    globalMadreDrawerSource.indexOf('<header'),
+    globalMadreDrawerSource.indexOf('</header>')
+  );
   assert.match(globalMadreDrawerSource, /<span[^>]*text-white[^>]*>MADRE<\/span>/);
   assert.match(globalMadreDrawerSource, /Cerebro Central/);
-  assert.doesNotMatch(globalMadreDrawerSource, /#REF-MADRE/);
-  assert.doesNotMatch(globalMadreDrawerSource, /MADRE Core/);
+  assert.doesNotMatch(headerContent, /#REF-MADRE/);
+  assert.doesNotMatch(headerContent, /MADRE Core/);
 
   // Header Buttons with ml-auto gap-3 container and shrink-0
   assert.match(globalMadreDrawerSource, /ml-auto/);
@@ -170,4 +174,13 @@ test('10. DWT Calculator Sync: DWT input strictly bound to optimalDwt when auto-
   // Aggressive vanilla sync in index.html
   assert.match(indexHtmlSource, /Aggressive DOM Sync for TBN Auto-Sizing/);
   assert.match(indexHtmlSource, /setInterval\(\(\)\s*=>\s*\{[\s\S]*?dwtInput\.value\s*=\s*optimal/);
+});
+
+test('11. Global MADRE connected to Data Bridge AI API endpoint with handleSubmit, error handling, and auto-scroll', () => {
+  assert.match(globalMadreDrawerSource, /https:\/\/neon-seachartercorepro-4ce09d\.netlify\.app\/\.netlify\/functions\/madre-chat/);
+  assert.match(globalMadreDrawerSource, /handleSubmit/);
+  assert.match(globalMadreDrawerSource, /messagesEndRef\.current\?\.scrollIntoView/);
+  assert.match(globalMadreDrawerSource, /Reefer Charter Core PRO/);
+  assert.match(globalMadreDrawerSource, /RDM\/2026-TBN/);
+  assert.match(globalMadreDrawerSource, /Error de conexión con el Cerebro Central en Data Bridge\. Verifica los permisos CORS o reintenta\./);
 });
