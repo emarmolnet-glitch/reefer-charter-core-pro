@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { voyageStore } from './src/stores/voyage-store.js';
 import { getApiUrl } from './src/utils/apiConfig.js';
+import { useReeferAutoSizing } from './src/hooks/useReeferAutoSizing.js';
 import {
   useDataBridgeSpotConnection,
   getMarketSpeedVesselClass,
@@ -1319,8 +1320,32 @@ export function ReverseTceCalculator({
     };
   });
 
+  const [currentVesselNameState, setCurrentVesselNameState] = useState<string>(() => {
+    return voyageStore.getState()?.draft?.vessel?.name
+      || voyageStore.getState()?.draft?.vesselName
+      || voyageStore.getState()?.vesselName
+      || (typeof window !== 'undefined' ? (window.State?.vessel || window.State?.vesselName) : '')
+      || 'TBN';
+  });
+
+  const currentCargoWeightState = Number(reeferState.palletQuantity) > 0
+    ? Number(reeferState.palletQuantity)
+    : (Number(reeferState.cargoVolumeCBM) > 0 ? Number(reeferState.cargoVolumeCBM) * 0.5 : (safeNumber(cargoVolume) > 0 ? safeNumber(cargoVolume) * 0.5 : 0));
+
+  const currentSfState = (typeof window !== 'undefined' ? Number(window.State?.stowageFactor) : 0) || 1.35;
+
+  useReeferAutoSizing({
+    vessel: currentVesselNameState,
+    cargoWeight: currentCargoWeightState,
+    stowageFactor: currentSfState,
+  });
+
   useEffect(() => {
     const unsub = voyageStore.subscribe((state) => {
+      const vName = state?.draft?.vessel?.name || state?.draft?.vesselName || state?.vesselName;
+      if (vName !== undefined) {
+        setCurrentVesselNameState(vName || 'TBN');
+      }
       const draft = state.draft || state;
       setReeferState((prev) => {
         const next = {
@@ -2744,6 +2769,49 @@ export function VesselPricingRouter({
   const [calculationRefreshSignal, setCalculationRefreshSignal] = useState(0);
   const previousModeRef = useRef<VesselCalculationMode | null>(null);
 
+  // Default vessel name strictly to "TBN"
+  const [currentVesselNameState, setCurrentVesselNameState] = useState<string>(() => {
+    return voyageStore.getState()?.draft?.vessel?.name
+      || voyageStore.getState()?.draft?.vesselName
+      || voyageStore.getState()?.vesselName
+      || (typeof window !== 'undefined' ? (window.State?.vessel || window.State?.vesselName) : '')
+      || 'TBN';
+  });
+
+  const [currentCargoWeightState, setCurrentCargoWeightState] = useState<number>(() => {
+    const st = voyageStore.getState();
+    const draft = st?.draft;
+    const initialWeight = Number(st?.palletQuantity || draft?.palletQuantity || (typeof window !== 'undefined' ? (window.State?.cargo || window.State?.cargoQty) : 0)) || 0;
+    if (initialWeight > 0) return initialWeight;
+    const vol = safeNumber(cargoVolume) || Number(st?.cargoVolumeCBM || draft?.cargoVolumeCBM) || 0;
+    return vol > 0 ? vol * 0.5 : 0;
+  });
+
+  const [currentSfState, setCurrentSfState] = useState<number>(() => {
+    return (typeof window !== 'undefined' ? Number(window.State?.stowageFactor) : 0) || 1.35;
+  });
+
+  useEffect(() => {
+    const unsub = voyageStore.subscribe((state) => {
+      const vName = state?.draft?.vessel?.name || state?.draft?.vesselName || state?.vesselName;
+      if (vName !== undefined) {
+        setCurrentVesselNameState(vName ?? 'TBN');
+      }
+      const weight = Number(state?.palletQuantity || state?.draft?.palletQuantity) || 0;
+      if (weight > 0) {
+        setCurrentCargoWeightState(weight);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  const { optimalDwt, isAutoSized, badgeText } = useReeferAutoSizing({
+    vessel: currentVesselNameState,
+    cargoWeight: currentCargoWeightState,
+    stowageFactor: currentSfState,
+    onDwtChange: (newDwt) => setLocalDwt(newDwt),
+  });
+
   useEffect(() => {
     setLocalDwt(vesselDwt);
   }, [vesselDwt]);
@@ -2805,6 +2873,22 @@ export function VesselPricingRouter({
         </div>
         <label className="block min-w-[13rem]">
           <span className="mb-1 block text-[11px] font-black uppercase tracking-wide text-slate-500">
+            Nombre del buque
+          </span>
+          <input
+            type="text"
+            value={currentVesselNameState}
+            onChange={(event) => {
+              const val = event.target.value;
+              setCurrentVesselNameState(val);
+              voyageStore.getState()?.patchSection2Vessel?.({ name: val, vesselName: val });
+            }}
+            placeholder="TBN"
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
+          />
+        </label>
+        <label className="block min-w-[13rem]">
+          <span className="mb-1 block text-[11px] font-black uppercase tracking-wide text-slate-500">
             DWT buque
           </span>
           <input
@@ -2814,6 +2898,11 @@ export function VesselPricingRouter({
             onChange={(event) => setLocalDwt(Number(event.target.value))}
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-right text-sm font-black text-slate-900 outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/15"
           />
+          {isAutoSized && optimalDwt > 0 && (
+            <span id="tbn-auto-sizing-badge-router" className="mt-1 block text-[10px] font-bold text-teal-600">
+              ⚡ Buque auto-dimensionado a {optimalDwt} DWT según exigencias volumétricas.
+            </span>
+          )}
         </label>
         <div className="min-w-[16rem]">
           <div className="mb-1 flex items-center gap-1 text-[11px] font-black uppercase tracking-wide text-slate-600">
@@ -2888,6 +2977,23 @@ export default function TceCalculatorWorkspace({
     setIsReverseMode(nextIsReverseMode);
     forceRefresh();
   };
+
+  const [currentVesselNameState, setCurrentVesselNameState] = useState<string>(() => {
+    return voyageStore.getState()?.draft?.vessel?.name
+      || voyageStore.getState()?.draft?.vesselName
+      || voyageStore.getState()?.vesselName
+      || (typeof window !== 'undefined' ? (window.State?.vessel || window.State?.vesselName) : '')
+      || 'TBN';
+  });
+
+  const currentCargoWeightState = Number(safeNumber(cargoVolume) * 0.5 || 0);
+  const currentSfState = (typeof window !== 'undefined' ? Number(window.State?.stowageFactor) : 0) || 1.35;
+
+  useReeferAutoSizing({
+    vessel: currentVesselNameState,
+    cargoWeight: currentCargoWeightState,
+    stowageFactor: currentSfState,
+  });
 
   // --- 1. INTERCEPTOR DE INYECCIÓN DE DATABRIDGE (NO RESET) ---
   useEffect(() => {

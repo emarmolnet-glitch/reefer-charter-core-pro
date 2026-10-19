@@ -50,10 +50,11 @@ test('2. voyageStore mutator setCargoDetails updates reefer variables and preser
 
   const strippedSource = storeSource
     .replace(/import\s*\{[^}]*\}\s*from\s*['"][^'"]*['"];?/g, '')
+    .replace(/export\s+default\s+/g, '')
     .replace(/export\s+function/g, 'function')
-    .replace(/const\s+EMPTY_DRAFT\s*=\s*Object\.freeze\(\{([\s\S]*?)\}\);/, 'const EMPTY_DRAFT = Object.freeze({$1});')
-    .replace(/export\s+const\s+voyageStore\s*=/g, 'const voyageStore =')
-    .replace(/export\s+const\s+useVoyageStore\s*=\s*voyageStore;?/g, '');
+    .replace(/export\s+const\s+/g, 'const ')
+    .replace(/export\s+let\s+/g, 'let ')
+    .replace(/const\s+EMPTY_DRAFT\s*=\s*Object\.freeze\(\{([\s\S]*?)\}\);/, 'const EMPTY_DRAFT = Object.freeze({$1});');
 
   // Provide mock createStore and subscribeWithSelector
   const mockZustand = `

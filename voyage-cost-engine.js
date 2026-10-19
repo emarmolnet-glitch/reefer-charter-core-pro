@@ -1000,11 +1000,21 @@
         // 2. REEFER VOLUME VALIDATION (Bloqueo por CBM)
         let isViable = true;
         let viabilityWarning = null;
-        const dwtVal = toNumber(effectiveState.capacidad_dwt);
+        let dwtVal = toNumber(effectiveState.capacidad_dwt);
         const cargoVolCBM = toNumber(state.cargoVolumeCBM || state.volumen_cbm);
+        const isTbn = isTbnVesselName(effectiveState.nombre_buque);
+
+        if (isReefer && cargoVolCBM > 0 && isTbn) {
+            const optimalDwt = Math.ceil(((cargoVolCBM / 1.25) * 1.05) / 100) * 100;
+            if (optimalDwt > 0 && dwtVal < optimalDwt) {
+                effectiveState.capacidad_dwt = optimalDwt;
+                dwtVal = optimalDwt;
+            }
+        }
+
         const maxCubicCapacity = dwtVal * 1.35;
         
-        if (isReefer && cargoVolCBM > 0 && dwtVal > 0 && cargoVolCBM > maxCubicCapacity) {
+        if (isReefer && cargoVolCBM > 0 && dwtVal > 0 && cargoVolCBM > maxCubicCapacity && !isTbn) {
             isViable = false;
             viabilityWarning = 'INVIABLE (SOBREPASADO POR VOLUMEN): La carga excede la capacidad cúbica de las bodegas (estiba ligera).';
             effectiveState.operationalWarnings = Array.isArray(effectiveState.operationalWarnings) ? [...effectiveState.operationalWarnings] : [];
@@ -1941,12 +1951,22 @@
                 const isReeferUi = state.isReefer || /reefer|pl[aá]tano|fruta/i.test(cargoCheckText);
                 
                 if (isReeferUi) {
-                    const dwtVal = Number(state.capacidad_dwt || 0);
+                    let dwtVal = Number(state.capacidad_dwt || 0);
                     const cbmInput = this.document.querySelector('input[id*="cbm"], input[id*="vol"]');
                     const cargoVolCBM = Number(state.cargoVolumeCBM || state.volumen_cbm || (cbmInput ? cbmInput.value : 0));
+                    const isTbn = isTbnVesselName(state.nombre_buque || state.vessel || state.vesselName);
+
+                    if (isTbn && cargoVolCBM > 0) {
+                        const optimalDwt = Math.ceil(((cargoVolCBM / 1.25) * 1.05) / 100) * 100;
+                        if (optimalDwt > 0 && dwtVal < optimalDwt) {
+                            state.capacidad_dwt = optimalDwt;
+                            dwtVal = optimalDwt;
+                        }
+                    }
+
                     const maxCubicCapacity = dwtVal * 1.35;
                     
-                    if (dwtVal > 0 && cargoVolCBM > maxCubicCapacity) {
+                    if (dwtVal > 0 && cargoVolCBM > maxCubicCapacity && !isTbn) {
                         result.isViable = false;
                         result.viabilityWarning = 'INVIABLE (SOBREPASADO POR VOLUMEN): La carga excede la capacidad cúbica de las bodegas (estiba ligera).';
                         
