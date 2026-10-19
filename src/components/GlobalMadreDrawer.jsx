@@ -220,29 +220,29 @@ export function GlobalMadreDrawer({
   return (
     <aside
       id="global-madre-drawer"
-      className="fixed top-0 right-0 bottom-0 z-[9999] w-full max-w-md bg-slate-900 text-slate-100 shadow-2xl border-l border-slate-800 flex flex-col font-sans"
+      className="fixed top-0 left-0 bottom-0 z-[9999] w-full max-w-md bg-slate-900 text-slate-100 shadow-2xl border-r border-slate-800 flex flex-col font-sans"
       style={{ backgroundColor: '#0f172a', color: '#ffffff' }}
     >
-      <header className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-slate-800">
+      <header className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-slate-800" style={{ backgroundColor: '#0f172a', color: '#ffffff', borderBottom: '1px solid #1e293b' }}>
         <div className="flex items-center gap-2">
           <img src="/MADRE.png" alt="MADRE" className="w-5 h-5 rounded-full object-cover" />
-          <span translate="no" className="notranslate font-bold text-base tracking-wide text-white">MADRE</span>
+          <span translate="no" className="notranslate font-bold text-base tracking-wide text-white" style={{ color: '#ffffff' }}>MADRE</span>
           <span className="text-[9px] font-mono bg-teal-500/20 text-teal-300 px-1.5 py-0.5 rounded border border-teal-500/30">Cerebro Central</span>
         </div>
         <div className="flex items-center gap-2 ml-auto">
-          <button type="button" id="btn-madre-mute" onClick={handleMuteToggle} className="text-xs px-2 py-1 rounded hover:bg-slate-800 text-white bg-transparent">
+          <button type="button" id="btn-madre-mute" onClick={handleMuteToggle} className="text-xs px-2 py-1 rounded hover:bg-slate-800 text-white bg-transparent" style={{ color: '#ffffff', backgroundColor: 'transparent' }}>
             {isMuted ? '🔇' : '🔊'}
           </button>
-          <button type="button" id="btn-madre-reset" onClick={handleReset} className="text-xs px-2 py-1 rounded hover:bg-slate-800 text-white bg-transparent">
+          <button type="button" id="btn-madre-reset" onClick={handleReset} className="text-xs px-2 py-1 rounded hover:bg-slate-800 text-white bg-transparent" style={{ color: '#ffffff', backgroundColor: 'transparent' }}>
             🔄
           </button>
-          <button type="button" id="btn-madre-close" onClick={handleClose} className="text-xs px-2 py-1 rounded hover:bg-slate-800 text-white bg-transparent">
+          <button type="button" id="btn-madre-close" onClick={handleClose} className="text-xs px-2 py-1 rounded hover:bg-slate-800 text-white bg-transparent" style={{ color: '#ffffff', backgroundColor: 'transparent' }}>
             ✕
           </button>
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ backgroundColor: '#0f172a' }}>
+      <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ backgroundColor: '#0f172a', color: '#ffffff' }}>
         {messages.map((m) => {
           const isUser = m.sender === 'user';
           return (
@@ -262,7 +262,7 @@ export function GlobalMadreDrawer({
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-3 border-t border-slate-800 bg-slate-900 flex gap-2 items-center">
+      <div className="p-3 border-t border-slate-800 bg-slate-900 flex gap-2 items-center" style={{ backgroundColor: '#0f172a' }}>
         <button
           type="button"
           id="madre-mic-button"
@@ -280,8 +280,9 @@ export function GlobalMadreDrawer({
             onChange={(e) => setInputValue(e.target.value)}
             placeholder="Pregunta a MADRE o escribe un comando..."
             className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-400 focus:outline-none focus:border-teal-400"
+            style={{ backgroundColor: '#1e293b', color: '#ffffff' }}
           />
-          <button type="submit" className="px-3 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-bold">
+          <button type="submit" className="px-3 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-bold" style={{ backgroundColor: '#0d9488', color: '#ffffff' }}>
             Enviar
           </button>
         </form>
