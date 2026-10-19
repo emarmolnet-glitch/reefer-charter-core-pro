@@ -4,6 +4,8 @@ export {
   calculateCoreFreight,
   calculateReverseTceResults,
   updateMarketIndications,
+  MIN_PDA_POL_REEFER,
+  MIN_PDA_POD_REEFER,
 } from '../../TceCalculatorWorkspace.tsx';
 export {
   useDataBridgeSpotConnection,

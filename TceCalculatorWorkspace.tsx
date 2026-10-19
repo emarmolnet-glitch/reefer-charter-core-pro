@@ -48,6 +48,11 @@ type ReverseCalculatorState = {
   riesgoDias: number;
   applyBunkerIndexAdjustment: boolean;
   contractBunkerIndexBase: number;
+  commodity?: string;
+  polCost?: number;
+  podCost?: number;
+  polPortCost?: number;
+  podPortCost?: number;
 };
 
 type RouteCalculationData = {
@@ -74,6 +79,11 @@ type SyncedCostData = Partial<Pick<
   | 'portCosts'
   | 'bunkerDailyPortCost'
   | 'opexDaily'
+  | 'commodity'
+  | 'polCost'
+  | 'podCost'
+  | 'polPortCost'
+  | 'podPortCost'
 >> & RouteCalculationData;
 
 type CostPlusNumericValue = number | '';
@@ -87,6 +97,11 @@ type CostPlusCalculatorState = {
   bunkerCost: CostPlusNumericValue;
   portCosts: CostPlusNumericValue;
   cargoVolume: CostPlusNumericValue;
+  commodity?: string;
+  polCost?: CostPlusNumericValue;
+  podCost?: CostPlusNumericValue;
+  polPortCost?: CostPlusNumericValue;
+  podPortCost?: CostPlusNumericValue;
 };
 
 type CostPlusNumericField = Exclude<keyof CostPlusCalculatorState, 'marginType'>;
@@ -186,17 +201,36 @@ function normalizeRegion(regionInput: unknown): string {
   return 'DEFAULT';
 }
 
-function calculateSuggestedFreight({ ownerBaseCost, commercialMargin, region, commodity, month }: { ownerBaseCost: number; commercialMargin: number; region: string; commodity: string; month: number; }) {
+function calculateSuggestedFreight({
+  ownerBaseCost,
+  commercialMargin,
+  region,
+  commodity,
+  month,
+}: {
+  ownerBaseCost: number;
+  commercialMargin: number;
+  region: string;
+  commodity?: string;
+  month: number;
+}) {
   const normalizedRegion = normalizeRegion(region);
-  const factorEstacional = MATRIZ_ESTACIONAL_GLOBAL[normalizedRegion]?.[commodity]?.[month] || 1.0;
+  const factorEstacional = (commodity && MATRIZ_ESTACIONAL_GLOBAL[normalizedRegion]?.[commodity]?.[month])
+    || MATRIZ_ESTACIONAL_GLOBAL[normalizedRegion]?.Reefer?.[month]
+    || (normalizedRegion === 'DEFAULT' ? 1.0 : 1.15);
   const fleteSugerido = (ownerBaseCost * (1 + commercialMargin)) * factorEstacional;
   return Number(fleteSugerido.toFixed(2));
 }
+
+const MIN_PDA_POL_REEFER = 28000;
+const MIN_PDA_POD_REEFER = 26000;
 
 export {
   MATRIZ_ESTACIONAL_GLOBAL,
   normalizeRegion,
   calculateSuggestedFreight,
+  MIN_PDA_POL_REEFER,
+  MIN_PDA_POD_REEFER,
 };
 
 const DEFAULT_VALUES: ReverseCalculatorState = {
@@ -467,13 +501,29 @@ export function calculateCoreFreight(
   values: ReverseCalculatorState | CostPlusCalculatorState,
   options: { bunkerMultiplier?: number } = {},
 ) {
+  const rawPortCosts = safeNumber(values.portCosts);
+
+  // 1. Calculate raw or default costs
+  let polCost = safeNumber(values.polCost ?? values.polPortCost);
+  let podCost = safeNumber(values.podCost ?? values.podPortCost);
+  if (polCost <= 0 && podCost <= 0 && rawPortCosts > 0) {
+    polCost = rawPortCosts / 2;
+    podCost = rawPortCosts / 2;
+  }
+
+  // 2. UNCONDITIONALLY apply Reefer minimums (This is Reefer Charter)
+  polCost = Math.max(polCost, 28000);
+  podCost = Math.max(podCost, 26000);
+
+  // 3. Update total port costs
+  const portCosts = polCost + podCost;
+
   if ('marginType' in values) {
     const dailyOpex = safeNumber(values.dailyOpex);
     const targetMargin = safeNumber(values.targetMargin);
     const daysSea = safeNumber(values.daysSea);
     const daysPort = safeNumber(values.daysPort);
     const bunkerCost = safeNumber(values.bunkerCost);
-    const portCosts = safeNumber(values.portCosts);
     const cargoVolume = safeNumber(values.cargoVolume);
     const totalDays = daysSea + daysPort;
     const totalOpex = dailyOpex * totalDays;
@@ -490,6 +540,9 @@ export function calculateCoreFreight(
       calculatedMargin,
       targetRevenue,
       minFreightRate,
+      polCost,
+      podCost,
+      portCosts,
     };
   }
 
@@ -502,7 +555,6 @@ export function calculateCoreFreight(
   const seaFuelConsumption = safeNumber(values.seaFuelConsumption);
   const portFuelConsumption = safeNumber(values.portFuelConsumption);
   const activeSeaFuelPrice = values.hasScrubber ? ifoPrice : vlsfoPrice;
-  const portCosts = safeNumber(values.portCosts);
   const cargoVolume = safeNumber(values.cargoVolume);
   const totalCo2Emissions = safeNumber(values.totalCo2Emissions);
   const euaPrice = safeNumber(values.euaPrice);
@@ -528,6 +580,9 @@ export function calculateCoreFreight(
     portFuelCost,
     bunkerCost,
     activeSeaFuelPrice,
+    polCost,
+    podCost,
+    portCosts,
   };
 }
 
@@ -587,12 +642,18 @@ export function calculateReverseTceResults(values: ReverseCalculatorState) {
 
   // Global Dynamic Integration
   const regionRuta = (typeof window !== 'undefined' && ((window as any).activeVoyage?.loadingRegion || (window as any).activeVoyage?.region)) || "South America"; 
+  const currentMonth = new Date().getMonth() + 1;
+  const normalizedRegion = normalizeRegion(regionRuta);
+  const seasonalMultiplier = (values.commodity && MATRIZ_ESTACIONAL_GLOBAL[normalizedRegion]?.[values.commodity]?.[currentMonth])
+    || MATRIZ_ESTACIONAL_GLOBAL[normalizedRegion]?.Reefer?.[currentMonth]
+    || (normalizedRegion === 'DEFAULT' ? 1.0 : 1.15);
+
   const fleteSugeridoInteligente = calculateSuggestedFreight({
     ownerBaseCost: minFreightRate,
     commercialMargin: ownerMarginPercent / 100,
     region: regionRuta,
-    commodity: "Reefer",
-    month: new Date().getMonth() + 1
+    commodity: values.commodity || "Reefer",
+    month: currentMonth
   });
   const etsTotalCost = coreFreight.etsTotalCost ?? 0;
   const marketBunkerIndexPrice = getAverageBunkerIndexPrice({
@@ -666,7 +727,7 @@ export function calculateReverseTceResults(values: ReverseCalculatorState) {
   const freightBuy = minFreightRate;
   const cargoTons = cargoVolume;
   const costBunkers = bunkerCost;
-  const costPda = safeNumber(values.portCosts);
+  const costPda = safeNumber(coreFreight.portCosts ?? values.portCosts);
   const etsCost = etsTotalCost;
   const costOpex = opexDaily * totalDays;
 
@@ -691,13 +752,18 @@ export function calculateReverseTceResults(values: ReverseCalculatorState) {
   const netProfitTotal = calculatedNetOwnerProfit;
   const netProfitDaily = totalDays > 0 ? netProfitTotal / totalDays : 0;
 
+  const freightSell = suggestedChartererSale;
+
   return {
     totalDays,
     tceTarget,
     targetRevenue,
     minFreightRate,
     suggestedOwnerSale: fleteSugeridoInteligente,
-    suggestedChartererSale: roundMoney(fleteSugeridoInteligente * (1 + chartererMarginPercent / 100)),
+    suggestedChartererSale,
+    freightBuy,
+    freightSell,
+    seasonalMultiplier,
     isSuggestedSaleBelowTceTarget,
     negotiationMarginPct,
     isNegotiationMarginCritical,
@@ -724,6 +790,9 @@ export function calculateReverseTceResults(values: ReverseCalculatorState) {
     seaFuelStrategyLabel: values.hasScrubber
       ? 'Optimizado con IFO 380 (Scrubber Activo)'
       : 'Combustible estándar: VLSFO',
+    portCosts: coreFreight.portCosts ?? safeNumber(values.portCosts),
+    polCost: coreFreight.polCost,
+    podCost: coreFreight.podCost,
     marketBunkerIndexPrice,
     bunkerIndexBase,
     bunkerVariationPct,
@@ -2433,7 +2502,7 @@ export function ReverseTceCalculator({
                     const freightBuy = results.minFreightRate;
                     const cargoTons = cargoVolume;
                     const costBunkers = results.bunkerCost;
-                    const costPda = safeNumber(values.portCosts);
+                    const costPda = safeNumber(results.portCosts ?? values.portCosts);
                     const etsCost = results.etsTotalCost;
                     const costOpex = results.opexDaily * results.totalDays;
                     const totalDays = results.totalDays;
