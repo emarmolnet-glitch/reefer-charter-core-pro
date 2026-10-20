@@ -2,6 +2,29 @@ import React, { useState, useEffect, useRef } from 'react';
 
 export const MADRE_API_ENDPOINT = "https://calm-shortbread-55bcfc.netlify.app/.netlify/functions/madre-chat";
 
+export function getReeferUIContext() {
+  const params = {};
+  if (typeof document !== 'undefined') {
+    const tempEl = document.querySelector('[data-reefer="temperature"], #setpoint-temp, .reefer-temp-input') || document.querySelector('#target-temperature');
+    const cargoEl = document.querySelector('[data-reefer="cargo"], #cargo-type, .cargo-select');
+    const polEl = document.querySelector('[data-reefer="pol"], [data-reefer="origin"], #input-pol, #match-load-port, .reefer-pol-input');
+    const podEl = document.querySelector('[data-reefer="pod"], [data-reefer="destination"], #input-pod, #match-unload-port, .reefer-pod-input');
+    if (tempEl) params.target_temperature = parseFloat(tempEl.value || tempEl.textContent) || null;
+    if (cargoEl) params.cargo_type = cargoEl.value || cargoEl.textContent?.trim() || null;
+    if (polEl) params.pol = polEl.value || polEl.textContent?.trim() || null;
+    if (podEl) params.pod = podEl.value || podEl.textContent?.trim() || null;
+  }
+  return {
+    current_module: "reefer_charter",
+    vista_activa: "Reefer Charter - Control de Frigoríficos",
+    parametros_activos: params
+  };
+}
+
+if (typeof window !== 'undefined') {
+  window.getReeferUIContext = getReeferUIContext;
+}
+
 export function GlobalMadreDrawer({
   isOpen = false,
   onClose,
@@ -171,7 +194,8 @@ export function GlobalMadreDrawer({
           mensajeUsuario: trimmed,
           message: trimmed,
           prompt: trimmed,
-         history: messages
+          contexto_ui: getReeferUIContext(),
+          history: messages
             .filter((m) => m.text && !m.isError)
             .map((m) => ({
               role: m.role || (m.sender === 'user' ? 'user' : 'assistant'),
@@ -296,4 +320,5 @@ export function GlobalMadreDrawer({
   );
 }
 
+export const MadrePanel = GlobalMadreDrawer;
 export default GlobalMadreDrawer;
