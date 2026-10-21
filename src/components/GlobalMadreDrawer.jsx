@@ -37,11 +37,51 @@ export function triggerLaserScanEffect() {
  */
 export function extractReeferScanData(doc = typeof document !== "undefined" ? document : null) {
   if (!doc || typeof doc.querySelector !== "function") {
+    const defaultBloque1 = {
+      pol: "Rotterdam",
+      pod: "Houston",
+      dias_navegacion: 12.0,
+      dias_puerto: 3.0,
+      dias_totales_viaje: 15.0,
+      dias_transito_critico: 12.0,
+    };
+    const defaultBloque2 = {
+      tipo_producto: "Carga Frigorífica",
+      temperatura_objetivo_c: 13.0,
+      ventilacion_cbm_h: "15 CBM/h",
+      humedad_controlada: "Estándar Reefer",
+    };
+    const defaultBloque3 = {
+      pallets: 0,
+      cajas: 0,
+      cbft_bajo_cubierta: 0,
+      reefer_plugs: "No requeridos",
+    };
+    const defaultBloque4 = {
+      flete_pallet_caja: 35.0,
+      recargo_generadores_combustible: "$0/día",
+      pda_pol: 28000,
+      pda_pod: 26000,
+      tce_proyectado: "$18,500 / día",
+    };
+
+    const defaultBloques = {
+      bloque_1_ruta_tiempos: defaultBloque1,
+      bloque_2_mercancia_frio: defaultBloque2,
+      bloque_3_capacidad_estiba: defaultBloque3,
+      bloque_4_costes_fletes: defaultBloque4,
+    };
+
     return {
-      ruta_y_tiempos: { pol: "Rotterdam", pod: "Houston", dias_transito_critico: 12.0 },
-      mercancia_y_frio: { tipo_producto: "Carga Frigorífica", temperatura_objetivo_c: 13.0, ventilacion_cbm_h: "15 CBM/h", humedad_controlada: "Estándar Reefer" },
-      capacidad_y_estiba: { pallets: 0, cajas: 0, cbft_bajo_cubierta: 0, reefer_plugs: "No requeridos" },
-      costes_y_fletes: { flete_pallet_caja: 35.0, recargo_generadores_combustible: "$0/día", pda_pol: 28000, pda_pod: 26000, tce_proyectado: "$18,500 / día" },
+      bloques: defaultBloques,
+      bloque_1_ruta_tiempos: defaultBloque1,
+      bloque_2_mercancia_frio: defaultBloque2,
+      bloque_3_capacidad_estiba: defaultBloque3,
+      bloque_4_costes_fletes: defaultBloque4,
+      ruta_y_tiempos: defaultBloque1,
+      mercancia_y_frio: defaultBloque2,
+      capacidad_y_estiba: defaultBloque3,
+      costes_y_fletes: defaultBloque4,
     };
   }
 
@@ -70,6 +110,21 @@ export function extractReeferScanData(doc = typeof document !== "undefined" ? do
     }
   };
 
+  // --- EXTRACCIÓN PREVIA DE CARGA / PALLETS / RITMOS ---
+  let pallets = getNum('[data-reefer="pallets"], #pallet-quantity, #reverse-pallet-quantity, #ground-pallets');
+  if (!pallets && typeof window !== "undefined" && window.State?.palletQuantity) pallets = Number(window.State.palletQuantity);
+  if (!pallets && typeof window !== "undefined" && window.dssFormState?.palletQuantity) pallets = Number(window.dssFormState.palletQuantity);
+
+  let ritmoCarga = getNum('[data-reefer="load-rate"], [data-reefer="load_rate"], [data-reefer="ritmo-carga"], #rate-load, #exec-load-rate, #input-loadRate, #gc-laytime-load-val, #ritmo_nominal_pol');
+  if (!ritmoCarga && typeof window !== "undefined") {
+    ritmoCarga = Number(window.State?.loadRate || window.State?.ritmoRealPol || window.dssFormState?.loadRate || 0);
+  }
+
+  let ritmoDescarga = getNum('[data-reefer="discharge-rate"], [data-reefer="discharge_rate"], [data-reefer="ritmo-descarga"], #rate-disch, #exec-disch-rate, #input-dischargeRate, #gc-laytime-disch-val, #ritmo_nominal_pod');
+  if (!ritmoDescarga && typeof window !== "undefined") {
+    ritmoDescarga = Number(window.State?.dischargeRate || window.State?.dischRate || window.State?.ritmoRealPod || window.dssFormState?.dischargeRate || 0);
+  }
+
   // --- BLOQUE 1: Ruta y Tiempos ---
   let pol = getVal('[data-reefer="pol"], [data-reefer="origin"], #map-port-pol, #input-pol, #match-load-port, .reefer-pol-input, #exec-pol');
   if (!pol && typeof window !== "undefined" && window.State?.pol) pol = window.State.pol;
@@ -79,9 +134,51 @@ export function extractReeferScanData(doc = typeof document !== "undefined" ? do
   if (!pod && typeof window !== "undefined" && window.State?.pod) pod = window.State.pod;
   if (!pod) pod = "Houston";
 
-  let diasTransito = getNum("#exec-sea-days, #sea-days, #transit-days, #total-sea-days, [data-metric=\"transit_days\"], #dias-transito, #dias-navegacion");
+  // Días de navegación marítima (tránsito crítico)
+  let diasTransito = getNum("#exec-sea-days, #sea-days, #transit-days, #total-sea-days, [data-metric=\"transit_days\"], #dias-transito, #dias-navegacion, [data-reefer=\"sea-days\"], [data-reefer=\"transit-days\"]");
   if (!diasTransito && typeof window !== "undefined" && window.State?.seaDays) diasTransito = Number(window.State.seaDays);
   if (!diasTransito) diasTransito = 12.0;
+  const diasNavegacionFinal = Math.round((Number(diasTransito) || 12.0) * 10) / 10;
+
+  // Días de puerto (Port Days): capturados de la interfaz o calculados según pallets / ritmos
+  let diasPuertoRaw = getNum('#exec-port-days, #shadow-port-days, #input-portDays, #val-portdays-total, #inverse-days-port, #dias-puerto, #port-days, #port-days-total, [data-metric="port_days"], [data-metric="port-days"], [data-reefer="port-days"], [data-reefer="port_days"], [data-reefer="portDays"]');
+  if (!diasPuertoRaw && typeof window !== "undefined") {
+    diasPuertoRaw = Number(window.State?.portDays || window.State?.totalPortDays || window.State?.tPort || window.State?.diasPuerto || window.dssFormState?.portDays || 0);
+  }
+
+  let diasPuertoCalculados = 0;
+  if (pallets > 0) {
+    if (ritmoCarga > 0 && ritmoDescarga > 0) {
+      diasPuertoCalculados = (pallets / ritmoCarga) + (pallets / ritmoDescarga);
+    } else if (ritmoCarga > 0) {
+      diasPuertoCalculados = (pallets / ritmoCarga) * 2;
+    } else if (ritmoDescarga > 0) {
+      diasPuertoCalculados = (pallets / ritmoDescarga) * 2;
+    } else {
+      // Ritmo medio estándar de carga refrigerada: 1.500 pallets/día por escala
+      diasPuertoCalculados = (pallets / 1500) * 2;
+    }
+  } else {
+    let cargoQty = getNum('#exec-cargo-qty, #cargo-qty, #input-cargoQty, [data-reefer="cargo-qty"]');
+    if (!cargoQty && typeof window !== "undefined") {
+      cargoQty = Number(window.State?.cargo || window.State?.cargoQty || window.State?.targetCargoMT || 0);
+    }
+    if (cargoQty > 0) {
+      if (ritmoCarga > 0 && ritmoDescarga > 0) {
+        diasPuertoCalculados = (cargoQty / ritmoCarga) + (cargoQty / ritmoDescarga);
+      } else if (ritmoCarga > 0) {
+        diasPuertoCalculados = (cargoQty / ritmoCarga) * 2;
+      } else if (ritmoDescarga > 0) {
+        diasPuertoCalculados = (cargoQty / ritmoDescarga) * 2;
+      }
+    }
+  }
+
+  let diasPuerto = diasPuertoRaw > 0 ? diasPuertoRaw : (diasPuertoCalculados > 0 ? diasPuertoCalculados : 3.0);
+  const diasPuertoFinal = Math.round(Number(diasPuerto) * 10) / 10;
+
+  // Días totales de viaje (navegación + puerto)
+  const diasTotalesViaje = Math.round((diasNavegacionFinal + diasPuertoFinal) * 10) / 10;
 
   // --- BLOQUE 2: Mercancía y Frío ---
   let producto = getVal('[data-reefer="cargo"], #cargo-product, #cargo-type, .cargo-select, #exec-cargo-type, #input-commodity');
@@ -114,9 +211,6 @@ export function extractReeferScanData(doc = typeof document !== "undefined" ? do
   }
 
   // --- BLOQUE 3: Capacidad y Estiba ---
-  let pallets = getNum('[data-reefer="pallets"], #pallet-quantity, #reverse-pallet-quantity, #ground-pallets');
-  if (!pallets && typeof window !== "undefined" && window.State?.palletQuantity) pallets = Number(window.State.palletQuantity);
-
   let cajas = getNum('[data-reefer="boxes"], #boxes-quantity, #cajas-cantidad, #cargo-boxes');
   if (!cajas && pallets > 0) {
     cajas = Math.round(pallets * 72);
@@ -157,43 +251,66 @@ export function extractReeferScanData(doc = typeof document !== "undefined" ? do
     }
   }
 
+  const bloque1 = {
+    pol: String(pol),
+    pod: String(pod),
+    dias_navegacion: diasNavegacionFinal,
+    dias_puerto: diasPuertoFinal,
+    dias_totales_viaje: diasTotalesViaje,
+    dias_transito_critico: diasNavegacionFinal,
+  };
+
+  const bloque2 = {
+    tipo_producto: String(producto),
+    temperatura_objetivo_c: tempObj,
+    ventilacion_cbm_h: String(ventilacion),
+    humedad_controlada: String(humedad),
+  };
+
+  const bloque3 = {
+    pallets: Number(pallets) || 0,
+    cajas: Number(cajas) || 0,
+    cbft_bajo_cubierta: Number(cbftBajoCubierta) || 0,
+    reefer_plugs: String(reeferPlugs),
+  };
+
+  const bloque4 = {
+    flete_pallet_caja: Number(fleteUnitario) || 35.0,
+    recargo_generadores_combustible: String(recargoGeneradores),
+    pda_pol: Number(pdaPol) || 28000,
+    pda_pod: Number(pdaPod) || 26000,
+    tce_proyectado: String(tceProyectado),
+  };
+
+  const bloques = {
+    bloque_1_ruta_tiempos: bloque1,
+    bloque_2_mercancia_frio: bloque2,
+    bloque_3_capacidad_estiba: bloque3,
+    bloque_4_costes_fletes: bloque4,
+  };
+
   return {
-    ruta_y_tiempos: {
-      pol: String(pol),
-      pod: String(pod),
-      dias_transito_critico: typeof diasTransito === "number" ? diasTransito : parseFloat(diasTransito) || 12.0,
-    },
-    mercancia_y_frio: {
-      tipo_producto: String(producto),
-      temperatura_objetivo_c: tempObj,
-      ventilacion_cbm_h: String(ventilacion),
-      humedad_controlada: String(humedad),
-    },
-    capacidad_y_estiba: {
-      pallets: Number(pallets) || 0,
-      cajas: Number(cajas) || 0,
-      cbft_bajo_cubierta: Number(cbftBajoCubierta) || 0,
-      reefer_plugs: String(reeferPlugs),
-    },
-    costes_y_fletes: {
-      flete_pallet_caja: Number(fleteUnitario) || 35.0,
-      recargo_generadores_combustible: String(recargoGeneradores),
-      pda_pol: Number(pdaPol) || 28000,
-      pda_pod: Number(pdaPod) || 26000,
-      tce_proyectado: String(tceProyectado),
-    },
+    bloques,
+    bloque_1_ruta_tiempos: bloque1,
+    bloque_2_mercancia_frio: bloque2,
+    bloque_3_capacidad_estiba: bloque3,
+    bloque_4_costes_fletes: bloque4,
+    ruta_y_tiempos: bloque1,
+    mercancia_y_frio: bloque2,
+    capacidad_y_estiba: bloque3,
+    costes_y_fletes: bloque4,
   };
 }
 
 /**
  * Helper para extraer el contexto actual de la interfaz de Reefer Charter.
- * Empaqueta la extracción estructurada en contexto_ui.escaneo_estructurado.
+ * Empaqueta la extracción estructurada en contexto_ui.escaneo_reefer y contexto_ui.escaneo_estructurado.
  */
 export function getReeferUIContext() {
   const params = {};
   let referenciaActiva = null;
 
-  if (typeof document !== "undefined" && typeof document.querySelector === "function") {
+  if (typeof document !== "undefined" && document && typeof document.querySelector === "function") {
     const tempEl = document.querySelector('[data-reefer="temperature"], #setpoint-temp, .reefer-temp-input') || document.querySelector("#target-temperature");
     const cargoEl = document.querySelector('[data-reefer="cargo"], #cargo-type, .cargo-select');
     const polEl = document.querySelector('[data-reefer="pol"], [data-reefer="origin"], #input-pol, #match-load-port, .reefer-pol-input');
@@ -227,13 +344,15 @@ export function getReeferUIContext() {
   }
 
   // Empaquetado del escaneo estructurado en los 4 bloques frigoríficos
-  const escaneoEstructurado = typeof document !== "undefined" ? extractReeferScanData(document) : null;
+  const escaneoEstructurado = typeof document !== "undefined" && document ? extractReeferScanData(document) : extractReeferScanData(null);
+  const escaneoReefer = escaneoEstructurado;
 
   return {
     current_module: "reefer_charter",
     vista_activa: "Reefer Charter - Control de Frigoríficos",
     parametros_activos: params,
     escaneo_estructurado: escaneoEstructurado,
+    escaneo_reefer: escaneoReefer,
     referenciaMadre: referenciaActiva,
   };
 }

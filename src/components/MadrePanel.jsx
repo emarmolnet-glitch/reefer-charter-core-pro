@@ -1,1 +1,1 @@
-export { MadrePanel, GlobalMadreDrawer, getReeferUIContext, default } from "./GlobalMadreDrawer.jsx";
+export { MadrePanel, GlobalMadreDrawer, getReeferUIContext, extractReeferScanData, default } from "./GlobalMadreDrawer.jsx";

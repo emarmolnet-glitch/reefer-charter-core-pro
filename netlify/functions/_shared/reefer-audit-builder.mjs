@@ -5,14 +5,16 @@
  */
 
 export function buildReeferScreenAuditReply(escaneo) {
-  const ruta = escaneo?.ruta_y_tiempos || {};
-  const merc = escaneo?.mercancia_y_frio || {};
-  const cap = escaneo?.capacidad_y_estiba || {};
-  const cost = escaneo?.costes_y_fletes || {};
+  const ruta = escaneo?.bloques?.bloque_1_ruta_tiempos || escaneo?.bloque_1_ruta_tiempos || escaneo?.ruta_y_tiempos || {};
+  const merc = escaneo?.bloques?.bloque_2_mercancia_frio || escaneo?.bloque_2_mercancia_frio || escaneo?.mercancia_y_frio || {};
+  const cap = escaneo?.bloques?.bloque_3_capacidad_estiba || escaneo?.bloque_3_capacidad_estiba || escaneo?.capacidad_y_estiba || {};
+  const cost = escaneo?.bloques?.bloque_4_costes_fletes || escaneo?.bloque_4_costes_fletes || escaneo?.costes_y_fletes || {};
 
   const pol = ruta.pol || escaneo?.pol || 'Rotterdam';
   const pod = ruta.pod || escaneo?.pod || 'Houston';
-  const transito = ruta.dias_transito_critico ?? escaneo?.dias_transito_critico ?? 12.0;
+  const transito = ruta.dias_navegacion ?? ruta.dias_transito_critico ?? escaneo?.dias_navegacion ?? escaneo?.dias_transito_critico ?? 12.0;
+  const diasPuerto = ruta.dias_puerto ?? escaneo?.dias_puerto;
+  const diasTotales = ruta.dias_totales_viaje ?? escaneo?.dias_totales_viaje ?? (diasPuerto !== undefined && diasPuerto !== null ? Number((transito + diasPuerto).toFixed(1)) : null);
 
   const producto = merc.tipo_producto || escaneo?.tipo_producto || escaneo?.cargo_type || 'Frutas Frescas / Perecederos';
   const temp = merc.temperatura_objetivo_c ?? escaneo?.temperatura_objetivo_c ?? escaneo?.target_temperature ?? 13.0;
@@ -30,14 +32,24 @@ export function buildReeferScreenAuditReply(escaneo) {
   const pdaPod = cost.pda_pod ?? escaneo?.pda_pod ?? 26000;
   const tce = cost.tce_proyectado || escaneo?.tce_proyectado || '$18,500 / día';
 
+  const lineasRutaTiempos = [
+    `• **Puerto de Carga (POL):** ${pol}`,
+    `• **Puerto de Descarga (POD):** ${pod}`,
+    `• **Tránsito Marítimo Crítico:** ${transito} días (Ventana crítica para vida útil y calidad organoléptica)`,
+  ];
+  if (diasPuerto !== undefined && diasPuerto !== null) {
+    lineasRutaTiempos.push(`• **Días en Puerto (Port Days):** ${diasPuerto} días`);
+  }
+  if (diasTotales !== undefined && diasTotales !== null) {
+    lineasRutaTiempos.push(`• **Días Totales de Viaje:** ${diasTotales} días`);
+  }
+
   return `🔍 **AUDITORÍA FRIGORÍFICA MADRE (ESCANEO DE PANTALLA EN TIEMPO REAL)**
 
 ⚡ *Telemetría y parámetros visuales extraídos directamente de la interfaz gráfica sin bloqueos ni latencia de servidor.*
 
 📍 **BLOQUE 1: RUTA Y TIEMPOS OPERATIVOS**
-• **Puerto de Carga (POL):** ${pol}
-• **Puerto de Descarga (POD):** ${pod}
-• **Tránsito Marítimo Crítico:** ${transito} días (Ventana crítica para vida útil y calidad organoléptica)
+${lineasRutaTiempos.join('\n')}
 
 ❄️ **BLOQUE 2: MERCANCÍA Y CONTROL DE FRÍO (REEFER PARAMETERS)**
 • **Mercancía / Especie:** ${producto}
