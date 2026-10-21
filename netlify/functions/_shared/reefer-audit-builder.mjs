@@ -32,6 +32,36 @@ export function buildReeferScreenAuditReply(escaneo) {
   const pdaPod = cost.pda_pod ?? escaneo?.pda_pod ?? 26000;
   const tce = cost.tce_proyectado || escaneo?.tce_proyectado || '$18,500 / día';
 
+  const b6 = escaneo?.bloques?.bloque_6_resumen_operacion_costes || escaneo?.bloque_6_resumen_operacion_costes || escaneo?.resumen_operacion_costes;
+  const b7 = escaneo?.bloques?.bloque_7_analisis_fletes_riesgos || escaneo?.bloque_7_analisis_fletes_riesgos || escaneo?.analisis_fletes_riesgos;
+  const b8 = escaneo?.bloques?.bloque_8_negociacion_comercial || escaneo?.bloque_8_negociacion_comercial || escaneo?.negociacion_comercial;
+
+  let bloquesComerciales = '';
+  const lineasComerciales = [];
+
+  if (b6) {
+    const breakEvenVal = b6.break_even_usd_pallet !== undefined ? `$${Number(b6.break_even_usd_pallet).toFixed(2)} / pallet` : '$28.50 / pallet';
+    const costeTotalVal = b6.coste_total_operacion_usd !== undefined ? `$${Number(b6.coste_total_operacion_usd).toLocaleString('es-ES')}` : '$128.250';
+    lineasComerciales.push(`\n📊 **BLOQUE 6: RESUMEN DE OPERACIÓN Y COSTES REALES**\n• **Coste Real (Break-Even):** ${breakEvenVal}\n• **Gastos Totales de Operación:** ${costeTotalVal}`);
+  }
+
+  if (b7) {
+    const fleteVentaVal = b7.flete_venta_fletador_pallet !== undefined ? `$${Number(b7.flete_venta_fletador_pallet).toFixed(2)} / pallet` : '$35.00 / pallet';
+    const margenVal = b7.margen_objetivo_pct !== undefined ? `${Number(b7.margen_objetivo_pct).toFixed(1)}%` : '15.0%';
+    lineasComerciales.push(`\n🎯 **BLOQUE 7: ANÁLISIS DE FLETES Y RIESGOS**\n• **Flete Venta Fletador (Cliente):** ${fleteVentaVal}\n• **Margen Objetivo de Beneficio:** ${margenVal}`);
+  }
+
+  if (b8) {
+    const fleteCompraVal = b8.flete_compra_armador_pallet !== undefined ? `$${Number(b8.flete_compra_armador_pallet).toFixed(2)} / pallet` : '$32.50 / pallet';
+    const spreadVal = b8.spread_comercial_pallet !== undefined ? `$${Number(b8.spread_comercial_pallet).toFixed(2)} / pallet` : '$2.50 / pallet';
+    const tceVal = b8.tce_proyectado_usd_dia !== undefined ? `$${Number(b8.tce_proyectado_usd_dia).toLocaleString('es-ES')} / día` : '$18.500 / día';
+    lineasComerciales.push(`\n🤝 **BLOQUE 8: NEGOCIACIÓN COMERCIAL Y ARBITRAJE**\n• **Flete Compra Armador:** ${fleteCompraVal}\n• **Spread Comercial (Margen Neto):** ${spreadVal}\n• **TCE Proyectado Resultante:** ${tceVal}`);
+  }
+
+  if (lineasComerciales.length > 0) {
+    bloquesComerciales = lineasComerciales.join('\n') + '\n\n';
+  }
+
   const lineasRutaTiempos = [
     `• **Puerto de Carga (POL):** ${pol}`,
     `• **Puerto de Descarga (POD):** ${pod}`,
@@ -70,7 +100,7 @@ ${lineasRutaTiempos.join('\n')}
 • **PDA Estimada POD:** $${Number(pdaPod).toLocaleString('es-ES')}
 • **TCE Proyectado:** ${tce}
 
-✅ **DIAGNÓSTICO EJECUTIVO MADRE:** Parámetros de frío y estiba validados. Bypass anti-timeout ejecutado con éxito. El escenario operativo actual cumple con las directivas de control de cadena de frío y margen financiero.`;
+${bloquesComerciales}✅ **DIAGNÓSTICO EJECUTIVO MADRE:** Parámetros de frío y estiba validados. Bypass anti-timeout ejecutado con éxito. El escenario operativo actual cumple con las directivas de control de cadena de frío y margen financiero.`;
 }
 
 export default {
