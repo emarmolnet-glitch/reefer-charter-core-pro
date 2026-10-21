@@ -258,6 +258,31 @@ export default async function proxyRequest(request) {
                 try {
                     const text = typeof rawBody === "string" ? rawBody : new TextDecoder().decode(rawBody);
                     const parsed = JSON.parse(text);
+
+                    // Reefer Charter: Bypass anti-timeout ante escaneo de pantalla estructurado
+                    const escaneo = parsed?.contexto_ui?.escaneo_estructurado || parsed?.contexto?.escaneo_estructurado || parsed?.escaneo_estructurado;
+                    const lowerPrompt = String(promptText || parsed?.mensaje || parsed?.mensajeUsuario || "").toLowerCase();
+                    const isScanOrScreenAudit = lowerPrompt.includes("escan") || lowerPrompt.includes("scan") || lowerPrompt.includes("pantalla") || (lowerPrompt.includes("auditor") && Boolean(escaneo));
+                    if (isScanOrScreenAudit && escaneo) {
+                        const { buildReeferScreenAuditReply } = await import("./_shared/reefer-audit-builder.mjs");
+                        const reply = buildReeferScreenAuditReply(escaneo);
+                        return new Response(JSON.stringify({
+                            success: true,
+                            reply: reply,
+                            response: reply,
+                            respuesta: reply,
+                            text: reply,
+                            escaneo_procesado: true,
+                            tipo_auditoria: "reefer_screen_scan",
+                        }), {
+                            status: 200,
+                            headers: {
+                                "Content-Type": "application/json",
+                                "Access-Control-Allow-Origin": "*",
+                            }
+                        });
+                    }
+
                     if (parsed?.current_module === "decisiones" || parsed?.currentModule === "decisiones") {
                         const auditResponse = buildDssStrategicAuditResponse(parsed.contexto_ui || parsed.contexto || parsed);
                         return new Response(JSON.stringify(auditResponse), {
