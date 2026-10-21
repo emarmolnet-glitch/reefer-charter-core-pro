@@ -64,12 +64,28 @@ export function extractReeferScanData(doc = typeof document !== "undefined" ? do
       pda_pod: 26000,
       tce_proyectado: "$18,500 / día",
     };
+    const defaultBloque6 = {
+      break_even_usd_pallet: 28.5,
+      coste_total_operacion_usd: 128250.0,
+    };
+    const defaultBloque7 = {
+      flete_venta_fletador_pallet: 35.0,
+      margen_objetivo_pct: 15.0,
+    };
+    const defaultBloque8 = {
+      flete_compra_armador_pallet: 32.5,
+      spread_comercial_pallet: 2.5,
+      tce_proyectado_usd_dia: 18500.0,
+    };
 
     const defaultBloques = {
       bloque_1_ruta_tiempos: defaultBloque1,
       bloque_2_mercancia_frio: defaultBloque2,
       bloque_3_capacidad_estiba: defaultBloque3,
       bloque_4_costes_fletes: defaultBloque4,
+      bloque_6_resumen_operacion_costes: defaultBloque6,
+      bloque_7_analisis_fletes_riesgos: defaultBloque7,
+      bloque_8_negociacion_comercial: defaultBloque8,
     };
 
     return {
@@ -78,10 +94,16 @@ export function extractReeferScanData(doc = typeof document !== "undefined" ? do
       bloque_2_mercancia_frio: defaultBloque2,
       bloque_3_capacidad_estiba: defaultBloque3,
       bloque_4_costes_fletes: defaultBloque4,
+      bloque_6_resumen_operacion_costes: defaultBloque6,
+      bloque_7_analisis_fletes_riesgos: defaultBloque7,
+      bloque_8_negociacion_comercial: defaultBloque8,
       ruta_y_tiempos: defaultBloque1,
       mercancia_y_frio: defaultBloque2,
       capacidad_y_estiba: defaultBloque3,
       costes_y_fletes: defaultBloque4,
+      resumen_operacion_costes: defaultBloque6,
+      analisis_fletes_riesgos: defaultBloque7,
+      negociacion_comercial: defaultBloque8,
     };
   }
 
@@ -282,11 +304,119 @@ export function extractReeferScanData(doc = typeof document !== "undefined" ? do
     tce_proyectado: String(tceProyectado),
   };
 
+  // --- BLOQUE 6: Resumen Operación y Costes ---
+  let breakEvenPallet = getNum(
+    '[data-reefer="break-even"], [data-reefer="break_even"], [data-reefer="break-even-pallet"], [data-reefer="breakeven"], #res-cost-base-break-even, #res-breakeven, #res-coa-breakeven, #coa-preview-breakeven, #input-breakEven, #negotiation-break-even, #cmp-actual-breakeven, #val-financial-breakeven-unit, #print-breakeven, #break-even-pallet, #breakeven-pallet'
+  );
+  if (!breakEvenPallet && typeof window !== "undefined") {
+    breakEvenPallet = Number(window.State?.breakEvenUnitario || window.State?.breakEven || window.State?.costBaseBreakEven || window.dssFormState?.breakEven || window.dssFormState?.breakEvenUnitario || 0);
+  }
+
+  let costeTotalOperacion = getNum(
+    '[data-reefer="coste-total"], [data-reefer="coste_total"], [data-reefer="total-cost"], [data-reefer="total-costs"], [data-reefer="voyage-cost"], #res-cost-total, #cost-plus-total-costs, #input-estimated-cost, #print-cost-total, #total-costs-bar, #total-voyage-cost, #total-cost'
+  );
+  if (!costeTotalOperacion && typeof window !== "undefined") {
+    costeTotalOperacion = Number(window.State?.costTotal || window.State?.totalCosts || window.State?.totalVoyageCost || window.State?.coste_total_estimado || 0);
+  }
+
+  if (!costeTotalOperacion && breakEvenPallet > 0 && pallets > 0) {
+    costeTotalOperacion = Math.round(breakEvenPallet * pallets);
+  } else if (!breakEvenPallet && costeTotalOperacion > 0 && pallets > 0) {
+    breakEvenPallet = Math.round((costeTotalOperacion / pallets) * 100) / 100;
+  }
+
+  if (!breakEvenPallet) breakEvenPallet = 28.5;
+  if (!costeTotalOperacion) {
+    costeTotalOperacion = pallets > 0 ? Math.round(pallets * breakEvenPallet) : 128250.0;
+  }
+
+  const breakEvenFinal = Math.round(Number(breakEvenPallet) * 100) / 100;
+  const costeTotalFinal = Math.round(Number(costeTotalOperacion) * 100) / 100;
+
+  // --- BLOQUE 7: Análisis de Fletes y Riesgos ---
+  let fleteVenta = getNum(
+    '[data-reefer="flete-venta"], [data-reefer="freight-sell"], [data-reefer="freight_sell"], [data-reefer="selling-freight"], [data-reefer="flete-venta-pallet"], #freight-sell, #res-venta-sugerida, #coa-detail-charterer-target, #negotiation-charterer-target, #selling-freight, #flete-venta, #target-freight-sell, #exec-sell-freight, #flete-pallet, #print-freight-sell, [data-reefer="freight"]'
+  );
+  if (!fleteVenta && typeof window !== "undefined") {
+    fleteVenta = Number(window.State?.freightSell || window.State?.fleteVenta || window.State?.sellingFreight || window.State?.chartererFreight || window.State?.fleteUnitario || window.dssFormState?.freightSell || 0);
+  }
+  if (!fleteVenta && fleteUnitario > 0) {
+    fleteVenta = fleteUnitario;
+  }
+  if (!fleteVenta) fleteVenta = 35.0;
+
+  let margenObjetivo = getNum(
+    '[data-reefer="margen"], [data-reefer="target-margin"], [data-reefer="margin"], [data-reefer="margen-objetivo"], #target-margin, #cost-plus-target-margin, #margin-charterer, #input-margin, #margen-objetivo, #target-margin-pct'
+  );
+  if (!margenObjetivo && typeof window !== "undefined") {
+    margenObjetivo = Number(window.State?.targetMargin || window.State?.margenObjetivo || window.State?.marginCharterer || window.State?.ownerMarginPercent || 0);
+  }
+  if (!margenObjetivo && fleteVenta > 0 && breakEvenFinal > 0 && fleteVenta > breakEvenFinal) {
+    margenObjetivo = Math.round(((fleteVenta - breakEvenFinal) / fleteVenta) * 1000) / 10;
+  }
+  if (!margenObjetivo) margenObjetivo = 15.0;
+
+  const fleteVentaFinal = Math.round(Number(fleteVenta) * 100) / 100;
+  const margenObjetivoFinal = Math.round(Number(margenObjetivo) * 100) / 100;
+
+  // --- BLOQUE 8: Negociación Comercial ---
+  let fleteCompra = getNum(
+    '[data-reefer="flete-compra"], [data-reefer="freight-rate"], [data-reefer="freight_rate"], [data-reefer="buying-freight"], [data-reefer="flete-compra-pallet"], #freight-rate, #coa-detail-owner-purchase, #cost-plus-min-freight-rate, #negotiation-owner-offer, #buying-freight, #flete-compra, #freight-rate-calc, #input-freightRate, #exec-buy-freight, #print-freight-rate'
+  );
+  if (!fleteCompra && typeof window !== "undefined") {
+    fleteCompra = Number(window.State?.freightRate || window.State?.freightCost || window.State?.fleteCompra || window.State?.ownerFreight || window.State?.flete_compra_usd_mt || 0);
+  }
+  if (!fleteCompra) fleteCompra = 32.50;
+
+  let spreadComercial = getNum(
+    '[data-reefer="spread"], [data-reefer="spread-pallet"], [data-reefer="commercial-spread"], #negotiation-spread-pmt, #spread-comercial, #commercial-spread'
+  );
+  if (!spreadComercial && fleteVentaFinal > 0 && fleteCompra > 0) {
+    spreadComercial = fleteVentaFinal - fleteCompra;
+  }
+  if (!spreadComercial) {
+    spreadComercial = Math.round((fleteVentaFinal - Number(fleteCompra)) * 100) / 100;
+  }
+
+  let tceDia = getNum(
+    '[data-reefer="tce"], [data-reefer="tce-day"], [data-reefer="tce-usd-dia"], #exec-tce, #tce-spot-theoretical-value, #tce-result, #calc-tce, [data-metric="tce"], #negotiation-owner-tce, #negotiation-target-tce, #res-tce-label'
+  );
+  if (!tceDia && typeof window !== "undefined") {
+    tceDia = Number(window.State?.tce || window.State?.projectedTce || window.State?.tceObtenido || 0);
+  }
+  if (!tceDia) {
+    const tceFromStr = parseFloat(String(tceProyectado).replace(/[^0-9.-]/g, ""));
+    tceDia = Number.isFinite(tceFromStr) && tceFromStr > 0 ? tceFromStr : 18500.0;
+  }
+
+  const fleteCompraFinal = Math.round(Number(fleteCompra) * 100) / 100;
+  const spreadComercialFinal = Math.round(Number(spreadComercial) * 100) / 100;
+  const tceDiaFinal = Math.round(Number(tceDia) * 100) / 100;
+
+  const bloque6 = {
+    break_even_usd_pallet: breakEvenFinal,
+    coste_total_operacion_usd: costeTotalFinal,
+  };
+
+  const bloque7 = {
+    flete_venta_fletador_pallet: fleteVentaFinal,
+    margen_objetivo_pct: margenObjetivoFinal,
+  };
+
+  const bloque8 = {
+    flete_compra_armador_pallet: fleteCompraFinal,
+    spread_comercial_pallet: spreadComercialFinal,
+    tce_proyectado_usd_dia: tceDiaFinal,
+  };
+
   const bloques = {
     bloque_1_ruta_tiempos: bloque1,
     bloque_2_mercancia_frio: bloque2,
     bloque_3_capacidad_estiba: bloque3,
     bloque_4_costes_fletes: bloque4,
+    bloque_6_resumen_operacion_costes: bloque6,
+    bloque_7_analisis_fletes_riesgos: bloque7,
+    bloque_8_negociacion_comercial: bloque8,
   };
 
   return {
@@ -295,10 +425,16 @@ export function extractReeferScanData(doc = typeof document !== "undefined" ? do
     bloque_2_mercancia_frio: bloque2,
     bloque_3_capacidad_estiba: bloque3,
     bloque_4_costes_fletes: bloque4,
+    bloque_6_resumen_operacion_costes: bloque6,
+    bloque_7_analisis_fletes_riesgos: bloque7,
+    bloque_8_negociacion_comercial: bloque8,
     ruta_y_tiempos: bloque1,
     mercancia_y_frio: bloque2,
     capacidad_y_estiba: bloque3,
     costes_y_fletes: bloque4,
+    resumen_operacion_costes: bloque6,
+    analisis_fletes_riesgos: bloque7,
+    negociacion_comercial: bloque8,
   };
 }
 
