@@ -260,7 +260,7 @@ export default async function proxyRequest(request) {
                     const parsed = JSON.parse(text);
 
                     // Reefer Charter: Bypass anti-timeout ante escaneo de pantalla estructurado
-                    const escaneo = parsed?.contexto_ui?.escaneo_estructurado || parsed?.contexto?.escaneo_estructurado || parsed?.escaneo_estructurado;
+                    const escaneo = parsed?.contexto_ui?.escaneo_reefer || parsed?.contexto_ui?.escaneo_estructurado || parsed?.contexto?.escaneo_reefer || parsed?.contexto?.escaneo_estructurado || parsed?.escaneo_reefer || parsed?.escaneo_estructurado;
                     const lowerPrompt = String(promptText || parsed?.mensaje || parsed?.mensajeUsuario || "").toLowerCase();
                     const isScanOrScreenAudit = lowerPrompt.includes("escan") || lowerPrompt.includes("scan") || lowerPrompt.includes("pantalla") || (lowerPrompt.includes("auditor") && Boolean(escaneo));
                     if (isScanOrScreenAudit && escaneo) {

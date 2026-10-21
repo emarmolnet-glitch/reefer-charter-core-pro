@@ -484,7 +484,7 @@ export default async (req) => {
     }
 
     // Reefer Charter: Bypass anti-timeout instantáneo si la petición incluye escaneo de pantalla visual
-    const escaneo = body?.contexto_ui?.escaneo_estructurado || rawContexto?.escaneo_estructurado || body?.escaneo_estructurado;
+    const escaneo = body?.contexto_ui?.escaneo_reefer || body?.contexto_ui?.escaneo_estructurado || rawContexto?.escaneo_reefer || rawContexto?.escaneo_estructurado || body?.escaneo_reefer || body?.escaneo_estructurado;
     const lowerMsg = String(mensaje || body?.mensajeUsuario || body?.prompt || "").toLowerCase();
     const isScanOrScreenAudit = lowerMsg.includes('escan') || lowerMsg.includes('scan') || lowerMsg.includes('pantalla') || (lowerMsg.includes('auditor') && Boolean(escaneo));
 
