@@ -1,175 +1,375 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from "react";
 
-export const MADRE_API_ENDPOINT = "https://calm-shortbread-55bcfc.netlify.app/.netlify/functions/madre-chat";
+export const MADRE_API_ENDPOINT = "https://neon-seachartercorepro-4ce09d.netlify.app/.netlify/functions/madre-chat";
 
-export function getCoreProUIContext() {
-  const params = {};
-  let vistaActivaActual = "Core PRO - Panel y Mapa Operativo";
-  let referenciaActiva = null;
+/**
+ * Efecto visual del láser escáner superpuesto sobre la pantalla.
+ * Desciende desde el header al footer en 1.2s en tonalidad azul/celeste hielo (#0EA5E9).
+ */
+export function triggerLaserScanEffect() {
+  if (typeof document === "undefined") return;
+  const laser = document.createElement("div");
+  laser.id = "reefer-laser-scanner";
+  laser.style.position = "fixed";
+  laser.style.top = "0";
+  laser.style.left = "0";
+  laser.style.width = "100vw";
+  laser.style.height = "4px";
+  laser.style.backgroundColor = "#0EA5E9"; // EN REEFER USAR #0EA5E9
+  laser.style.boxShadow = "0 0 20px #0EA5E9, 0 0 40px #0EA5E9";
+  laser.style.zIndex = "999999";
+  laser.style.transition = "top 1.2s cubic-bezier(0.4, 0, 0.2, 1)";
+  laser.style.pointerEvents = "none";
+  document.body.appendChild(laser);
 
-  if (typeof document !== 'undefined') {
-    // 1. MGO y Portfolio (lo que ya tenías)
-    const mgoEl = document.querySelector('[data-fuel="mgo"], #mgo-price, #bunker-mgo, .price-mgo, [data-metric="mgo"]');
-    const portfolioEl = document.querySelector('#portfolio-count, [data-portfolio-count], #fleet-summary-count');
+  setTimeout(() => {
+    laser.style.top = "100vh";
+  }, 50);
 
-    if (mgoEl) {
-      const val = parseFloat((mgoEl.value || mgoEl.textContent || "").replace(/[^0-9.]/g, ""));
-      if (Number.isFinite(val) && val > 0) params.mgo_price = val;
+  laser.addEventListener("transitionend", () => {
+    laser.remove();
+  });
+}
+
+/**
+ * Extracción estructurada del DOM adaptada a la carga refrigerada (Reefer Charter).
+ * Extrae y compacta los datos visibles agrupados en 4 bloques específicos.
+ */
+export function extractReeferScanData(doc = typeof document !== "undefined" ? document : null) {
+  if (!doc || typeof doc.querySelector !== "function") {
+    return {
+      ruta_y_tiempos: { pol: "Rotterdam", pod: "Houston", dias_transito_critico: 12.0 },
+      mercancia_y_frio: { tipo_producto: "Carga Frigorífica", temperatura_objetivo_c: 13.0, ventilacion_cbm_h: "15 CBM/h", humedad_controlada: "Estándar Reefer" },
+      capacidad_y_estiba: { pallets: 0, cajas: 0, cbft_bajo_cubierta: 0, reefer_plugs: "No requeridos" },
+      costes_y_fletes: { flete_pallet_caja: 35.0, recargo_generadores_combustible: "$0/día", pda_pol: 28000, pda_pod: 26000, tce_proyectado: "$18,500 / día" },
+    };
+  }
+
+  const getVal = (selector, fallback = "") => {
+    try {
+      const el = doc.querySelector(selector);
+      if (!el) return fallback;
+      if (el.tagName === "SELECT") {
+        return el.options?.[el.selectedIndex]?.text || el.value || fallback;
+      }
+      const v = el.value !== undefined && el.value !== "" ? el.value : (el.textContent || "");
+      return String(v).trim() || fallback;
+    } catch {
+      return fallback;
     }
-    if (portfolioEl) {
-      const pVal = parseInt((portfolioEl.textContent || "").replace(/[^0-9]/g, ""), 10);
-      if (Number.isFinite(pVal) && pVal > 0) params.totalPortfolio = pVal;
-    }
+  };
 
-    // --- NUEVO: 2. Rescatar la Referencia del Expediente (RDM/...) ---
-    // Escaneamos la pantalla buscando el formato RDM/XXXX-XXXX
-    const allTextEls = Array.from(document.querySelectorAll('span, div, p, h1, h2, h3, h4, h5, h6, input'));
-    const refEl = allTextEls.find(el => {
-      const text = el.value || el.textContent || "";
-      return text.includes('RDM/');
-    });
-    if (refEl) {
-      const match = (refEl.value || refEl.textContent).match(/RDM\/\d{4}-\d{4,}/);
-      if (match) referenciaActiva = match[0];
+  const getNum = (selector, fallback = 0) => {
+    try {
+      const valStr = getVal(selector, "");
+      if (!valStr) return fallback;
+      const num = parseFloat(String(valStr).replace(/[^0-9.-]/g, ""));
+      return Number.isFinite(num) ? num : fallback;
+    } catch {
+      return fallback;
     }
+  };
 
-    // --- NUEVO: 3. Rescatar las PDA POL y PDA POD ---
-    // Escaneamos los inputs de la calculadora buscando las PDA
-    // (Asegúrate de que tus inputs en React tengan name="pda_pol" o id="pda_pol", etc.)
-    const pdaPolInput = document.querySelector('input[name*="pda_pol"], input[name*="pdaPol"], [id*="pda-pol"], [id*="pdapol"]');
-    const pdaPodInput = document.querySelector('input[name*="pda_pod"], input[name*="pdaPod"], [id*="pda-pod"], [id*="pdapod"]');
+  // --- BLOQUE 1: Ruta y Tiempos ---
+  let pol = getVal('[data-reefer="pol"], [data-reefer="origin"], #map-port-pol, #input-pol, #match-load-port, .reefer-pol-input, #exec-pol');
+  if (!pol && typeof window !== "undefined" && window.State?.pol) pol = window.State.pol;
+  if (!pol) pol = "Rotterdam";
 
-    if (pdaPolInput) {
-      const valPol = parseFloat((pdaPolInput.value || "").replace(/[^0-9.]/g, ""));
-      if (Number.isFinite(valPol)) params.pda_pol = valPol;
-    }
-    if (pdaPodInput) {
-      const valPod = parseFloat((pdaPodInput.value || "").replace(/[^0-9.]/g, ""));
-      if (Number.isFinite(valPod)) params.pda_pod = valPod;
-    }
+  let pod = getVal('[data-reefer="pod"], [data-reefer="destination"], #map-port-pod, #input-pod, #match-unload-port, .reefer-pod-input, #exec-pod');
+  if (!pod && typeof window !== "undefined" && window.State?.pod) pod = window.State.pod;
+  if (!pod) pod = "Houston";
 
-    // --- NUEVO: 4. Cambiar de vista dinámicamente ---
-    // Si la pantalla tiene las PDA cargadas, le decimos a MADRE que estamos en la Calculadora
-    if (params.pda_pol || params.pda_pod) {
-      vistaActivaActual = "Core PRO - Calculadora de Bunkers y PDAs";
+  let diasTransito = getNum("#exec-sea-days, #sea-days, #transit-days, #total-sea-days, [data-metric=\"transit_days\"], #dias-transito, #dias-navegacion");
+  if (!diasTransito && typeof window !== "undefined" && window.State?.seaDays) diasTransito = Number(window.State.seaDays);
+  if (!diasTransito) diasTransito = 12.0;
+
+  // --- BLOQUE 2: Mercancía y Frío ---
+  let producto = getVal('[data-reefer="cargo"], #cargo-product, #cargo-type, .cargo-select, #exec-cargo-type, #input-commodity');
+  if (!producto && typeof window !== "undefined" && window.State?.cargoProduct) producto = window.State.cargoProduct;
+  if (!producto) producto = "Frutas Frescas / Cítricos";
+
+  const tempEl = doc.querySelector('[data-reefer="temperature"], #setpoint-temp, .reefer-temp-input') || doc.querySelector("#target-temperature, #reverse-target-temperature");
+  let tempObj = 13.0;
+  if (tempEl) {
+    const rawVal = tempEl.value !== undefined ? tempEl.value : tempEl.textContent;
+    const parsed = parseFloat(rawVal);
+    if (Number.isFinite(parsed)) tempObj = parsed;
+  } else if (typeof window !== "undefined" && window.State?.targetTemperatureCelsius !== undefined) {
+    tempObj = Number(window.State.targetTemperatureCelsius);
+  }
+
+  let ventilacion = getVal('[data-reefer="ventilation"], #ventilation-cbm, #ventilation-rate, input[name*="ventilation"]');
+  if (!ventilacion) {
+    ventilacion = tempObj < 0 ? "0 CBM/h (Atmósfera Cerrada / Congelado)" : "15 CBM/h (Renovación continua)";
+  }
+
+  const caCheckbox = doc.querySelector('[data-reefer="humidity"], #controlled-atmosphere, #controlled-humidity, input[name*="humidity"]');
+  let humedad = "Estándar Frigorífica (85-90% HR)";
+  if (caCheckbox) {
+    if (caCheckbox.type === "checkbox") {
+      humedad = caCheckbox.checked ? "Humedad y Atmósfera Controlada Activa (CA: 90% HR, O2 2%, CO2 3%)" : "Humedad relativa convencional (~85% HR)";
+    } else {
+      humedad = caCheckbox.value || caCheckbox.textContent || humedad;
     }
   }
 
-  // Se lo enviamos TODO a MADRE
+  // --- BLOQUE 3: Capacidad y Estiba ---
+  let pallets = getNum('[data-reefer="pallets"], #pallet-quantity, #reverse-pallet-quantity, #ground-pallets');
+  if (!pallets && typeof window !== "undefined" && window.State?.palletQuantity) pallets = Number(window.State.palletQuantity);
+
+  let cajas = getNum('[data-reefer="boxes"], #boxes-quantity, #cajas-cantidad, #cargo-boxes');
+  if (!cajas && pallets > 0) {
+    cajas = Math.round(pallets * 72);
+  }
+
+  let volCbm = getNum('[data-reefer="cbft"], #cargo-volume-cbm, #reverse-cargo-volume-cbm, #hold-capacity-cbft, #exec-cargo-qty');
+  if (!volCbm && typeof window !== "undefined" && window.State?.cargoVolumeCBM) volCbm = Number(window.State.cargoVolumeCBM);
+  if (!volCbm && pallets > 0) volCbm = Math.round(pallets * 1.8);
+
+  const cbftBajoCubierta = Math.round(volCbm > 0 ? volCbm * 35.3147 : (pallets > 0 ? pallets * 63.5 : 250000));
+
+  let reeferPlugs = getVal('[data-reefer="plugs"], #reefer-plugs, #plugs-required');
+  if (!reeferPlugs) {
+    const plugsCount = Math.ceil(pallets > 0 ? pallets / 20 : 12);
+    reeferPlugs = `${plugsCount} conexiones 380V/440V 32A operativas`;
+  }
+
+  // --- BLOQUE 4: Costes y Fletes ---
+  let fleteUnitario = getNum('[data-reefer="freight"], #freight-rate, #freight-sell, #exec-sell-freight, #exec-buy-freight, #flete-pallet');
+  if (!fleteUnitario && typeof window !== "undefined" && (window.State?.fleteUnitario || window.State?.freightSell)) {
+    fleteUnitario = Number(window.State.fleteUnitario || window.State.freightSell);
+  }
+  if (!fleteUnitario) fleteUnitario = 35.0;
+
+  let auxGenset = getNum('[data-reefer="genset"], #auxiliary-genset-cost, #reverse-auxiliary-genset-cost, input[name="auxiliaryGensetDailyCost"]');
+  if (!auxGenset && typeof window !== "undefined" && window.State?.auxiliaryGensetDailyCost) auxGenset = Number(window.State.auxiliaryGensetDailyCost);
+  const recargoGeneradores = auxGenset > 0 ? `$${auxGenset.toFixed(2)}/día (Genset Auxiliar)` : "$450.00/día (MGO Generador)";
+
+  const pdaPol = getNum('#pda-pol, input[name*="pda_pol"], [id*="pda-pol"]', 28000);
+  const pdaPod = getNum('#pda-pod, input[name*="pda_pod"], [id*="pda-pod"]', 26000);
+
+  let tceProyectado = getVal('#exec-tce, #tce-spot-theoretical-value, #tce-result, #calc-tce, [data-metric="tce"]');
+  if (!tceProyectado || tceProyectado === "—" || tceProyectado === "$0 / día") {
+    if (typeof window !== "undefined" && window.State?.tce) {
+      tceProyectado = `$${Number(window.State.tce).toLocaleString("en-US")} / día`;
+    } else {
+      tceProyectado = "$18,500 / día";
+    }
+  }
+
   return {
-    current_module: "core_pro",
-    vista_activa: vistaActivaActual,
-    referenciaMadre: referenciaActiva, // <- VITAL PARA QUE NO FALLE NEON
-    parametros_activos: params         // <- AQUÍ VAN LOS GASTOS DE PUERTO
+    ruta_y_tiempos: {
+      pol: String(pol),
+      pod: String(pod),
+      dias_transito_critico: typeof diasTransito === "number" ? diasTransito : parseFloat(diasTransito) || 12.0,
+    },
+    mercancia_y_frio: {
+      tipo_producto: String(producto),
+      temperatura_objetivo_c: tempObj,
+      ventilacion_cbm_h: String(ventilacion),
+      humedad_controlada: String(humedad),
+    },
+    capacidad_y_estiba: {
+      pallets: Number(pallets) || 0,
+      cajas: Number(cajas) || 0,
+      cbft_bajo_cubierta: Number(cbftBajoCubierta) || 0,
+      reefer_plugs: String(reeferPlugs),
+    },
+    costes_y_fletes: {
+      flete_pallet_caja: Number(fleteUnitario) || 35.0,
+      recargo_generadores_combustible: String(recargoGeneradores),
+      pda_pol: Number(pdaPol) || 28000,
+      pda_pod: Number(pdaPod) || 26000,
+      tce_proyectado: String(tceProyectado),
+    },
   };
 }
 
-if (typeof window !== 'undefined') {
-  window.getReeferUIContext = getReeferUIContext;
+/**
+ * Helper para extraer el contexto actual de la interfaz de Reefer Charter.
+ * Empaqueta la extracción estructurada en contexto_ui.escaneo_estructurado.
+ */
+export function getReeferUIContext() {
+  const params = {};
+  let referenciaActiva = null;
+
+  if (typeof document !== "undefined" && typeof document.querySelector === "function") {
+    const tempEl = document.querySelector('[data-reefer="temperature"], #setpoint-temp, .reefer-temp-input') || document.querySelector("#target-temperature");
+    const cargoEl = document.querySelector('[data-reefer="cargo"], #cargo-type, .cargo-select');
+    const polEl = document.querySelector('[data-reefer="pol"], [data-reefer="origin"], #input-pol, #match-load-port, .reefer-pol-input');
+    const podEl = document.querySelector('[data-reefer="pod"], [data-reefer="destination"], #input-pod, #match-unload-port, .reefer-pod-input');
+
+    if (tempEl) {
+      const val = parseFloat(tempEl.value !== undefined ? tempEl.value : tempEl.textContent);
+      if (Number.isFinite(val)) params.target_temperature = val;
+    }
+    if (cargoEl) {
+      params.cargo_type = cargoEl.value || (cargoEl.textContent ? cargoEl.textContent.trim() : null);
+    }
+    if (polEl) {
+      params.pol = polEl.value || (polEl.textContent ? polEl.textContent.trim() : null);
+    }
+    if (podEl) {
+      params.pod = podEl.value || (podEl.textContent ? podEl.textContent.trim() : null);
+    }
+
+    if (typeof document.querySelectorAll === "function") {
+      const allTextEls = Array.from(document.querySelectorAll("span, div, p, h1, h2, h3, h4, h5, h6, input"));
+      const refEl = allTextEls.find((el) => {
+        const text = el.value || el.textContent || "";
+        return text.includes("RDM/");
+      });
+      if (refEl) {
+        const match = (refEl.value || refEl.textContent).match(/RDM\/\d{4}-\d{4,}/);
+        if (match) referenciaActiva = match[0];
+      }
+    }
+  }
+
+  // Empaquetado del escaneo estructurado en los 4 bloques frigoríficos
+  const escaneoEstructurado = typeof document !== "undefined" ? extractReeferScanData(document) : null;
+
+  return {
+    current_module: "reefer_charter",
+    vista_activa: "Reefer Charter - Control de Frigoríficos",
+    parametros_activos: params,
+    escaneo_estructurado: escaneoEstructurado,
+    referenciaMadre: referenciaActiva,
+  };
 }
 
+export const getCoreProUIContext = getReeferUIContext;
+
+if (typeof window !== "undefined") {
+  window.getReeferUIContext = getReeferUIContext;
+  window.triggerLaserScanEffect = triggerLaserScanEffect;
+  window.extractReeferScanData = extractReeferScanData;
+}
+
+// export const GlobalMadreDrawer
 export function GlobalMadreDrawer({
-  isOpen = false,
-  onClose,
-  isMuted: controlledIsMuted,
-  onMuteToggle,
-  onReset,
+  referenciaMadre,
+  origen = "Reefer Charter Core PRO",
+  initialOpen = false,
+  showTrigger = true,
+  COMANDOS_RAPIDOS = [
+    { id: "escaner_pantalla", texto: "🔍 Escanear Pantalla Frigorífica", icono: "❄️" },
+    { id: "escenarios", texto: "Genera los 3 escenarios", icono: "📊" },
+    { id: "escudo", texto: "Redacta el escudo preventivo", icono: "🛡️" },
+    { id: "oferta_50", texto: "El cliente dice que tiene una oferta 50% más barata", icono: "⚔️" },
+  ],
 }) {
-  const [internalIsOpen, setInternalIsOpen] = useState(isOpen);
-  const [internalIsMuted, setInternalIsMuted] = useState(false);
+  const [isOpen, setIsOpen] = useState(initialOpen);
+  const [inputTexto, setInputTexto] = useState("");
+  const [mensajes, setMensajes] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [messages, setMessages] = useState([
-    {
-      id: 1,
-      sender: 'assistant',
-      role: 'assistant',
-      text: 'Auditoría Estratégica MADRE activa. Sistema listo para optimización y fixture recap.',
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    },
-  ]);
-  const [inputValue, setInputValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-
-  const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const messagesEndRef = useRef(null);
 
+  // Alias para sincronización bidireccional
+  const messages = mensajes;
+
+  // Escape key listener to close drawer
   useEffect(() => {
-    setInternalIsOpen(isOpen);
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && isOpen) {
+        setIsOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen]);
 
-  const isMuted = controlledIsMuted !== undefined ? controlledIsMuted : internalIsMuted;
-
+  // Focus input automatically upon opening
   useEffect(() => {
-    if (internalIsOpen && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (isOpen) {
+      setTimeout(() => inputRef.current?.focus(), 150);
     }
-  }, [messages, isLoading, internalIsOpen]);
+  }, [isOpen]);
 
+  // Auto-scroll whenever mensajes change
   useEffect(() => {
-    const handleToggle = () => setInternalIsOpen((prev) => !prev);
-    const handleOpen = () => setInternalIsOpen(true);
-    const handleCloseEvent = () => setInternalIsOpen(false);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [mensajes]);
 
-    window.addEventListener('madre:toggle', handleToggle);
-    window.addEventListener('madre:open', handleOpen);
-    window.addEventListener('madre:close', handleCloseEvent);
+  // Window API and custom events synchronization
+  useEffect(() => {
+    const handleOpen = () => setIsOpen(true);
+    const handleClose = () => setIsOpen(false);
+    const handleToggle = () => setIsOpen((prev) => !prev);
+
+    window.addEventListener("madre:open", handleOpen);
+    window.addEventListener("madre:close", handleClose);
+    window.addEventListener("madre:toggle", handleToggle);
+
+    if (typeof window !== "undefined") {
+      window.MadrePanelUI = {
+        open: () => setIsOpen(true),
+        close: () => setIsOpen(false),
+        toggle: () => setIsOpen((prev) => !prev),
+        isOpen: () => isOpen,
+      };
+
+      const topbarGlowElements = document.querySelectorAll(".madre-topbar-glow, #madre-topbar-glow");
+      const topbarBtnElements = document.querySelectorAll(".madre-topbar-btn, #madre-topbar-button");
+      const topbarImgElements = document.querySelectorAll(".madre-topbar-img, #madre-topbar-img");
+
+      topbarBtnElements.forEach((btn) => {
+        btn.setAttribute("aria-expanded", String(isOpen));
+      });
+      topbarGlowElements.forEach((glow) => {
+        glow.style.display = isOpen || isListening ? "block" : "none";
+      });
+      topbarImgElements.forEach((img) => {
+        if (isOpen || isListening) {
+          img.classList.add("grayscale-0", "opacity-100", "scale-110");
+          img.classList.remove("grayscale", "opacity-70", "scale-100");
+        } else {
+          img.classList.remove("grayscale-0", "opacity-100", "scale-110");
+          img.classList.add("grayscale", "opacity-70", "scale-100");
+        }
+      });
+    }
 
     return () => {
-      window.removeEventListener('madre:toggle', handleToggle);
-      window.removeEventListener('madre:open', handleOpen);
-      window.removeEventListener('madre:close', handleCloseEvent);
+      window.removeEventListener("madre:open", handleOpen);
+      window.removeEventListener("madre:close", handleClose);
+      window.removeEventListener("madre:toggle", handleToggle);
     };
-  }, []);
+  }, [isOpen, isListening]);
 
   const speakText = (text) => {
-    if (isMuted || typeof window === 'undefined' || !window.speechSynthesis) return;
+    if (isMuted || typeof window === "undefined" || !window.speechSynthesis) return;
     try {
       window.speechSynthesis.cancel();
-      const clean = text.replace(/[*#_`~[\]]/g, '').trim();
+      const clean = text.replace(/[*#_`~[\]]/g, "").trim();
       const utterance = new SpeechSynthesisUtterance(clean);
-      const isEnglish = document.documentElement.lang?.startsWith('en') || window.location.href.includes('lang=en');
-      utterance.lang = isEnglish ? 'en-US' : 'es-ES';
+      const isEnglish = document.documentElement.lang?.startsWith("en") || window.location.href.includes("lang=en");
+      utterance.lang = isEnglish ? "en-US" : "es-ES";
       utterance.rate = 1.05;
       window.speechSynthesis.speak(utterance);
     } catch (_) {}
   };
 
   const handleMuteToggle = () => {
-    const nextMuted = !isMuted;
-    if (typeof onMuteToggle === 'function') {
-      onMuteToggle(nextMuted);
-    } else {
-      setInternalIsMuted(nextMuted);
-    }
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
+    setIsMuted(!isMuted);
+    if (typeof window !== "undefined" && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
   };
 
   const handleReset = () => {
-    if (typeof onReset === 'function') {
-      onReset();
-    }
-    setMessages([
-      {
-        id: Date.now(),
-        sender: 'assistant',
-        role: 'assistant',
-        text: 'Auditoría Estratégica MADRE reiniciada.',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      },
-    ]);
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
+    setMensajes([]);
+    if (typeof window !== "undefined" && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
   };
 
   const handleClose = () => {
-    if (typeof onClose === 'function') {
-      onClose();
-    }
-    setInternalIsOpen(false);
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
+    setIsOpen(false);
+    if (typeof window !== "undefined" && window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
   };
@@ -177,191 +377,422 @@ export function GlobalMadreDrawer({
   const handleMicClick = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert('El reconocimiento de voz no está soportado en este navegador. Utiliza Google Chrome.');
+      alert("El reconocimiento de voz no está soportado en este navegador. Utiliza Google Chrome.");
       return;
     }
     const recognition = new SpeechRecognition();
-    const isEnglish = document.documentElement.lang?.startsWith('en');
-    recognition.lang = isEnglish ? 'en-US' : 'es-ES';
+    const isEnglish = document.documentElement.lang?.startsWith("en");
+    recognition.lang = isEnglish ? "en-US" : "es-ES";
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
 
     recognition.onstart = () => setIsListening(true);
     recognition.onend = () => setIsListening(false);
     recognition.onerror = (err) => {
-      console.error('Error de micrófono:', err);
+      console.error("Error de micrófono:", err);
       setIsListening(false);
     };
     recognition.onresult = (event) => {
       const speechText = event.results[0][0].transcript;
-      setInputValue(speechText);
+      setInputTexto(speechText);
     };
 
     recognition.start();
   };
-  const handleSubmit = async (e) => {
-    if (e && typeof e.preventDefault === 'function') {
+
+  const handleSubmit = async (e, quickCommandText = null) => {
+    if (e?.preventDefault) {
       e.preventDefault();
     }
-    const trimmed = inputValue.trim();
-    if (!trimmed || isLoading) return;
+    const texto = (typeof quickCommandText === "string" ? quickCommandText : inputTexto).trim();
+    const trimmed = texto;
+    if (!trimmed || loading) return;
 
-    const userMessage = {
+    // Disparar el haz de luz láser de escaneo si la orden pide escaneo o auditoría
+    const lower = trimmed.toLowerCase();
+    const isScanCommand = lower.includes("escan") || lower.includes("scan") || lower.includes("pantalla") || lower.includes("auditor");
+    if (isScanCommand && typeof triggerLaserScanEffect === "function") {
+      triggerLaserScanEffect();
+    }
+
+    const userMsg = {
       id: Date.now(),
-      sender: 'user',
-      role: 'user',
+      rol: "user",
+      role: "user",
+      autor: "Operador",
+      sender: "user",
+      texto: trimmed,
       text: trimmed,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
-    setInputValue('');
-    setIsLoading(true);
+    setMensajes((prev) => [...prev, userMsg]);
+    setInputTexto("");
+    setLoading(true);
 
     try {
+      // Sincronización de referencia dinámica de expediente
       const urlParams = new URLSearchParams(window.location.search);
-      let activeRef = urlParams.get('ref');
-      if (!activeRef && window.location.hash.includes('?')) {
-        const hashQuery = window.location.hash.split('?')[1];
-        activeRef = new URLSearchParams(hashQuery).get('ref');
+      let activeRef = urlParams.get("ref");
+      if (!activeRef && window.location.hash.includes("?")) {
+        const hashQuery = window.location.hash.split("?")[1];
+        activeRef = new URLSearchParams(hashQuery).get("ref");
       }
-      const finalProjectRef = activeRef || "RDM/2026-TBN";
+      const finalProjectRef = referenciaMadre || activeRef || "RDM/2026-TBN";
 
-      const response = await fetch(MADRE_API_ENDPOINT, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
+      const outgoingPayload = {
+        // mensajeUsuario: texto
+        mensajeUsuario: trimmed,
+        message: trimmed,
+        prompt: trimmed,
+        contexto_ui: getReeferUIContext(),
+        history: mensajes
+          .filter((m) => (m.text || m.texto) && !m.isError)
+          .map((m) => ({
+            role: m.role || (m.rol === "user" ? "user" : "assistant"),
+            content: m.text || m.texto,
+          })),
+        context: {
+          origin: "Reefer Charter Core PRO",
+          projectRef: finalProjectRef,
         },
-        body: JSON.stringify({
-          mensajeUsuario: trimmed,
-          message: trimmed,
-          prompt: trimmed,
-          contexto_ui: getReeferUIContext(),
-          history: messages
-            .filter((m) => m.text && !m.isError)
-            .map((m) => ({
-              role: m.role || (m.sender === 'user' ? 'user' : 'assistant'),
-              content: m.text,
-            }))
-            .filter((msg, index, arr) => index > 0 || msg.role === 'user'),
-          context: {
-            origin: "Reefer Charter Core PRO",
-            projectRef: finalProjectRef,
+      };
+
+      let response;
+      try {
+        response = await fetch(MADRE_API_ENDPOINT, {
+          method: "POST",
+          mode: "cors",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
           },
-        }),
-      });
+          body: JSON.stringify(outgoingPayload),
+        });
+      } catch (remoteFetchErr) {
+        // Fallback resiliente al endpoint local en Reefer Charter
+        response = await fetch("/.netlify/functions/madre-chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+          },
+          body: JSON.stringify(outgoingPayload),
+        });
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
 
       const data = await response.json();
-      const replyText = data?.reply || data?.message || data?.text || data?.response || 'Auditoría MADRE procesada.';
+      const replyText =
+        data?.reply || data?.response || data?.message || data?.text || "Auditoría MADRE procesada.";
 
-      const assistantMessage = {
+      const assistantMsg = {
         id: Date.now() + 1,
-        sender: 'assistant',
-        role: 'assistant',
+        rol: "assistant",
+        role: "assistant",
+        autor: "MADRE Core",
+        sender: "assistant",
+        texto: replyText,
         text: replyText,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
 
-      setMessages((prev) => [...prev, assistantMessage]);
+      setMensajes((prev) => [...prev, assistantMsg]);
       speakText(replyText);
     } catch (err) {
-      const fallbackText = 'Error de conexión con el Cerebro Central en Data Bridge.';
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now() + 1,
-          sender: 'assistant',
-          role: 'assistant',
-          text: fallbackText,
-          isError: true,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        },
-      ]);
+      console.error("MADRE Connection Error:", err);
+      const errorMsg = {
+        id: Date.now() + 1,
+        rol: "assistant",
+        role: "assistant",
+        autor: "MADRE Core",
+        sender: "assistant",
+        texto: "Error de conexión con el Cerebro Central en Data Bridge. Verifica los permisos CORS o reintenta.",
+        text: "Error de conexión con el Cerebro Central en Data Bridge. Verifica los permisos CORS o reintenta.",
+        isError: true,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      };
+      setMensajes((prev) => [...prev, errorMsg]);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  if (!internalIsOpen) return null;
+  const handleQuickCommandClick = (cmd) => {
+    const cmdText = cmd?.texto || cmd;
+    handleSubmit(null, cmdText);
+  };
 
   return (
-    <aside
-      id="global-madre-drawer"
-      className="fixed top-0 left-0 bottom-0 z-[9999] w-full max-w-md bg-slate-900 text-slate-100 shadow-2xl border-r border-slate-800 flex flex-col font-sans"
-      style={{ backgroundColor: '#0f172a', color: '#ffffff' }}
-    >
-      <header className="flex items-center justify-between px-4 py-3 shrink-0 border-b border-slate-800" style={{ backgroundColor: '#0f172a', color: '#ffffff', borderBottom: '1px solid #1e293b' }}>
-        <div className="flex items-center gap-2">
-          <img src="/MADRE.png" alt="MADRE" className="w-5 h-5 rounded-full object-cover" />
-          <span translate="no" className="notranslate font-bold text-base tracking-wide text-white" style={{ color: '#ffffff' }}>MADRE</span>
-          <span className="text-[9px] font-mono bg-teal-500/20 text-teal-300 px-1.5 py-0.5 rounded border border-teal-500/30">Cerebro Central</span>
-        </div>
-        <div className="flex items-center gap-2 ml-auto">
-          <button type="button" id="btn-madre-mute" onClick={handleMuteToggle} className="text-xs px-2 py-1 rounded hover:bg-slate-800 text-white bg-transparent" style={{ color: '#ffffff', backgroundColor: 'transparent' }}>
-            {isMuted ? '🔇' : '🔊'}
-          </button>
-          <button type="button" id="btn-madre-reset" onClick={handleReset} className="text-xs px-2 py-1 rounded hover:bg-slate-800 text-white bg-transparent" style={{ color: '#ffffff', backgroundColor: 'transparent' }}>
-            🔄
-          </button>
-          <button type="button" id="btn-madre-close" onClick={handleClose} className="text-xs px-2 py-1 rounded hover:bg-slate-800 text-white bg-transparent" style={{ color: '#ffffff', backgroundColor: 'transparent' }}>
-            ✕
-          </button>
-        </div>
-      </header>
+    <>
+      {/* 1. Botón Isotipo MADRE en TopBar */}
+      {showTrigger && (
+        <button
+          id="madre-topbar-button"
+          type="button"
+          onClick={() => setIsOpen(true)}
+          aria-label="Abrir panel MADRE"
+          title={isOpen || isListening ? "MADRE activa" : "MADRE"}
+          className="madre-topbar-btn relative flex items-center justify-center w-10 h-10 rounded-full p-0 bg-transparent border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-slate-900 group"
+        >
+          {(isOpen || isListening) && (
+            <div
+              id="madre-topbar-glow"
+              className="madre-topbar-glow absolute inset-0 rounded-full animate-pulse bg-cyan-500 blur-md pointer-events-none opacity-80"
+              aria-hidden="true"
+            />
+          )}
+          <img
+            id="madre-topbar-img"
+            src="/MADRE.png"
+            alt="MADRE"
+            className={`madre-topbar-img w-10 h-10 rounded-full relative z-10 object-contain transition-all duration-300 ${
+              isOpen || isListening
+                ? "grayscale-0 opacity-100 scale-110 drop-shadow-[0_0_12px_rgba(34,211,238,0.8)]"
+                : "grayscale opacity-70 scale-100 hover:opacity-90"
+            }`}
+          />
+        </button>
+      )}
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ backgroundColor: '#0f172a', color: '#ffffff' }}>
-        {messages.map((m) => {
-          const isUser = m.sender === 'user';
-          return (
-            <div key={m.id} className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
-              <span translate="no" className="notranslate text-[10px] text-slate-400 mb-1 px-1">
-                {isUser ? 'Operador' : 'MADRE Core'}
+      {/* 2. Drawer Lateral y Backdrop */}
+      {isOpen && (
+        <>
+          <div
+            id="madre-backdrop"
+            className="madre-backdrop fixed inset-0 bg-black/60 backdrop-blur-sm z-[2147483646] transition-opacity"
+            style={{ zIndex: 2147483646 }}
+            onClick={() => setIsOpen(false)}
+            aria-hidden="true"
+          />
+
+          <aside
+            id="madre-drawer-panel"
+            className="madre-drawer fixed top-0 left-0 bottom-0 w-full max-w-lg bg-slate-900 text-slate-100 shadow-2xl z-[2147483647] flex flex-col border-r border-slate-800 animate-in slide-in-from-left duration-300"
+            style={{ backgroundColor: "#0f172a", color: "#f1f5f9", zIndex: 2147483647 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Panel Inteligente MADRE"
+          >
+            {/* Header */}
+            <header
+              className="madre-drawer-header flex items-center justify-between p-4 bg-slate-950 border-b border-slate-800"
+              style={{ backgroundColor: "#020617", color: "#f8fafc" }}
+            >
+              <div className="madre-drawer-title-wrap flex items-center gap-3">
+                <div className="madre-avatar-icon flex items-center justify-center w-8 h-8 rounded-full overflow-hidden bg-cyan-950/60 border border-cyan-500/40 shrink-0 flex-shrink-0">
+                  <img
+                    src="/MADRE.png"
+                    alt="MADRE"
+                    className="w-8 h-8 rounded-full object-contain grayscale-0 opacity-100"
+                  />
+                </div>
+                <div>
+                  <h2 className="madre-title-text text-sm font-bold text-white flex items-center gap-2">
+                    <span className="text-white font-bold tracking-tight">MADRE</span>
+                    <span className="madre-badge-ref text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                      Cerebro Central
+                    </span>
+                  </h2>
+                  <p className="madre-subtitle-text text-[11px] text-slate-400">
+                    Cerebro Operacional Marítimo & Frigorífico (Reefer Charter)
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 ml-auto text-white shrink-0 flex-shrink-0">
+                <button
+                  id="madre-mute-button"
+                  type="button"
+                  className={`madre-mute-btn shrink-0 flex-shrink-0 text-white flex items-center justify-center w-8 h-8 rounded-md transition ${
+                    isMuted
+                      ? "text-rose-400 hover:text-rose-300 hover:bg-slate-800"
+                      : "text-white hover:text-cyan-300 hover:bg-slate-800"
+                  }`}
+                  onClick={handleMuteToggle}
+                  title={isMuted ? "Activar voz de MADRE" : "Silenciar voz de MADRE"}
+                  aria-label={isMuted ? "Activar voz de MADRE" : "Silenciar voz de MADRE"}
+                >
+                  {isMuted ? "🔇" : "🔊"}
+                </button>
+                <button
+                  id="madre-reset-button"
+                  type="button"
+                  className="madre-reset-btn shrink-0 flex-shrink-0 text-white flex items-center justify-center w-8 h-8 p-1.5 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition text-xs"
+                  onClick={handleReset}
+                  title="Reiniciar conversación"
+                  aria-label="Reiniciar conversación"
+                >
+                  🔄
+                </button>
+                <button
+                  id="madre-close-button"
+                  type="button"
+                  className="madre-close-btn shrink-0 flex-shrink-0 text-white flex items-center justify-center w-8 h-8 rounded-md hover:text-slate-200 hover:bg-slate-800 transition"
+                  onClick={handleClose}
+                  aria-label="Cerrar panel MADRE"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+            </header>
+
+            {/* Mensajes */}
+            <div
+              id="madre-messages-container"
+              className="madre-drawer-body flex-1 overflow-y-auto p-4 space-y-3 bg-slate-900 text-slate-100"
+              style={{ backgroundColor: "#0f172a", color: "#f1f5f9" }}
+            >
+              {mensajes.length === 0 ? (
+                <div className="madre-empty-state text-center py-8 px-4 text-slate-400">
+                  <div className="madre-empty-icon flex items-center justify-center mb-3">
+                    <img src="/MADRE.png" alt="MADRE" className="w-12 h-12 rounded-full object-contain opacity-80" />
+                  </div>
+                  <h3 className="madre-empty-title text-sm font-bold text-slate-200 mb-1">
+                    Cerebro Frigorífico Activo
+                  </h3>
+                  <p className="madre-empty-desc text-xs text-slate-400 max-w-xs mx-auto leading-relaxed mb-4">
+                    Escáner visual de pantalla listo para capturar en tiempo real las variables de temperatura, ventilación, pallets y costes refrigerados.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerLaserScanEffect();
+                      handleSubmit(null, "Escanear pantalla");
+                    }}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold shadow transition"
+                  >
+                    <span>⚡ Activar Escáner Visual</span>
+                  </button>
+                </div>
+              ) : (
+                mensajes.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`madre-message flex flex-col ${
+                      msg.rol === "user" ? "madre-message--user items-end" : "madre-message--assistant items-start"
+                    }`}
+                  >
+                    <div
+                      className={`madre-bubble p-3 text-xs leading-relaxed max-w-[95%] text-white rounded-2xl whitespace-pre-wrap ${
+                        msg.rol === "user"
+                          ? "bg-cyan-600 text-white rounded-br-sm shadow-md min-w-[150px] w-max max-w-[95%] text-left"
+                          : msg.isError
+                          ? "bg-red-950 text-red-200 border border-red-800 rounded-bl-sm"
+                          : "bg-slate-800 border border-slate-700 text-slate-100 rounded-bl-sm shadow-md"
+                      }`}
+                      style={msg.rol === "user" ? { minWidth: "150px", width: "max-content", maxWidth: "95%", textAlign: "left" } : {}}
+                    >
+                      <div className="madre-bubble-meta flex items-center justify-between text-[10px] opacity-70 mb-1">
+                        <span className="font-semibold">{msg.autor}</span>
+                        <span>{msg.timestamp}</span>
+                      </div>
+                      <div className="whitespace-pre-wrap break-words">{msg.texto || msg.text}</div>
+                    </div>
+                  </div>
+                ))
+              )}
+              {loading && (
+                <div
+                  id="madre-loading-indicator"
+                  className="flex items-center gap-3 p-3 mx-4 mb-2 rounded-xl bg-slate-800/60 border border-dashed border-cyan-500/40 text-xs text-cyan-300"
+                >
+                  <div className="madre-radar-spinner w-4 h-4 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin"></div>
+                  <span>MADRE está auditando los parámetros frigoríficos...</span>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Comandos Rápidos */}
+            <div
+              className="madre-quick-commands-bar p-3 bg-slate-950/90 border-t border-slate-800"
+              style={{ backgroundColor: "#020617", color: "#f8fafc" }}
+            >
+              <span className="madre-quick-title text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
+                ⚡ Comandos Rápidos (1-Clic)
               </span>
-              <div className={`p-3 rounded-xl text-xs max-w-[85%] leading-relaxed ${isUser ? 'bg-teal-600 text-white' : m.isError ? 'bg-red-950 text-red-200 border border-red-800' : 'bg-slate-800 text-slate-100 border border-slate-700'}`}>
-                {m.text}
+              <div className="madre-quick-buttons-row flex flex-col gap-1.5">
+                {COMANDOS_RAPIDOS.map((cmd) => (
+                  <button
+                    key={cmd.id}
+                    type="button"
+                    disabled={loading}
+                    onClick={() => handleQuickCommandClick(cmd)}
+                    className="madre-quick-btn flex items-center justify-between text-left px-3 py-2 rounded-lg bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-200 text-xs transition hover:border-cyan-500/50 hover:text-cyan-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span>{cmd.icono}</span>
+                      <span className="font-medium">{cmd.texto}</span>
+                    </span>
+                    <span className="text-[10px] text-slate-400">↵</span>
+                  </button>
+                ))}
               </div>
             </div>
-          );
-        })}
-        {isLoading && (
-          <div className="text-xs text-teal-300 animate-pulse px-1">MADRE está procesando la solicitud...</div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
 
-      <div className="p-3 border-t border-slate-800 bg-slate-900 flex gap-2 items-center" style={{ backgroundColor: '#0f172a' }}>
-        <button
-          type="button"
-          id="madre-mic-button"
-          onClick={handleMicClick}
-          className={`p-2 rounded-lg text-xs border ${isListening ? 'bg-red-600 border-red-500 animate-pulse text-white' : 'bg-slate-800 border-slate-700 text-teal-300 hover:bg-slate-700'}`}
-          title="Hablar con MADRE"
-        >
-          🎙️
-        </button>
-        <form onSubmit={handleSubmit} className="flex gap-2 flex-1">
-          <input
-            ref={inputRef}
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Pregunta a MADRE o escribe un comando..."
-            className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-400 focus:outline-none focus:border-teal-400"
-            style={{ backgroundColor: '#1e293b', color: '#ffffff' }}
-          />
-          <button type="submit" className="px-3 py-2 bg-teal-600 hover:bg-teal-500 text-white rounded-lg text-xs font-bold" style={{ backgroundColor: '#0d9488', color: '#ffffff' }}>
-            Enviar
-          </button>
-        </form>
-      </div>
-    </aside>
+            {/* Input y Footer */}
+            <footer
+              className="madre-drawer-footer relative p-3 bg-slate-950 border-t border-slate-800 flex-shrink-0"
+              style={{ backgroundColor: "#020617", color: "#f8fafc" }}
+            >
+              {isListening && (
+                <div
+                  id="madre-voice-status"
+                  className="madre-voice-status absolute bottom-full left-3 right-3 mb-2 px-2.5 py-1.5 rounded-md text-[11px] flex items-center justify-between border bg-slate-900/95 border-cyan-500/50 text-cyan-200 backdrop-blur-md shadow-lg z-20 pointer-events-auto"
+                >
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <span className="inline-block w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+                    <span id="madre-voice-status-text">🎙️ Escuchando Wake Word... (Escuchando...)</span>
+                  </span>
+                  <span id="madre-voice-transcript" className="italic truncate max-w-[180px] text-[10px] opacity-80"></span>
+                </div>
+              )}
+              <form onSubmit={handleSubmit} className="madre-input-form flex items-center gap-2 w-full">
+                <button
+                  id="madre-mic-button"
+                  type="button"
+                  onClick={handleMicClick}
+                  className={`madre-mic-btn flex-shrink-0 shrink-0 px-3 py-2 text-xs font-semibold rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 transition flex items-center justify-center gap-1.5 ${isListening ? "ring-2 ring-cyan-400 text-cyan-300" : ""}`}
+                  title="Activar escucha de voz"
+                  aria-label="Activar escucha de voz"
+                >
+                  <span className="text-sm select-none">🎙️</span>
+                </button>
+                <input
+                  ref={inputRef}
+                  id="madre-chat-input"
+                  type="text"
+                  value={inputTexto}
+                  onChange={(e) => setInputTexto(e.target.value)}
+                  placeholder="Pregunta a MADRE o escribe 'Escanear pantalla'..."
+                  className="madre-chat-input flex-1 min-w-0 px-3 py-2 text-xs bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                />
+                <button
+                  id="madre-send-button"
+                  type="submit"
+                  disabled={loading || !inputTexto.trim()}
+                  className="madre-send-btn flex-shrink-0 shrink-0 px-4 py-2 text-xs font-bold bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed shadow"
+                >
+                  Enviar
+                </button>
+              </form>
+            </footer>
+          </aside>
+        </>
+      )}
+    </>
   );
 }
 
-export const MadrePanel = GlobalMadreDrawer;
+export function MadrePanel(props) {
+  return <GlobalMadreDrawer {...props} />;
+}
+
 export default GlobalMadreDrawer;

@@ -8,6 +8,7 @@ import { buildCalculatorAutofillAction, normalizeChatHistory } from "./_shared/c
 import { DATA_BRIDGE_SYSTEM_PROMPT, DATA_BRIDGE_TOOLS, executeDataBridgeTool } from "./_shared/data-bridge-tooling.mjs";
 import { WEATHER_TOOLS, executeWeatherTool } from "./_shared/weather-tooling.mjs";
 import { searchTavily, searchSerpApi, searchBrave } from "./_shared/web-search.mjs";
+import { buildReeferScreenAuditReply } from "./_shared/reefer-audit-builder.mjs";
 
 // CHAT_ASSISTANT_MODEL = "gemini-3.1-pro-preview" (legacy test fallback)
 export const CHAT_ASSISTANT_MODEL = "gemini-2.5-flash";
@@ -480,6 +481,24 @@ export default async (req) => {
       mensaje = body?.mensaje;
       rawContexto = body?.contexto || {};
       imagenData = body?.image; 
+    }
+
+    // Reefer Charter: Bypass anti-timeout instantáneo si la petición incluye escaneo de pantalla visual
+    const escaneo = body?.contexto_ui?.escaneo_estructurado || rawContexto?.escaneo_estructurado || body?.escaneo_estructurado;
+    const lowerMsg = String(mensaje || body?.mensajeUsuario || body?.prompt || "").toLowerCase();
+    const isScanOrScreenAudit = lowerMsg.includes('escan') || lowerMsg.includes('scan') || lowerMsg.includes('pantalla') || (lowerMsg.includes('auditor') && Boolean(escaneo));
+
+    if (isScanOrScreenAudit && escaneo) {
+      const reply = buildReeferScreenAuditReply(escaneo);
+      return jsonResponse(200, {
+        success: true,
+        reply: reply,
+        response: reply,
+        respuesta: reply,
+        text: reply,
+        escaneo_procesado: true,
+        tipo_auditoria: "reefer_screen_scan",
+      });
     }
 
     if (body?.current_module === "decisiones" || body?.currentModule === "decisiones" || rawContexto?.current_module === "decisiones") {
