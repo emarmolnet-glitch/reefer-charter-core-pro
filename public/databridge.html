@@ -1105,15 +1105,11 @@
             const activeController = dataBridgeMasterStatsController;
             dataBridgeMasterStatsRequest = (async () => {
                 try {
-                    const response = await fetchCoreProApiWithFunctionFallback(
-                        '/api/databridge-master-stats',
-                        '/.netlify/functions/databridge-master-stats',
-                        {
-                        headers: { Accept: 'application/json' },
-                        cache: 'no-store',
-                        signal: activeController.signal
-                        }
-                    );
+                    const response = await fetch('/api/databridge-master-stats', {
+    headers: { Accept: 'application/json' },
+    cache: 'no-store',
+    signal: activeController.signal
+});
                     if (!response.headers.get('content-type')?.includes('application/json')) {
                         throw new Error('Invalid Payload');
                     }
