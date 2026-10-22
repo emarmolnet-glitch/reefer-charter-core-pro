@@ -440,7 +440,7 @@ export function extractReeferScanData(doc = typeof document !== "undefined" ? do
 
 /**
  * Helper para extraer el contexto actual de la interfaz de Reefer Charter.
- * Empaqueta la extracción estructurada en contexto_ui.escaneo_reefer y contexto_ui.escaneo_estructurado.
+ * Empaqueta la extracción en contexto_ui.escaneo_reefer.
  */
 export function getReeferUIContext() {
   const params = {};
@@ -479,15 +479,14 @@ export function getReeferUIContext() {
     }
   }
 
-  // Empaquetado del escaneo estructurado en los 4 bloques frigoríficos
-  const escaneoEstructurado = typeof document !== "undefined" && document ? extractReeferScanData(document) : extractReeferScanData(null);
-  const escaneoReefer = escaneoEstructurado;
+  // Empaquetado del escaneo reefer en los bloques frigoríficos
+  const datosExtraidos = typeof document !== "undefined" && document ? extractReeferScanData(document) : extractReeferScanData(null);
+  const escaneoReefer = { bloques: datosExtraidos };
 
   return {
     current_module: "reefer_charter",
     vista_activa: "Reefer Charter - Control de Frigoríficos",
     parametros_activos: params,
-    escaneo_estructurado: escaneoEstructurado,
     escaneo_reefer: escaneoReefer,
     referenciaMadre: referenciaActiva,
   };
@@ -695,33 +694,60 @@ export function GlobalMadreDrawer({
       }
       const finalProjectRef = referenciaMadre || activeRef || "RDM/2026-TBN";
 
-      const outgoingPayload = {
-        // mensajeUsuario: texto
-        mensajeUsuario: trimmed,
-        message: trimmed,
-        prompt: trimmed,
-        contexto_ui: getReeferUIContext(),
-        history: mensajes
-          .filter((m) => (m.text || m.texto) && !m.isError)
-          .map((m) => ({
-            role: m.role || (m.rol === "user" ? "user" : "assistant"),
-            content: m.text || m.texto,
-          })),
-        context: {
-          origin: "Reefer Charter Core PRO",
-          projectRef: finalProjectRef,
-        },
-      };
+      // Función que recopila datosExtraidos de la pantalla
+      const datosExtraidos = typeof document !== "undefined" && document ? extractReeferScanData(document) : extractReeferScanData(null);
 
-      const response = await fetch(MADRE_API_ENDPOINT, {
-        method: "POST",
-        mode: "cors",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-        },
-        body: JSON.stringify(outgoingPayload),
-      });
+      let response;
+      if (isScanCommand) {
+        response = await fetch(MADRE_API_ENDPOINT, {
+          method: "POST",
+          mode: "cors",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+          },
+          body: JSON.stringify({
+            prompt: "Escanear Pantalla Frigorífica",
+            mensajeUsuario: "Audita esta operación de transporte frigorífico.",
+            origen: "Reefer Charter",
+            current_module: "reefer_charter",
+            contexto_ui: {
+                // Envolvemos los datos explícitamente en la clave que espera el backend reefer
+                escaneo_reefer: { bloques: datosExtraidos } 
+            }
+          }),
+        });
+      } else {
+        const outgoingPayload = {
+          // mensajeUsuario: texto
+          mensajeUsuario: trimmed,
+          message: trimmed,
+          prompt: trimmed,
+          origen: "Reefer Charter",
+          current_module: "reefer_charter",
+          contexto_ui: getReeferUIContext(),
+          history: mensajes
+            .filter((m) => (m.text || m.texto) && !m.isError)
+            .map((m) => ({
+              role: m.role || (m.rol === "user" ? "user" : "assistant"),
+              content: m.text || m.texto,
+            })),
+          context: {
+            origin: "Reefer Charter Core PRO",
+            projectRef: finalProjectRef,
+          },
+        };
+
+        response = await fetch(MADRE_API_ENDPOINT, {
+          method: "POST",
+          mode: "cors",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+          },
+          body: JSON.stringify(outgoingPayload),
+        });
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
