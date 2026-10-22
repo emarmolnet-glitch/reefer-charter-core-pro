@@ -46,7 +46,8 @@ export default async (req: Request): Promise<Response> => {
   const lower = rawPrompt.toLowerCase();
 
   // --- REEFER CHARTER: BYPASS ANTI-TIMEOUT (ESCANEO DE PANTALLA) ---
-  const escaneo = contexto_ui?.escaneo_estructurado;
+  const escaneo = contexto_ui?.escaneo_reefer?.bloques || contexto_ui?.escaneo_reefer || contexto_ui?.escaneo_estructurado;
+  // const escaneo = contexto_ui?.escaneo_estructurado;
   const isScanOrScreenAudit =
     lower.includes("escan") ||
     lower.includes("scan") ||
@@ -119,7 +120,8 @@ export const handler = async (event: any) => {
   const rawPrompt = String(mensajeUsuario || message || prompt || "");
   const lower = rawPrompt.toLowerCase();
 
-  const escaneo = contexto_ui?.escaneo_estructurado;
+  const escaneo = contexto_ui?.escaneo_reefer?.bloques || contexto_ui?.escaneo_reefer || contexto_ui?.escaneo_estructurado;
+  // const escaneo = contexto_ui?.escaneo_estructurado;
   const isScanOrScreenAudit =
     lower.includes("escan") ||
     lower.includes("scan") ||

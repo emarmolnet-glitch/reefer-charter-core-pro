@@ -37,8 +37,8 @@ test('2. Frontend: extractReeferScanData extracts the 4 structured Reefer blocks
   assert.match(drawerSource, /tce_proyectado/, 'Must extract tce_proyectado in Block 4');
 });
 
-test('3. Frontend: getReeferUIContext packages escaneo_estructurado into outgoing payload', () => {
-  assert.match(drawerSource, /escaneo_estructurado:\s*escaneoEstructurado/, 'Must attach escaneo_estructurado');
+test('3. Frontend: getReeferUIContext packages escaneo_reefer into outgoing payload', () => {
+  assert.match(drawerSource, /escaneo_reefer:\s*escaneoReefer/, 'Must attach escaneo_reefer');
   assert.match(drawerSource, /contexto_ui:\s*getReeferUIContext\(\)/, 'Drawer payload must pass contexto_ui with getReeferUIContext()');
   assert.match(drawerSource, /current_module:\s*["']reefer_charter["']/, 'Must maintain reefer_charter module name');
 });
