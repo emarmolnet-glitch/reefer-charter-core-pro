@@ -11,6 +11,12 @@
   force = true
 
 [[redirects]]
+  from = "/api/madre-chat"
+  to = "https://calm-shortbread-55bcfc.netlify.app/.netlify/functions/madre-chat"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/get-bunker-prices"
   to = "/.netlify/functions/get-bunker-prices"
   status = 200
@@ -18,8 +24,6 @@
 
 [build]
   command = "npm run build"
-  publish = "dist"
-  functions = "netlify/functions"
 
 [functions]
   directory = "netlify/functions"
