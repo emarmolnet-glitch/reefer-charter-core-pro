@@ -654,7 +654,7 @@ export function GlobalMadreDrawer({
     recognition.start();
   };
 
-  const handleSubmit = async (e, quickCommandText = null) => {
+ const handleSubmit = async (e, quickCommandText = null) => {
     if (e?.preventDefault) {
       e.preventDefault();
     }
@@ -694,63 +694,43 @@ export function GlobalMadreDrawer({
       }
       const finalProjectRef = referenciaMadre || activeRef || "RDM/2026-TBN";
 
-      let response;
-      if (isScanCommand) {
-        // Función que recopila datosExtraidos de la pantalla SOLO si es comando de escaneo
-        const datosExtraidos = typeof document !== "undefined" && document ? extractReeferScanData(document) : extractReeferScanData(null);
-        response = await fetch(MADRE_API_ENDPOINT, {
-          method: "POST",
-          mode: "cors",
-          headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-          },
-          body: JSON.stringify({
-            prompt: "Escanear Pantalla Frigorífica",
-            mensajeUsuario: "Audita esta operación de transporte frigorífico.",
-            origen: "Reefer Charter",
-            current_module: "reefer_charter",
-            contexto_ui: {
-                // Envolvemos los datos explícitamente en la clave que espera el backend reefer
-                escaneo_reefer: { bloques: datosExtraidos } 
-            }
-          }),
-        });
-      } else {
-        // 1. Obtenemos el contexto base
-        const contextoLimpio = getReeferUIContext();
-        // 2. ELIMINAMOS los datos del escáner para que la IA no salte a auditar por error
-        delete contextoLimpio.escaneo_reefer;
-
-        const outgoingPayload = {
-          mensajeUsuario: trimmed,
-          message: trimmed,
-          prompt: trimmed,
-          origen: "Reefer Charter",
-          current_module: "reefer_charter",
-          contexto_ui: contextoLimpio, // Enviamos el contexto limpio sin los datos de auditoría
-          history: mensajes
-            .filter((m) => (m.text || m.texto) && !m.isError)
-            .map((m) => ({
-              role: m.role || (m.rol === "user" ? "user" : "assistant"),
-              content: m.text || m.texto,
-            })),
-          context: {
-            origin: "Reefer Charter Core PRO",
-            projectRef: finalProjectRef,
-          },
-        };
-
-        response = await fetch(MADRE_API_ENDPOINT, {
-          method: "POST",
-          mode: "cors",
-          headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-          },
-          body: JSON.stringify(outgoingPayload),
-        });
+      // 1. Obtenemos el contexto completo de la interfaz (incluye los datos del escáner por defecto)
+      const contextoUI = getReeferUIContext();
+      
+      // 2. Si NO es un comando de escaneo, eliminamos los datos pesados para que responda natural
+      if (!isScanCommand) {
+        delete contextoUI.escaneo_reefer;
       }
+
+      // 3. Construimos UN SOLO paquete de envío perfecto para que Core Pro lo entienda siempre
+      const outgoingPayload = {
+        mensajeUsuario: trimmed,
+        message: trimmed,
+        prompt: trimmed,
+        origen: "Reefer Charter",
+        current_module: "reefer_charter",
+        contexto_ui: contextoUI,
+        history: mensajes
+          .filter((m) => (m.text || m.texto) && !m.isError)
+          .map((m) => ({
+            role: m.role || (m.rol === "user" ? "user" : "assistant"),
+            content: m.text || m.texto,
+          })),
+        context: {
+          origin: "Reefer Charter Core PRO",
+          projectRef: finalProjectRef,
+        },
+      };
+
+      const response = await fetch(MADRE_API_ENDPOINT, {
+        method: "POST",
+        mode: "cors",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: JSON.stringify(outgoingPayload),
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -791,7 +771,6 @@ export function GlobalMadreDrawer({
       setLoading(false);
     }
   };
-
   const handleQuickCommandClick = (cmd) => {
     const cmdText = cmd?.texto || cmd;
     handleSubmit(null, cmdText);
