@@ -7,7 +7,7 @@ const drawerSource = readFileSync(new URL('../src/components/GlobalMadreDrawer.j
 test('1. Global MADRE defines the direct Data Bridge Netlify function endpoint', () => {
   assert.match(
     drawerSource,
-    /const\s+MADRE_API_ENDPOINT\s*=\s*["']https:\/\/neon-seachartercorepro-4ce09d\.netlify\.app\/\.netlify\/functions\/madre-chat["']/,
+    /const\s+MADRE_API_ENDPOINT\s*=\s*["']https:\/\/calm-shortbread-55bcfc\.netlify\.app\/\.netlify\/functions\/madre-chat["']/,
     'Must define MADRE_API_ENDPOINT bypassing rewrite with direct .netlify/functions path'
   );
 });

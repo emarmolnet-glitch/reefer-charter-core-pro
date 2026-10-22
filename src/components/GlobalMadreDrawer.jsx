@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 
-export const MADRE_API_ENDPOINT = "https://neon-seachartercorepro-4ce09d.netlify.app/.netlify/functions/madre-chat";
+export const MADRE_API_ENDPOINT = "https://calm-shortbread-55bcfc.netlify.app/.netlify/functions/madre-chat";
 
 /**
  * Efecto visual del láser escáner superpuesto sobre la pantalla.
@@ -713,28 +713,15 @@ export function GlobalMadreDrawer({
         },
       };
 
-      let response;
-      try {
-        response = await fetch(MADRE_API_ENDPOINT, {
-          method: "POST",
-          mode: "cors",
-          headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-          },
-          body: JSON.stringify(outgoingPayload),
-        });
-      } catch (remoteFetchErr) {
-        // Fallback resiliente al endpoint local en Reefer Charter
-        response = await fetch("/.netlify/functions/madre-chat", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-          },
-          body: JSON.stringify(outgoingPayload),
-        });
-      }
+      const response = await fetch(MADRE_API_ENDPOINT, {
+        method: "POST",
+        mode: "cors",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: JSON.stringify(outgoingPayload),
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
