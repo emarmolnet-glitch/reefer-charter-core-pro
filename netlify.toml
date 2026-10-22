@@ -12,7 +12,7 @@
 
 [[redirects]]
   from = "/api/madre-chat"
-  to = "https://calm-shortbread-55bcfc.netlify.app/.netlify/functions/madre-chat"
+  to = "https://neon-seachartercorepro-4ce09d.netlify.app/.netlify/functions/madre-chat"
   status = 200
   force = true
 
