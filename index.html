@@ -9717,26 +9717,26 @@
             <button
                 id="madre-topbar-button"
                 type="button"
-                class="madre-topbar-btn relative flex items-center justify-center w-10 h-10 rounded-full p-0 bg-transparent border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-slate-900 group"
-                style="background: transparent; border: none; padding: 0;"
+                class="madre-topbar-btn relative group flex items-center justify-center w-8 h-8 md:w-9 md:h-9 rounded-full border-2 border-slate-800 bg-slate-900 hover:scale-110 transition-transform duration-200 shadow-md cursor-pointer shrink-0"
                 aria-label="Abrir panel MADRE"
-                title="MADRE"
-                aria-expanded="false"
+                title="Cerebro Central MADRE"
                 onclick="if (window.MadrePanelUI?.toggle) { window.MadrePanelUI.toggle(); } else { window.dispatchEvent(new CustomEvent('madre:toggle')); }"
             >
+                <!-- Resplandor trasero: Mantiene el ID para que JS pueda activarlo, sumando el efecto hover -->
                 <div
                     id="madre-topbar-glow"
-                    class="madre-topbar-glow absolute inset-0 rounded-full animate-pulse bg-cyan-500 blur-md pointer-events-none opacity-80"
+                    class="madre-topbar-glow absolute inset-0 rounded-full animate-pulse bg-cyan-500 blur-md opacity-60 group-hover:opacity-100 transition-opacity pointer-events-none"
                     style="display: none;"
                     aria-hidden="true"
                 ></div>
+                
+                <!-- Logo oficial MADRE: Mantiene el ID para JS y añade la transición de escala de grises a color -->
                 <img
                     id="madre-topbar-img"
                     src="/MADRE.png"
                     alt="MADRE"
-                    class="madre-topbar-img w-10 h-10 rounded-full relative z-10 object-contain transition-all duration-300 grayscale opacity-70 scale-100 hover:opacity-90"
+                    class="madre-topbar-img w-full h-full rounded-full object-cover relative z-10 pointer-events-none transition-all duration-300 grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100"
                 />
-                <span class="sr-only"><span class="tracking-wide">MADRE</span></span>
             </button>
 
             <!-- Botón FAQ / Manual -->
