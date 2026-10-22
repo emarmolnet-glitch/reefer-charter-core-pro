@@ -177,7 +177,7 @@ test('10. DWT Calculator Sync: DWT input strictly bound to optimalDwt when auto-
 });
 
 test('11. Global MADRE connected to Data Bridge AI API endpoint with handleSubmit, error handling, and auto-scroll', () => {
-  assert.match(globalMadreDrawerSource, /https:\/\/calm-shortbread-55bcfc\.netlify\.app\/\.netlify\/functions\/madre-chat/);
+  assert.match(globalMadreDrawerSource, /(?:\/api\/madre-chat|https:\/\/calm-shortbread-55bcfc\.netlify\.app\/\.netlify\/functions\/madre-chat)/);
   assert.match(globalMadreDrawerSource, /handleSubmit/);
   assert.match(globalMadreDrawerSource, /messagesEndRef\.current\?\.scrollIntoView/);
   assert.match(globalMadreDrawerSource, /Reefer Charter Core PRO/);

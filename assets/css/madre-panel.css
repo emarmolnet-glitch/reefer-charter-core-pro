@@ -135,11 +135,19 @@
   text-align: left;
 }
 .madre-message--assistant { align-self: flex-start; }
-.madre-message--assistant .madre-bubble {
+.madre-message--assistant .madre-bubble,
+.madre-bubble--assistant {
   background-color: #1e293b;
-  color: #f1f5f9;
+  color: #ffffff !important;
   border-radius: 1rem 1rem 1rem 0.25rem;
   border: 1px solid var(--madre-border);
+}
+.madre-message--assistant .madre-bubble * {
+  color: #ffffff !important;
+}
+.madre-message--assistant .madre-bubble .madre-bubble-meta,
+.madre-message--assistant .madre-bubble .madre-bubble-meta * {
+  color: rgba(255, 255, 255, 0.7) !important;
 }
 .madre-bubble {
   padding: 0.85rem 1rem;

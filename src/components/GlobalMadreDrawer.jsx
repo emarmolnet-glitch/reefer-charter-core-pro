@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 
-export const MADRE_API_ENDPOINT = "https://calm-shortbread-55bcfc.netlify.app/.netlify/functions/madre-chat";
+export const MADRE_API_ENDPOINT = "/api/madre-chat";
 
 /**
  * Efecto visual del láser escáner superpuesto sobre la pantalla.
@@ -953,9 +953,13 @@ export function GlobalMadreDrawer({
                           ? "bg-cyan-600 text-white rounded-br-sm shadow-md min-w-[150px] w-max max-w-[95%] text-left"
                           : msg.isError
                           ? "bg-red-950 text-red-200 border border-red-800 rounded-bl-sm"
-                          : "bg-slate-800 border border-slate-700 text-slate-100 rounded-bl-sm shadow-md"
+                          : "bg-slate-800 border border-slate-700 text-white !text-white rounded-bl-sm shadow-md"
                       }`}
-                      style={msg.rol === "user" ? { minWidth: "150px", width: "max-content", maxWidth: "95%", textAlign: "left" } : {}}
+                      style={
+                        msg.rol === "user"
+                          ? { minWidth: "150px", width: "max-content", maxWidth: "95%", textAlign: "left", color: "#ffffff" }
+                          : { color: "#ffffff" }
+                      }
                     >
                       <div className="madre-bubble-meta flex items-center justify-between text-[10px] opacity-70 mb-1">
                         <span className="font-semibold">{msg.autor}</span>
