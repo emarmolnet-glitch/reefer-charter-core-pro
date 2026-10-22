@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 
-export const MADRE_API_ENDPOINT = "/api/madre-chat";
+export const MADRE_API_ENDPOINT = "https://calm-shortbread-55bcfc.netlify.app/.netlify/functions/madre-chat";
 
 /**
  * Efecto visual del láser escáner superpuesto sobre la pantalla.
