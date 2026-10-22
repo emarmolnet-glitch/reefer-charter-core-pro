@@ -694,11 +694,10 @@ export function GlobalMadreDrawer({
       }
       const finalProjectRef = referenciaMadre || activeRef || "RDM/2026-TBN";
 
-      // Función que recopila datosExtraidos de la pantalla
-      const datosExtraidos = typeof document !== "undefined" && document ? extractReeferScanData(document) : extractReeferScanData(null);
-
       let response;
       if (isScanCommand) {
+        // Función que recopila datosExtraidos de la pantalla SOLO si es comando de escaneo
+        const datosExtraidos = typeof document !== "undefined" && document ? extractReeferScanData(document) : extractReeferScanData(null);
         response = await fetch(MADRE_API_ENDPOINT, {
           method: "POST",
           mode: "cors",
@@ -718,14 +717,18 @@ export function GlobalMadreDrawer({
           }),
         });
       } else {
+        // 1. Obtenemos el contexto base
+        const contextoLimpio = getReeferUIContext();
+        // 2. ELIMINAMOS los datos del escáner para que la IA no salte a auditar por error
+        delete contextoLimpio.escaneo_reefer;
+
         const outgoingPayload = {
-          // mensajeUsuario: texto
           mensajeUsuario: trimmed,
           message: trimmed,
           prompt: trimmed,
           origen: "Reefer Charter",
           current_module: "reefer_charter",
-          contexto_ui: getReeferUIContext(),
+          contexto_ui: contextoLimpio, // Enviamos el contexto limpio sin los datos de auditoría
           history: mensajes
             .filter((m) => (m.text || m.texto) && !m.isError)
             .map((m) => ({
