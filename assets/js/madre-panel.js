@@ -8,7 +8,7 @@ export async function dispararEscaneoFrigorifico() {
     ? window.extractReeferScanData(document)
     : (typeof document !== "undefined" ? extractReeferScanData(document) : {});
 
-  const MADRE_API_ENDPOINT = "https://calm-shortbread-55bcfc.netlify.app/.netlify/functions/madre-chat";
+  const MADRE_API_ENDPOINT = "/api/madre-chat";
 
   return fetch(MADRE_API_ENDPOINT, {
     method: "POST",
@@ -17,10 +17,10 @@ export async function dispararEscaneoFrigorifico() {
       "Accept": "application/json",
     },
     body: JSON.stringify({
-      prompt: "Escanear Pantalla Frigorífica",
-      mensajeUsuario: "Audita esta operación de transporte frigorífico.",
       origen: "Reefer Charter",
       current_module: "reefer_charter",
+      mensajeUsuario: "Audita esta operación de transporte frigorífico.",
+      prompt: "Escanear Pantalla Frigorífica",
       contexto_ui: {
         // Envolvemos los datos explícitamente en la clave que espera el backend reefer
         escaneo_reefer: { bloques: datosExtraidos } 
@@ -29,6 +29,31 @@ export async function dispararEscaneoFrigorifico() {
   });
 }
 
+export async function enviarMensajeMadre(mensajeUsuario = "") {
+  const datosExtraidos = typeof window !== "undefined" && typeof window.extractReeferScanData === "function"
+    ? window.extractReeferScanData(document)
+    : (typeof document !== "undefined" ? extractReeferScanData(document) : {});
+
+  const MADRE_API_ENDPOINT = "/api/madre-chat";
+
+  return fetch(MADRE_API_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+    },
+    body: JSON.stringify({
+      origen: "Reefer Charter",
+      current_module: "reefer_charter",
+      mensajeUsuario,
+      contexto_ui: {
+        escaneo_reefer: { bloques: datosExtraidos } 
+      }
+    })
+  });
+}
+
 if (typeof window !== "undefined") {
   window.dispararEscaneoFrigorifico = dispararEscaneoFrigorifico;
+  window.enviarMensajeMadre = enviarMensajeMadre;
 }
