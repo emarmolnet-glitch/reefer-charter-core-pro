@@ -48,6 +48,7 @@ export default function VoyageExecutiveReportModal({
   // Costes operativos
   const costBunkers = Number(data.costBunkers || data.totalBunkers || data.bunkerCost || 0);
   const costOpex = Number(data.costOpex || data.totalOpex || data.opexCost || (Number(data.opex || data.opexDaily || 0) * totalDays) || 0);
+  const mapImageBase64 = data.mapImageBase64 || winState.mapImageBase64 || null;
   const costPda = Number(data.costPda || data.totalPda || data.portCosts || data.portExpenses || 0);
   const costEts = Number(data.costEts || data.etsCost || data.etsTotalCost || 0);
   const costTotal = Number(data.costTotal || data.totalExpenses || (costBunkers + costOpex + costPda + costEts));
@@ -216,6 +217,16 @@ export default function VoyageExecutiveReportModal({
         {/* Cuerpo del Reporte (Light Theme) */}
         <div className="p-5 sm:p-6 space-y-6 text-slate-800 text-xs print:p-4">
 
+          {mapImageBase64 && (
+            <div className="w-full flex justify-center my-6 p-4 bg-slate-800/50 rounded-xl border border-slate-700">
+              <img 
+                src={mapImageBase64} 
+                alt="Ruta del Viaje" 
+                className="max-w-full h-auto max-h-[400px] object-contain rounded-lg shadow-lg"
+              />
+            </div>
+          )}
+
           {/* Fila 1: Resumen Operativo y Ruta */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Especificaciones Buque & Carga */}
@@ -356,6 +367,12 @@ export default function VoyageExecutiveReportModal({
               vesselType={resolvedVesselType}
               projectRef={estId}
             />
+
+            {mapImageBase64 ? (
+              <div style={{ textAlign: 'center', margin: '15px 0' }}>
+                <img src={mapImageBase64} alt="Globo de Navegación / Ruta" style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px' }} />
+              </div>
+            ) : null}
           </section>
 
           {/* ACORDEONES DE DATOS Y DESGLOSE INTERNO */}
