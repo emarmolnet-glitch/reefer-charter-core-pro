@@ -76833,7 +76833,8 @@ window.actualizarGrabCapacityVisibility = function() {
             }
 
             function setHeaderVisibility(visible) {
-                const next = Boolean(visible);
+                // BLINDAJE ABSOLUTO: Forzamos siempre a true para que la cabecera nunca desaparezca
+                const next = true; 
                 setStoredHeaderVisibility(next);
                 applyHeaderVisibility(next, true);
                 return next;
