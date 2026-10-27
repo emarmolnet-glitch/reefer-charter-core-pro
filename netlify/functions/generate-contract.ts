@@ -13,7 +13,7 @@ type ContractInput = {
 const jsonHeaders = { "Content-Type": "application/json; charset=utf-8" };
 
 function fallbackGencon(input: ContractInput) {
-  const cargo = String(input.carga?.tipo || "general cargo");
+  const cargo = String(input.carga?.tipo || "perishable/reefer cargo");
   const loadRules = input.laytimeConfig?.loadPort?.rules || (input.laytimeConfig?.loadPort?.isIslamic ? "FHEX" : "SHEX");
   const dischargeRules = input.laytimeConfig?.dischargePort?.rules || (input.laytimeConfig?.dischargePort?.isIslamic ? "FHEX" : "SHEX");
   const weatherRisk = String(input.calculos_previos?.climatologia_riesgo || "");
@@ -30,7 +30,7 @@ function fallbackGencon(input: ContractInput) {
     triggers,
     payment: "100% Pre-paid",
     payment_clause: "Freight to be paid 100% pre-paid, strictly Freight Non-Returnable Cargo Lost or Not Lost.",
-    rationale: `Protege caja y traslada riesgos operativos del viaje de ${cargo} al fletador.`
+    rationale: `Protege caja y traslada riesgos operativos del viaje de ${cargo} bajo póliza BIMCO REEFERCON 94 al fletador.`
   };
 
   const charterer = {
@@ -85,7 +85,7 @@ async function askGateway(input: ContractInput) {
         {
           role: "system",
           content:
-            "Return only JSON for a GENCON charter party autofill. Include smart_autofill, armador_pro, fletador_pro and estrategia_justa. Values must be concise maritime chartering terms."
+            "Return only JSON for a BIMCO REEFERCON 94 charter party autofill. Include smart_autofill, armador_pro, fletador_pro and estrategia_justa. Values must be concise maritime chartering terms."
         },
         { role: "user", content: JSON.stringify(input) }
       ]

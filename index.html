@@ -10700,6 +10700,7 @@
                             <div class="input-group">
                                 <label id="label-charter-party-standard" class="text-yellow-400 flex items-center min-h-[24px]">Póliza Estándar</label>
                                 <select id="charter-party-standard" class="input-gc font-bold text-yellow-300" onchange="updateSection2LocalState('charter-party-standard', this.value); updateCharterPartyStandard()">
+                                    <option value="BIMCO REEFERCON 94" selected>BIMCO REEFERCON 94</option>
                                     <option value="GENCON">GENCON</option>
                                     <option value="ASBATANKVOY">ASBATANKVOY</option>
                                 </select>
@@ -18476,7 +18477,7 @@
             cargoProduct: "",
             cargoTypeCode: "100",
             cargoTypeManual: "Otros",
-            charterPartyStandard: "GENCON",
+            charterPartyStandard: "BIMCO REEFERCON 94",
             costBunkers: 0, costOpex: 0, costPda: 0, costTotal: 0, totalCosts: 0,
             emissionsCO2: 0, euCarbonPrice: 80, etsRouteFactor: 0, etsCost: 0, etsCostPMT: 0,
             breakEven: 0, sugOwner: 0, sugCharterer: 0,
@@ -19346,7 +19347,7 @@
                 cargoType: '',
                 cargoTypeCode: '100',
                 cargoTypeManual: 'Otros',
-                charterPartyStandard: 'GENCON',
+                charterPartyStandard: 'BIMCO REEFERCON 94',
                 marginOwner: 0,
                 marginCharterer: 0,
                 spdBallast: 0,
@@ -19417,7 +19418,7 @@
             populateCargoProducts('Naranjas');
             setInputValue('cargo-type-manual', '10');
             window.CargoTypeSelector?.persistSelection('10');
-            setInputValue('charter-party-standard', 'GENCON');
+            setInputValue('charter-party-standard', 'BIMCO REEFERCON 94');
             setInputValue('turn-time-hours', 24);
             setInputValue('apply-ets-surcharge', 'NO');
             setInputValue('ets-route-type', '0');
@@ -22057,7 +22058,7 @@ function createRouteAnchorElement(type) {
             const btnArmador = document.getElementById('btn-armador');
             if (btnArmador) {
                 btnArmador.addEventListener('click', () => {
-                    const cpStandard = State.charterPartyStandard || document.getElementById('charter-party-standard')?.value || 'GENCON';
+                    const cpStandard = State.charterPartyStandard || document.getElementById('charter-party-standard')?.value || 'BIMCO REEFERCON 94';
                     if (ultimaIAData?.armador_pro && cpStandard === 'ASBATANKVOY') rellenarFormularioAsbatankvoy(ultimaIAData.armador_pro);
                     else if (ultimaIAData?.armador_pro) aplicarEstrategiaGencon(ultimaIAData.armador_pro);
                 });
@@ -22073,7 +22074,7 @@ function createRouteAnchorElement(type) {
             const btnFletador = document.getElementById('btn-fletador');
             if (btnFletador) {
                 btnFletador.addEventListener('click', () => {
-                    const cpStandard = State.charterPartyStandard || document.getElementById('charter-party-standard')?.value || 'GENCON';
+                    const cpStandard = State.charterPartyStandard || document.getElementById('charter-party-standard')?.value || 'BIMCO REEFERCON 94';
                     if (ultimaIAData?.fletador_pro && cpStandard === 'ASBATANKVOY') rellenarFormularioAsbatankvoy(ultimaIAData.fletador_pro);
                     else if (ultimaIAData?.fletador_pro) aplicarEstrategiaGencon(ultimaIAData.fletador_pro);
                 });
@@ -22148,7 +22149,7 @@ function createRouteAnchorElement(type) {
                     };
 
                     try {
-                        const cpStandard = State.charterPartyStandard || valueFrom('charter-party-standard') || (operacionGlobal.carga.categoria === 'Granel Líquido (Liquid Bulk)' ? 'ASBATANKVOY' : 'GENCON');
+                        const cpStandard = State.charterPartyStandard || valueFrom('charter-party-standard') || (operacionGlobal.carga.categoria === 'Granel Líquido (Liquid Bulk)' ? 'ASBATANKVOY' : 'BIMCO REEFERCON 94');
                         const endpoint = cpStandard === 'ASBATANKVOY'
                             ? '/api/generate-contract-tanker'
                             : '/api/generate-contract';
@@ -45784,7 +45785,7 @@ function scheduleReactiveEngine() {
                 ['GEAR CLAUSE', 'VESSEL\'S CRANES AND GRABS SHALL BE PROVIDED FREE OF EXPENSE TO CHARTERERS FOR LOADING AND DISCHARGING OPERATIONS. HOWEVER, DISCHARGE RATE USING VESSEL\'S GEAR IS STRICTLY LIMITED MECHANICALLY TO MAXIMUM ~2,000 MT/DAY. SHOULD CHARTERERS REQUIRE OR DEMAND A HIGHER LOADING/DISCHARGING RATE, CHARTERERS SHALL HIRE AND PAY FOR SHORE CRANES, SHORE EQUIPMENT OR SHORE LABOR AT THEIR SOLE EXPENSE UNDER FIO TERMS WITHOUT DELAY OR LIABILITY TO THE VESSEL.'],
                 ['WEATHER CLAUSE', 'TIME LOST DUE TO ADVERSE WEATHER, BAD SEA CONDITIONS, OR FORCE MAJEURE EVENTS PREVENTING SAFE LOADING/DISCHARGING OPERATIONS SHALL NOT COUNT AS LAYTIME UNLESS THE VESSEL IS ALREADY ON DEMURRAGE.'],
                 ...jwcClauseRows,
-                ['C/P FORM', 'GENCON 1994 CHARTERPARTY FORM AS REVISED, INCORPORATING BIMCO WAR RISKS CLAUSE (VOYWAR 2025), SANCTIONS CLAUSE, AND EU CBAM COMPLIANCE CLAUSE.'],
+                ['C/P FORM', 'BIMCO REEFERCON 94 CHARTERPARTY FORM AS REVISED, INCORPORATING BIMCO WAR RISKS CLAUSE (VOYWAR 2025), SANCTIONS CLAUSE, AND EU CBAM COMPLIANCE CLAUSE.'],
                 ['ARBITRATION', 'THIS RECAP AND SUBSEQUENT CHARTERPARTY SHALL BE GOVERNED BY ENGLISH LAW AND ANY DISPUTE ARISEN SHALL BE REFERRED TO ARBITRATION IN LONDON IN ACCORDANCE WITH LMAA TERMS.']
             ];
 
@@ -45880,7 +45881,7 @@ function scheduleReactiveEngine() {
     </style>
     <div style="border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 14px; break-inside: avoid; page-break-inside: avoid;">
         <div style="font-weight: bold; font-size: 10.5pt; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
-            RODAHMAR SHIPPING SL - FIRM FIXTURE RECAP / OFERTA COMERCIAL
+            RODAHMAR SHIPPING SL - FIRM FIXTURE RECAP / OFERTA COMERCIAL (BIMCO REEFERCON 94)
         </div>
         <div style="font-size: 9.5pt; color: #334155; line-height: 1.55;">
             ${recapMetaRows(headerMeta)}
@@ -45888,7 +45889,7 @@ function scheduleReactiveEngine() {
     </div>
 
     <div style="margin-bottom: 14px; font-weight: bold; color: #1e293b;">
-        WE ARE PLEASED TO CONFIRM THE FOLLOWING FIRM FIXTURE RECAP FOR THE UNDERMENTIONED VOYAGE UNDER THE FOLLOWING MAIN TERMS AND CONDITIONS:
+        WE ARE PLEASED TO CONFIRM THE FOLLOWING FIRM FIXTURE RECAP (REEFERCON 94) FOR THE UNDERMENTIONED VOYAGE UNDER THE FOLLOWING MAIN TERMS AND CONDITIONS:
     </div>
 
     <!-- 1. MAIN TERMS -->
@@ -45942,7 +45943,7 @@ function scheduleReactiveEngine() {
     </div>
 
     <div style="border-top: 2px solid #0f172a; padding-top: 8px; margin-top: 14px; text-align: center; font-weight: bold; font-size: 9.5pt; break-inside: avoid; page-break-inside: avoid;">
-        END OF FIRM FIXTURE RECAP - RODAHMAR SHIPPING SL
+        END OF FIRM FIXTURE RECAP (BIMCO REEFERCON 94) - RODAHMAR SHIPPING SL
     </div>
 </div>
             `;
@@ -46861,7 +46862,7 @@ function scheduleReactiveEngine() {
             
             doc.setFont('courier', 'bold');
             doc.setFontSize(10);
-            doc.text('RODAHMAR SHIPPING SL - FIRM FIXTURE RECAP / OFERTA COMERCIAL', 14, 20);
+            doc.text('RODAHMAR SHIPPING SL - FIRM FIXTURE RECAP / OFERTA COMERCIAL (BIMCO REEFERCON 94)', 14, 20);
             doc.setFont('courier', 'normal');
             doc.setFontSize(8);
             
@@ -46917,7 +46918,7 @@ function scheduleReactiveEngine() {
                 `- GEAR CLAUSE: SHIP'S CRANES FREE BUT LIMITED TO ~2,000 MT/D DISCHARGE.`,
                 `               SHORE CRANES AT CHARTERERS EXPENSE IF HIGHER RATE DEMANDED.`,
                 `- WEATHER CLAUSE: WWD SHINC / BAD WEATHER TIME NOT TO COUNT`,
-                `- FORM     : GENCON 1994 / BIMCO VOYWAR 2025 / SANCTIONS / EU CBAM`,
+                `- FORM     : BIMCO REEFERCON 94 / BIMCO VOYWAR 2025 / SANCTIONS / EU CBAM`,
                 '',
                 `5. ${opClausesData.title.toUpperCase()}:`,
                 ...opClausesData.clauses.map(c => `- ${c}`),

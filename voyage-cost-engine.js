@@ -737,7 +737,8 @@
     }
 
     function calculateTurnTimeDays(policyType) {
-        return normalizeText(policyType) === 'GENCON' ? 1.0 : 0;
+        const norm = normalizeText(policyType);
+        return (norm === 'GENCON' || norm.includes('REEFERCON')) ? 1.0 : 0;
     }
 
     function getStowageMethodFactor(method) {
@@ -1754,7 +1755,7 @@
                 gruas_operativas_pod: cranesPod,
                 grab_capacity_cbm: this.readPossiblyEstimatedNumber('grab-capacity-cbm'),
                 canal_seleccionado: toText(this.el('selected-canal')?.value) || 'Auto',
-                charter_party_standard: toText(this.el('charter-party-standard')?.value) || 'GENCON',
+                charter_party_standard: toText(this.el('charter-party-standard')?.value) || 'BIMCO REEFERCON 94',
                 auxiliaryGensetDailyCost: this.readNumber('auxiliary-genset-cost') ||
                     this.readNumber('auxiliary-genset-daily-cost') ||
                     this.readNumber('reverse-auxiliary-genset-cost') ||
