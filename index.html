@@ -9369,6 +9369,13 @@
             font-weight: 700 !important;
         }
 
+        /* Ocultación visual estricta en el menú lateral izquierdo */
+        #app-navigation-sidebar #tab-btn-forwarders,
+        #app-navigation-sidebar #tab-btn-gencon,
+        #app-navigation-sidebar #btn-market-report-nav {
+            display: none !important;
+        }
+
         #app-navigation-sidebar .sidebar-nav-item[aria-current="page"] svg,
         #app-navigation-sidebar .sidebar-nav-item.tab-btn.bg-blue-600 svg,
         #app-navigation-sidebar .sidebar-nav-item.active svg {
@@ -9830,6 +9837,7 @@
                         type="button"
                         onclick="generateMarketReport()"
                         class="tab-btn sidebar-nav-item flex items-center h-10 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors p-2 cursor-pointer w-full text-left"
+                        style="display: none !important;"
                         title="Generar Reporte de Mercado Actual"
                         aria-label="Generar Reporte de Mercado Actual"
                     >
@@ -30916,6 +30924,9 @@ function createRouteAnchorElement(type) {
             button.setAttribute('title', localizedLabel);
             button.setAttribute('aria-label', localizedLabel);
             if (variant === 'primary') {
+                if (moduleConfig.id === 'gencon') {
+                    button.style.setProperty('display', 'none', 'important');
+                }
                 const iconSvg = MODULE_ICONS[moduleConfig.id] || '<svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle></svg>';
                 button.innerHTML = `
                     <div class="sidebar-icon flex items-center justify-center w-6 h-6 shrink-0">${iconSvg}</div>
@@ -30960,6 +30971,7 @@ function createRouteAnchorElement(type) {
                 const separator = document.createElement('div');
                 separator.className = 'w-full h-px bg-slate-200 my-1 shrink-0';
                 separator.setAttribute('aria-hidden', 'true');
+                separator.style.setProperty('display', 'none', 'important');
                 // w-px bg-slate-700
                 tabs.appendChild(separator);
 
@@ -30968,6 +30980,7 @@ function createRouteAnchorElement(type) {
                 forwarderBtn.id = 'tab-btn-forwarders';
                 forwarderBtn.dataset.moduleId = 'FORWARDERS';
                 forwarderBtn.className = 'tab-btn sidebar-nav-item flex items-center h-10 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors p-2 cursor-pointer w-full text-left';
+                forwarderBtn.style.setProperty('display', 'none', 'important');
                 forwarderBtn.setAttribute('title', 'PROYECTOS');
                 forwarderBtn.setAttribute('aria-label', '💼 PROYECTOS');
                 const fwdIcon = MODULE_ICONS['FORWARDERS'];
@@ -30986,6 +30999,7 @@ function createRouteAnchorElement(type) {
                 marketReportBtn.type = 'button';
                 marketReportBtn.id = 'btn-market-report-nav';
                 marketReportBtn.className = 'tab-btn sidebar-nav-item flex items-center h-10 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors p-2 cursor-pointer w-full text-left';
+                marketReportBtn.style.setProperty('display', 'none', 'important');
                 marketReportBtn.setAttribute('title', 'Generar Reporte de Mercado Actual');
                 marketReportBtn.setAttribute('aria-label', 'Generar Reporte de Mercado Actual');
                 const mktIcon = MODULE_ICONS['marketReport'];
