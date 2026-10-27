@@ -45956,6 +45956,8 @@ function scheduleReactiveEngine() {
         </ul>
     </div>
 
+    ${state.mapImageBase64 ? `<div style="text-align:center; margin:15px 0;"><img src="${state.mapImageBase64}" style="max-width:100%; height:auto; border-radius:8px;" /></div>` : ''}
+
     <div style="border-top: 2px solid #0f172a; padding-top: 8px; margin-top: 14px; text-align: center; font-weight: bold; font-size: 9.5pt; break-inside: avoid; page-break-inside: avoid;">
         END OF FIRM FIXTURE RECAP (BIMCO REEFERCON 94) - RODAHMAR SHIPPING SL
     </div>
@@ -46032,7 +46034,20 @@ function scheduleReactiveEngine() {
                     showToast('Generando Oferta Comercial (Fixture Recap PDF)...', true);
                 }
 
+                let mapImageBase64 = null;
+                try {
+                    const globeCanvas = document.querySelector('canvas');
+                    if (globeCanvas) {
+                        mapImageBase64 = globeCanvas.toDataURL('image/jpeg', 0.8);
+                    }
+                } catch (e) {
+                    console.warn("Canvas capture failed", e);
+                }
+
                 const state = getDSSCurrentState();
+                if (mapImageBase64) {
+                    state.mapImageBase64 = mapImageBase64;
+                }
                 const htmlString = buildFixtureRecapHTMLTemplate(state);
                 const filename = `Firm_Fixture_Recap_${state.pol}_${state.pod}_${new Date().toISOString().slice(0, 10)}.pdf`;
 
@@ -51799,6 +51814,26 @@ Example:
         }
 
         function generateExecutiveReport() {
+            let mapImageBase64 = null;
+            try {
+                const globeCanvas = document.querySelector('canvas');
+                if (globeCanvas) {
+                    mapImageBase64 = globeCanvas.toDataURL('image/jpeg', 0.8);
+                }
+            } catch (e) {
+                console.warn("Canvas capture failed", e);
+            }
+
+            if (typeof window !== 'undefined' && window.State) {
+                window.State.mapImageBase64 = mapImageBase64;
+            }
+            State.mapImageBase64 = mapImageBase64;
+            if (typeof window !== 'undefined' && window.useVoyageStore?.setState) {
+                try {
+                    window.useVoyageStore.setState({ mapImageBase64 });
+                } catch (_) {}
+            }
+
             if (typeof runEngine === 'function') runEngine();
             if (State.coreValidation?.blocked) {
                 alert(`Kill-switch activo:\n- ${State.coreValidation.messages.join('\n- ')}`);
@@ -52033,6 +52068,16 @@ Example:
                     </div>
                 </div>
 
+                ${State.mapImageBase64 ? `
+                <div class="w-full flex justify-center my-6 p-4 bg-slate-800/50 rounded-xl border border-slate-700">
+                    <img 
+                        src="${State.mapImageBase64}" 
+                        alt="Ruta del Viaje" 
+                        class="max-w-full h-auto max-h-[400px] object-contain rounded-lg shadow-lg"
+                    />
+                </div>
+                ` : ''}
+
                 <!-- Cuadrícula Principal de Datos -->
                 <div class="space-y-4 text-slate-300 text-xs">
                     ${renderExecutiveClassWarning(classAnalysis)}
@@ -52194,6 +52239,7 @@ Example:
                     <div id="voyage-visual-stowage-container" class="my-4 break-inside-avoid">
                         ${renderVoyageStowagePlanFallback(State)}
                     </div>
+                    ${State.mapImageBase64 ? `<div style="text-align:center; margin:15px 0;"><img src="${State.mapImageBase64}" style="max-width:100%; height:auto; border-radius:8px;" /></div>` : ''}
 
                     <!-- Sección de Desglose y Restricciones -->
                     <div class="bg-slate-800/60 p-4 rounded-xl border border-slate-700">
@@ -53092,7 +53138,7 @@ Example:
 
             const printDetailedEl = document.getElementById('print-detailed-analysis-content');
             if (printDetailedEl) {
-                printDetailedEl.innerHTML = detailedHTML;
+                printDetailedEl.innerHTML = detailedHTML + (State.mapImageBase64 ? `<div style="text-align:center; margin:15px 0;"><img src="${State.mapImageBase64}" style="max-width:100%; height:auto; border-radius:8px;" /></div>` : '');
             }
         }
 

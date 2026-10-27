@@ -3375,6 +3375,8 @@
         </ul>
     </div>
 
+    ${state.mapImageBase64 ? `<div style="text-align:center; margin:15px 0;"><img src="${state.mapImageBase64}" style="max-width:100%; height:auto; border-radius:8px;" /></div>` : ''}
+
     <div style="border-top: 2px solid #0f172a; padding-top: 8px; margin-top: 14px; text-align: center; font-weight: bold; font-size: 9.5pt; break-inside: avoid; page-break-inside: avoid;">
         END OF FIRM FIXTURE RECAP (BIMCO REEFERCON 94) - RODAHMAR SHIPPING SL
     </div>
@@ -3409,7 +3411,20 @@
 
         async function generateFixtureRecapPDF() {
             try {
+                let mapImageBase64 = null;
+                try {
+                    const globeCanvas = document.querySelector('canvas');
+                    if (globeCanvas) {
+                        mapImageBase64 = globeCanvas.toDataURL('image/jpeg', 0.8);
+                    }
+                } catch (e) {
+                    console.warn("Canvas capture failed", e);
+                }
+
                 const state = getDSSCurrentState();
+                if (mapImageBase64) {
+                    state.mapImageBase64 = mapImageBase64;
+                }
                 const htmlString = buildFixtureRecapHTMLTemplate(state);
                 const filename = `Firm_Fixture_Recap_${state.pol}_${state.pod}_${new Date().toISOString().slice(0, 10)}.pdf`;
 
