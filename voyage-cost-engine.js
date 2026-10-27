@@ -950,6 +950,15 @@
         const cargoKind = normalizeCargoType(state.tipo_carga);
         const costeTrincaje = (cargoKind === 'acero' || cargoKind === 'proyecto') ? toNumber(state.coste_trincaje) : 0;
         const costeManiobraEspecial = cargoKind === 'proyecto' ? toNumber(state.coste_maniobra_especial) : 0;
+        const auxiliaryGensetDailyCost = toNumber(
+            state.auxiliaryGensetDailyCost ??
+            state.auxiliary_genset_daily_cost ??
+            state.auxiliaryGensetCost ??
+            (typeof root !== 'undefined' ? (root.State?.auxiliaryGensetDailyCost ?? root.activeVoyage?.auxiliaryGensetDailyCost) : 0)
+        );
+        const diasPuertoTotal = toNumber(state.dias_puerto_total || state.dias_puerto);
+        const diasTotalesOperacion = toNumber(state.dias_navegacion) + diasPuertoTotal;
+        const costeTermicoAuxiliar = auxiliaryGensetDailyCost * diasTotalesOperacion;
         const costeTotalViaje = costeBunkers +
             costeOpexTotal +
             toNumber(state.pda_pol) +
@@ -958,7 +967,8 @@
             costeTrincaje +
             costeManiobraEspecial +
             toNumber(extrasCanal) +
-            toNumber(tugCost);
+            toNumber(tugCost) +
+            costeTermicoAuxiliar;
         const breakEvenOperativo = toNumber(state.toneladas_carga) > 0 ? costeTotalViaje / toNumber(state.toneladas_carga) : 0;
         const commissionFactor = 1 - (toNumber(state.comisiones_porcentaje) / 100);
         const breakEven = commissionFactor > 0 ? breakEvenOperativo / commissionFactor : 0;
@@ -966,6 +976,7 @@
         return {
             coste_bunkers: costeBunkers,
             coste_opex_total: costeOpexTotal,
+            coste_termico_auxiliar: costeTermicoAuxiliar,
             coste_estiba_terminal: toNumber(state.estiba_terminal),
             coste_trincaje: costeTrincaje,
             coste_total_viaje: costeTotalViaje,
@@ -1743,7 +1754,12 @@
                 gruas_operativas_pod: cranesPod,
                 grab_capacity_cbm: this.readPossiblyEstimatedNumber('grab-capacity-cbm'),
                 canal_seleccionado: toText(this.el('selected-canal')?.value) || 'Auto',
-                charter_party_standard: toText(this.el('charter-party-standard')?.value) || 'GENCON'
+                charter_party_standard: toText(this.el('charter-party-standard')?.value) || 'GENCON',
+                auxiliaryGensetDailyCost: this.readNumber('auxiliary-genset-cost') ||
+                    this.readNumber('auxiliary-genset-daily-cost') ||
+                    this.readNumber('reverse-auxiliary-genset-cost') ||
+                    toNumber(root.State?.auxiliaryGensetDailyCost) ||
+                    toNumber(root.activeVoyage?.auxiliaryGensetDailyCost)
             };
         }
 
