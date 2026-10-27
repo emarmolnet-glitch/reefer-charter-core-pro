@@ -186,16 +186,44 @@ type BunkerIndexCache = {
 };
 
 const MATRIZ_ESTACIONAL_GLOBAL: Record<string, Record<string, Record<number, number>>> = {
-  WEST_AFRICA: { Reefer: { 1: 1.15, 2: 1.15, 3: 1.18, 10: 1.20, 11: 1.20, 12: 1.20 }, Grain: { 10: 1.22, 11: 1.25 } },
-  SOUTH_AMERICA: { Reefer: { 1: 1.30, 2: 1.32, 3: 1.35 }, Grain: { 3: 1.30, 4: 1.38 } },
-  MEDITERRANEAN: { Citrus: { 0: 1.15, 1: 1.18, 11: 1.15, 12: 1.15 } },
+  WEST_AFRICA: {
+    Reefer: { 1: 1.15, 2: 1.15, 3: 1.18, 10: 1.20, 11: 1.20, 12: 1.20 },
+    "Frutas Frescas": { 1: 1.15, 2: 1.15, 3: 1.18, 10: 1.20, 11: 1.20, 12: 1.20 },
+    Grain: { 10: 1.22, 11: 1.25 }
+  },
+  CENTRAL_AMERICA: {
+    Reefer: { 1: 1.20, 2: 1.22, 3: 1.25, 4: 1.20, 5: 1.15, 10: 1.18, 11: 1.20, 12: 1.25 },
+    "Frutas Frescas": { 1: 1.20, 2: 1.22, 3: 1.25, 4: 1.20, 5: 1.15, 10: 1.18, 11: 1.20, 12: 1.25 }
+  },
+  SOUTH_AMERICA: {
+    Reefer: { 1: 1.30, 2: 1.32, 3: 1.35 },
+    "Frutas Frescas": { 1: 1.30, 2: 1.32, 3: 1.35 },
+    Grain: { 3: 1.30, 4: 1.38 }
+  },
+  MEDITERRANEAN: {
+    Citrus: { 0: 1.15, 1: 1.18, 11: 1.15, 12: 1.15 },
+    "Frutas Frescas": { 0: 1.15, 1: 1.18, 11: 1.15, 12: 1.15 }
+  },
   SOUTH_EAST_ASIA: { Rice: { 10: 1.16, 11: 1.18 } }
 };
 
 function normalizeRegion(regionInput: unknown): string {
   const reg = String(regionInput || '').toUpperCase();
-  if (reg.includes('AFRICA') || reg === 'WAF') return 'WEST_AFRICA';
-  if (reg.includes('AMERICA') || reg === 'ECSA') return 'SOUTH_AMERICA';
+  if (
+    reg.includes('AFRICA') || reg === 'WAF' ||
+    reg.includes('ABIDJAN') || reg.includes('IVORY') || reg.includes('MARFIL') ||
+    reg.includes('GHANA') || reg.includes('TEMA') || reg.includes('DAKAR') ||
+    reg.includes('BANJUL') || reg.includes('CAMEROON') || reg.includes('SAN PEDRO')
+  ) return 'WEST_AFRICA';
+
+  if (
+    reg.includes('CENTROAMERICA') || reg.includes('CENTRAL AMERICA') ||
+    reg.includes('COSTA RICA') || reg.includes('LIMON') || reg.includes('CALDERA') ||
+    reg.includes('GUATEMALA') || reg.includes('HONDURAS') || reg.includes('PANAMA') ||
+    reg.includes('ECUADOR') || reg.includes('GUAYAQUIL') || reg.includes('SANTA MARTA')
+  ) return 'CENTRAL_AMERICA';
+
+  if (reg.includes('SOUTH AMERICA') || reg.includes('AMERICA') || reg === 'ECSA' || reg.includes('BRASIL') || reg.includes('ARGENTINA')) return 'SOUTH_AMERICA';
   if (reg.includes('MED') || reg.includes('SPAIN')) return 'MEDITERRANEAN';
   if (reg.includes('ASIA')) return 'SOUTH_EAST_ASIA';
   return 'DEFAULT';
@@ -215,8 +243,12 @@ function calculateSuggestedFreight({
   month: number;
 }) {
   const normalizedRegion = normalizeRegion(region);
-  const factorEstacional = (commodity && MATRIZ_ESTACIONAL_GLOBAL[normalizedRegion]?.[commodity]?.[month])
-    || MATRIZ_ESTACIONAL_GLOBAL[normalizedRegion]?.Reefer?.[month]
+  const matrixRegion = MATRIZ_ESTACIONAL_GLOBAL[normalizedRegion];
+  const commodityKey = (commodity && matrixRegion?.[commodity])
+    ? commodity
+    : (/fruta|banana|pl[aá]tano/i.test(String(commodity || '')) && matrixRegion?.['Frutas Frescas'] ? 'Frutas Frescas' : 'Reefer');
+
+  const factorEstacional = (matrixRegion && (matrixRegion[commodityKey]?.[month] || matrixRegion.Reefer?.[month]))
     || (normalizedRegion === 'DEFAULT' ? 1.0 : 1.15);
   const fleteSugerido = (ownerBaseCost * (1 + commercialMargin)) * factorEstacional;
   return Number(fleteSugerido.toFixed(2));
@@ -531,7 +563,10 @@ export function calculateCoreFreight(
     const calculatedMargin =
       values.marginType === 'fixed' ? targetMargin : totalCosts * (targetMargin / 100);
     const targetRevenue = totalCosts + calculatedMargin;
-    const minFreightRate = cargoVolume > 0 ? roundMoney(totalCosts / cargoVolume) : 0;
+    const isPalletMode = (values as any).rateUnit === 'Pallet' || (values as any).freightRateUnit === 'Pallet';
+    const totalPallets = safeNumber((values as any).palletQuantity || (values as any).totalPallets);
+    const billableVolume = (isPalletMode && totalPallets > 0) ? totalPallets : cargoVolume;
+    const minFreightRate = billableVolume > 0 ? roundMoney(totalCosts / billableVolume) : 0;
 
     return {
       totalDays,
@@ -566,7 +601,10 @@ export function calculateCoreFreight(
   const portFuelCost = daysPort * portFuelConsumption * mgoPrice * bunkerMultiplier;
   const bunkerCost = seaFuelCost + portFuelCost;
   const totalCosts = (tceTarget * totalDays) + bunkerCost + portCosts + etsTotalCost;
-  const minFreightRate = cargoVolume > 0 ? roundMoney(totalCosts / cargoVolume) : 0;
+  const isPalletMode = (values as any).rateUnit === 'Pallet' || (values as any).freightRateUnit === 'Pallet';
+  const totalPallets = safeNumber((values as any).palletQuantity || (values as any).totalPallets);
+  const billableVolume = (isPalletMode && totalPallets > 0) ? totalPallets : cargoVolume;
+  const minFreightRate = billableVolume > 0 ? roundMoney(totalCosts / billableVolume) : 0;
 
   return {
     totalDays,
@@ -731,8 +769,11 @@ export function calculateReverseTceResults(values: ReverseCalculatorState) {
   const etsCost = etsTotalCost;
   const costOpex = opexDaily * totalDays;
 
-  // 1. Ingresos Brutos (Flete * Toneladas)
-  const totalGrossRevenueOwner = (Number(freightBuy) || 0) * (Number(cargoTons) || 0);
+  // 1. Ingresos Brutos (Flete * Toneladas o Pallets)
+  const isPalletMode = (values as any).rateUnit === 'Pallet' || (values as any).freightRateUnit === 'Pallet';
+  const totalPallets = safeNumber((values as any).palletQuantity || (values as any).totalPallets);
+  const revenueUnits = (isPalletMode && totalPallets > 0) ? totalPallets : (Number(cargoTons) || 0);
+  const totalGrossRevenueOwner = (Number(freightBuy) || 0) * revenueUnits;
 
   // 2. Costes Variables del Viaje (Bunkers + PDAs + ETS)
   const totalVoyageCosts = (Number(costBunkers) || 0) + (Number(costPda) || 0) + (Number(etsCost) || 0);

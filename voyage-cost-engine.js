@@ -38,6 +38,109 @@
     const REEFER_PDA_MULTIPLIER = 1.50;
     const REEFER_BREAKBULK_OPERATIONAL_WARNING = "Aviso Operativo: Exigir confirmación de Side Doors o Cunas multipallet en puerto. La estiba requiere bloque compacto con Dunnage bags y sistema Gratings libre de obstrucciones para flujo vertical a 13.5ºC";
 
+    // Plantilla de PDA por defecto acordada (ReeferCharter Core PRO)
+    const DEFAULT_AGENCY_BASE_FEE = 2300;
+    const MIN_PDA_POL_REEFER = 28000;
+    const MIN_PDA_POD_REEFER = 26000;
+    const DEFAULT_GENERAL_PDA = 15000;
+    const DEFAULT_STANDARD_HOURLY_RATE = 100; // Tarifa horaria base de manipulación / estiba / agencia
+    const DEFAULT_FHEX_SHEX_OVERTIME_MULTIPLIER = 1.50; // Multiplicador para turnos FHEX/SHEX extraordinarios
+
+    const DEFAULT_PDA_TEMPLATE = Object.freeze({
+        baseAgencyFee: DEFAULT_AGENCY_BASE_FEE,
+        polReeferMinimum: MIN_PDA_POL_REEFER,
+        podReeferMinimum: MIN_PDA_POD_REEFER,
+        generalPdaDefault: DEFAULT_GENERAL_PDA,
+        standardHourlyRate: DEFAULT_STANDARD_HOURLY_RATE,
+        overtimeMultiplier: DEFAULT_FHEX_SHEX_OVERTIME_MULTIPLIER,
+    });
+
+    // Matriz de estacionalidad frutícola y geopolítica (Seasonality Factor)
+    const MATRIZ_ESTACIONAL_GLOBAL = Object.freeze({
+        WEST_AFRICA: {
+            Reefer: { 1: 1.15, 2: 1.15, 3: 1.18, 10: 1.20, 11: 1.20, 12: 1.20 },
+            "Frutas Frescas": { 1: 1.15, 2: 1.15, 3: 1.18, 10: 1.20, 11: 1.20, 12: 1.20 },
+            Grain: { 10: 1.22, 11: 1.25 }
+        },
+        CENTRAL_AMERICA: {
+            Reefer: { 1: 1.20, 2: 1.22, 3: 1.25, 4: 1.20, 5: 1.15, 10: 1.18, 11: 1.20, 12: 1.25 },
+            "Frutas Frescas": { 1: 1.20, 2: 1.22, 3: 1.25, 4: 1.20, 5: 1.15, 10: 1.18, 11: 1.20, 12: 1.25 }
+        },
+        SOUTH_AMERICA: {
+            Reefer: { 1: 1.30, 2: 1.32, 3: 1.35 },
+            "Frutas Frescas": { 1: 1.30, 2: 1.32, 3: 1.35 },
+            Grain: { 3: 1.30, 4: 1.38 }
+        },
+        MEDITERRANEAN: {
+            Citrus: { 0: 1.15, 1: 1.18, 11: 1.15, 12: 1.15 },
+            "Frutas Frescas": { 0: 1.15, 1: 1.18, 11: 1.15, 12: 1.15 }
+        },
+        SOUTH_EAST_ASIA: {
+            Rice: { 10: 1.16, 11: 1.18 }
+        }
+    });
+
+    function normalizeRegion(regionInput) {
+        const reg = toText(regionInput).toUpperCase();
+        if (
+            reg.includes('AFRICA') || reg === 'WAF' ||
+            reg.includes('ABIDJAN') || reg.includes('IVORY') || reg.includes('MARFIL') ||
+            reg.includes('GHANA') || reg.includes('TEMA') || reg.includes('DAKAR') ||
+            reg.includes('SENEGAL') || reg.includes('BANJUL') || reg.includes('CAMEROON') ||
+            reg.includes('CAMERUN') || reg.includes('DOUALA') || reg.includes('SAN PEDRO')
+        ) return 'WEST_AFRICA';
+
+        if (
+            reg.includes('CENTROAMERICA') || reg.includes('CENTRAL AMERICA') ||
+            reg.includes('COSTA RICA') || reg.includes('LIMON') || reg.includes('CALDERA') ||
+            reg.includes('GUATEMALA') || reg.includes('SANTO TOMAS') || reg.includes('BARRIOS') ||
+            reg.includes('HONDURAS') || reg.includes('CORTES') || reg.includes('PANAMA') ||
+            reg.includes('ECUADOR') || reg.includes('GUAYAQUIL') || reg.includes('COLOMBIA') ||
+            reg.includes('SANTA MARTA') || reg.includes('TURBO')
+        ) return 'CENTRAL_AMERICA';
+
+        if (reg.includes('SOUTH AMERICA') || reg.includes('AMERICA DEL SUR') || reg === 'ECSA' || reg.includes('BRASIL') || reg.includes('ARGENTINA')) return 'SOUTH_AMERICA';
+        if (reg.includes('MED') || reg.includes('SPAIN') || reg.includes('VALENCIA') || reg.includes('ESPANA') || reg.includes('ESPAÑA')) return 'MEDITERRANEAN';
+        if (reg.includes('ASIA')) return 'SOUTH_EAST_ASIA';
+        return 'DEFAULT';
+    }
+
+    function isFreshFruitCargo(cargoText) {
+        const text = toText(cargoText).toLowerCase();
+        return /fruta|frutas|banana|pl[aá]tano|citric|fresh fruit/i.test(text);
+    }
+
+    function evaluateFruitSeasonality(options = {}) {
+        const pol = toText(options.pol || options.port_pol || options.origin || options.port);
+        const cargo = toText(options.cargo || options.cargoType || options.commodity || options.cargo_type);
+        const month = toNumber(options.month) || (options.date ? new Date(options.date).getUTCMonth() + 1 : new Date().getUTCMonth() + 1);
+
+        const isFruit = isFreshFruitCargo(cargo);
+        const region = normalizeRegion(`${pol} ${options.region || ''}`);
+        const matrixRegion = MATRIZ_ESTACIONAL_GLOBAL[region];
+        const rawFactor = (matrixRegion && (matrixRegion['Frutas Frescas']?.[month] || matrixRegion.Reefer?.[month])) || 1.0;
+        const factor = isFruit ? rawFactor : 1.0;
+        const isPeakSeason = isFruit && (region === 'WEST_AFRICA' || region === 'CENTRAL_AMERICA' || region === 'SOUTH_AMERICA') && factor > 1.0;
+        const surchargePct = Math.round((factor - 1.0) * 100);
+
+        const regionLabel = region === 'WEST_AFRICA' ? 'África Occidental (ej. Abidjan)'
+            : (region === 'CENTRAL_AMERICA' ? 'Centroamérica' : region);
+
+        const insightMessage = isPeakSeason
+            ? `Estacionalidad Frutícola Activa (${regionLabel}): La carga de Frutas Frescas en el mes ${month} opera bajo temporada alta. Se aplica un recargo Peak Season Surcharge (PSS) de +${surchargePct}% sobre la estimación del flete.`
+            : null;
+
+        return {
+            isFruit,
+            region,
+            month,
+            factor,
+            isPeakSeason,
+            surchargePct,
+            insightMessage
+        };
+    }
+
     const RITMOS_BASE_PUERTO = {
         cinta_transportadora: 2500,
         camion_tolva: 1500,
@@ -218,8 +321,15 @@
             }
         }
 
-        const standardHourlyRate = Math.max(0, toNumber(operationalContext.standardHourlyRate));
-        const overtimeMultiplier = Math.max(1, toNumber(operationalContext.overtimeMultiplier) || 1.5);
+        const configuredHourlyRate = toNumber(operationalContext.standardHourlyRate);
+        const hasWeekend = weekendDates.size > 0;
+        const defaultRate = (operationalContext.enforceDefaultRate || hasWeekend)
+            ? DEFAULT_STANDARD_HOURLY_RATE
+            : 0;
+        const standardHourlyRate = configuredHourlyRate > 0
+            ? configuredHourlyRate
+            : defaultRate;
+        const overtimeMultiplier = Math.max(1, toNumber(operationalContext.overtimeMultiplier) || DEFAULT_FHEX_SHEX_OVERTIME_MULTIPLIER);
         const overtimeHourlyRate = Math.max(
             standardHourlyRate,
             toNumber(operationalContext.overtimeHourlyRate) || (standardHourlyRate * overtimeMultiplier)
@@ -250,7 +360,22 @@
     function calculateOperationalRisk(basePDA, etaDate, portDays, portCountry, vesselDraft, portMaxDraft, operationalContext = {}) {
         const effectiveContext = (vesselDraft && typeof vesselDraft === 'object') ? vesselDraft : (operationalContext || {});
         const effectiveVesselDraft = (vesselDraft && typeof vesselDraft === 'object') ? 0 : vesselDraft;
-        const normalizedPda = Math.max(0, toNumber(basePDA));
+        const isReefer = Boolean(
+            effectiveContext?.isReefer ||
+            effectiveContext?.requiresControlledAtmosphere ||
+            toNumber(effectiveContext?.palletQuantity) > 0 ||
+            toNumber(effectiveContext?.cargoVolumeCBM) > 0 ||
+            /reefer|pl[aá]tano|fruta/i.test(String(effectiveContext?.cargo || effectiveContext?.cargo_type || effectiveContext?.cargo_category || effectiveContext?.cargo_product || ''))
+        );
+        const portType = toText(effectiveContext?.portType || effectiveContext?.role || '').toLowerCase();
+        let defaultBasePda = 0;
+        if (isReefer) {
+            defaultBasePda = portType === 'pod' ? MIN_PDA_POD_REEFER : MIN_PDA_POL_REEFER;
+        } else {
+            defaultBasePda = DEFAULT_GENERAL_PDA;
+        }
+        const effectiveBasePda = toNumber(basePDA) > 0 ? toNumber(basePDA) : defaultBasePda;
+        const normalizedPda = Math.max(0, effectiveBasePda);
         const cargoQuantity = Math.max(0, toNumber(effectiveContext?.cargoQuantity));
         const portDailyRate = Math.max(0, toNumber(effectiveContext?.portDailyRate));
         const totalPortHours = cargoQuantity > 0 && portDailyRate > 0
@@ -263,13 +388,6 @@
         const riskLevel = (isDraftExceeded || berthAvailability.hasMinorityAvailability)
             ? 'ALTO'
             : (shiftSimulation.overtimeHours > 0 || hasAdjustedRates ? 'MODERADO' : 'BAJO');
-        const isReefer = Boolean(
-            effectiveContext?.isReefer ||
-            effectiveContext?.requiresControlledAtmosphere ||
-            toNumber(effectiveContext?.palletQuantity) > 0 ||
-            toNumber(effectiveContext?.cargoVolumeCBM) > 0 ||
-            /reefer|pl[aá]tano|fruta/i.test(String(effectiveContext?.cargo || effectiveContext?.cargo_type || effectiveContext?.cargo_category || effectiveContext?.cargo_product || ''))
-        );
         const reeferMultiplier = isReefer ? REEFER_FINANCIAL_MULTIPLIERS.PDA : 1.0; // Terminales fruteras y remolcadores prioritarios (+50%)
         const adjustedPDA = (normalizedPda * reeferMultiplier) + shiftSimulation.overtimeSurcharge;
 
@@ -297,6 +415,119 @@
         };
     }
 
+    /**
+     * Estimación de costes portuarios (PDA) inyectando la plantilla acordada cuando no haya valor manual.
+     * Incorpora tarifa base de agencia y turnos extraordinarios (FHEX/SHEX).
+     */
+    function calculatePortCosts(options = {}) {
+        let basePDA = 0;
+        let portType = 'pol';
+        let isReefer = false;
+        let portCountry = '';
+        let portDays = 0;
+        let etaDate = null;
+        let cargoQuantity = 0;
+        let portDailyRate = 0;
+        let standardHourlyRate = 0;
+        let overtimeMultiplier = DEFAULT_FHEX_SHEX_OVERTIME_MULTIPLIER;
+        let laytimeRule = '';
+        let operationalContext = {};
+
+        if (typeof options === 'number') {
+            basePDA = toNumber(options);
+            const args = Array.prototype.slice.call(arguments, 1);
+            if (typeof args[0] === 'string' && (args[0].toLowerCase() === 'pol' || args[0].toLowerCase() === 'pod')) {
+                portType = args[0].toLowerCase();
+                isReefer = Boolean(args[1]);
+                if (args[2] && typeof args[2] === 'object') operationalContext = args[2];
+            } else {
+                etaDate = args[0];
+                portDays = toNumber(args[1]);
+                portCountry = toText(args[2]);
+                if (args[3] && typeof args[3] === 'object') operationalContext = args[3];
+            }
+        } else if (options && typeof options === 'object') {
+            basePDA = toNumber(options.basePDA ?? options.pda ?? options.manualPDA ?? options.portCosts);
+            portType = toText(options.portType || options.type || options.role || 'pol').toLowerCase();
+            isReefer = Boolean(
+                options.isReefer ||
+                options.commodity === 'Reefer' ||
+                toNumber(options.palletQuantity) > 0 ||
+                toNumber(options.cargoVolumeCBM) > 0 ||
+                /reefer|fruta|pl[aá]tano|banana/i.test(String(options.cargo || options.cargoType || options.cargo_type || ''))
+            );
+            portCountry = toText(options.portCountry || options.country);
+            portDays = toNumber(options.portDays || options.daysPort);
+            etaDate = options.etaDate || options.eta;
+            cargoQuantity = toNumber(options.cargoQuantity || options.cargoQty);
+            portDailyRate = toNumber(options.portDailyRate || options.rate);
+            standardHourlyRate = toNumber(options.standardHourlyRate);
+            overtimeMultiplier = toNumber(options.overtimeMultiplier) || DEFAULT_FHEX_SHEX_OVERTIME_MULTIPLIER;
+            laytimeRule = toText(options.laytimeRule || options.laytimeTerms).toUpperCase();
+            operationalContext = options;
+        }
+
+        let effectiveBasePda = basePDA;
+        let autoInjectedTemplate = false;
+        if (effectiveBasePda <= 0) {
+            autoInjectedTemplate = true;
+            if (isReefer) {
+                effectiveBasePda = portType === 'pod' ? MIN_PDA_POD_REEFER : MIN_PDA_POL_REEFER;
+            } else {
+                effectiveBasePda = DEFAULT_GENERAL_PDA;
+            }
+        }
+
+        const effectiveStandardHourlyRate = standardHourlyRate > 0
+            ? standardHourlyRate
+            : DEFAULT_STANDARD_HOURLY_RATE;
+        const effectiveOvertimeMultiplier = Math.max(1, overtimeMultiplier || DEFAULT_FHEX_SHEX_OVERTIME_MULTIPLIER);
+        const fridayWeekend = usesFridayWeekend(portCountry) || laytimeRule === 'FHEX';
+
+        const totalHours = cargoQuantity > 0 && portDailyRate > 0
+            ? (cargoQuantity / portDailyRate) * 24
+            : Math.max(0, portDays) * 24;
+
+        const shiftSimulation = simulateShiftSchedule(etaDate, totalHours, portCountry, {
+            ...operationalContext,
+            standardHourlyRate: effectiveStandardHourlyRate,
+            overtimeMultiplier: effectiveOvertimeMultiplier
+        });
+
+        const reeferMultiplier = isReefer ? REEFER_FINANCIAL_MULTIPLIERS.PDA : 1.0;
+        const adjustedPDA = (effectiveBasePda * reeferMultiplier) + shiftSimulation.overtimeSurcharge;
+        const incrementalCost = shiftSimulation.overtimeSurcharge;
+
+        const agencyFee = Math.max(DEFAULT_AGENCY_BASE_FEE, Math.round(effectiveBasePda * 0.12));
+        const breakdown = [
+            { item: 'Agencia y Despacho (Tarifa Base)', amount: agencyFee },
+            { item: 'Remolcadores', amount: Math.round(effectiveBasePda * 0.20) },
+            { item: 'Practicaje y Amarre', amount: Math.round(effectiveBasePda * 0.15) },
+            { item: 'Tasas de Muelle y Autoridad', amount: Math.round(effectiveBasePda * 0.35) },
+            { item: 'Estadía y Derechos de Puerto', amount: Math.max(0, effectiveBasePda - (agencyFee + Math.round(effectiveBasePda * 0.70))) }
+        ];
+
+        return {
+            basePDA: effectiveBasePda,
+            adjustedPDA,
+            incrementalCost,
+            overtimeSurcharge: incrementalCost,
+            penaltyAmount: adjustedPDA - effectiveBasePda,
+            hasWeekendPenalty: shiftSimulation.hasWeekendPenalty,
+            hasOvertime: shiftSimulation.overtimeHours > 0,
+            standardHours: shiftSimulation.standardHours,
+            overtimeHours: shiftSimulation.overtimeHours,
+            standardHourlyRate: effectiveStandardHourlyRate,
+            overtimeHourlyRate: effectiveStandardHourlyRate * effectiveOvertimeMultiplier,
+            overtimeMultiplier: effectiveOvertimeMultiplier,
+            laytimeRule: fridayWeekend ? 'FHEX' : 'SHEX',
+            autoInjectedTemplate,
+            agencyFeeBase: DEFAULT_AGENCY_BASE_FEE,
+            breakdown,
+            shiftSimulation
+        };
+    }
+
     function updateExecutiveDashboard(calcResults = {}, riskData = {}, documentRef = root.document) {
         if (!documentRef || typeof documentRef.getElementById !== 'function') return false;
 
@@ -316,9 +547,13 @@
                 maximumFractionDigits: decimals
             })}`;
         };
-        const formatRate = (value) => `$${Math.max(0, toNumber(value)).toFixed(2)} / MT`;
+        const isPalletMode = calcResults.rateUnit === 'Pallet' || calcResults.isPalletMode || calcResults.freightRateUnit === 'Pallet';
+        const rateUnitLabel = isPalletMode ? ' / Pallet' : ' / MT';
+        const formatRate = (value) => `$${Math.max(0, toNumber(value)).toFixed(2)}${rateUnitLabel}`;
         const formatDays = (value) => `${Math.max(0, toNumber(value)).toFixed(1)} días`;
-        const formatTons = (value) => `${Math.max(0, toNumber(value)).toLocaleString('en-US', { maximumFractionDigits: 0 })} MT`;
+        const formatTons = (value) => isPalletMode && toNumber(calcResults.totalPallets) > 0
+            ? `${Math.max(0, toNumber(calcResults.totalPallets)).toLocaleString('en-US', { maximumFractionDigits: 0 })} Pallets`
+            : `${Math.max(0, toNumber(value)).toLocaleString('en-US', { maximumFractionDigits: 0 })} MT`;
         const formatDailyRate = (value) => Math.max(0, toNumber(value)).toLocaleString('en-US', { maximumFractionDigits: 0 });
         const formatOperationalDuration = (hours) => {
             const normalizedHours = Math.max(0, toNumber(hours));
@@ -415,7 +650,7 @@
         setText('exec-tce', `${formatMoney(calcResults.tce)} / día`);
         setText('exec-sell-freight', formatRate(calcResults.sellFreight));
         setText('exec-charterer-profit', formatMoney(calcResults.chartererProfit));
-        setText('exec-spread-mt', `${formatMoney(toNumber(calcResults.sellFreight) - toNumber(calcResults.buyFreight), 2)} / MT`);
+        setText('exec-spread-mt', `${formatMoney(toNumber(calcResults.sellFreight) - toNumber(calcResults.buyFreight), 2)}${rateUnitLabel}`);
 
         const execTimes = {
             seaDays: toNumber(calcResults.seaDays),
@@ -489,7 +724,7 @@
             insightParts.push('Los ritmos operativos contienen ajustes y elevan el seguimiento a riesgo moderado.');
         }
         insightParts.push(overtimeSurcharge > 0
-            ? `Se ha integrado un coste incremental de ${moneyFormatter.format(overtimeSurcharge)} en la PDA por recargos operativos (FHEX/SHEX).`
+            ? `Se ha integrado un coste incremental de ${moneyFormatter.format(overtimeSurcharge)} integrado en la PDA por recargos operativos (FHEX/SHEX).`
             : `No se ha aplicado coste incremental en la PDA por recargos operativos (FHEX/SHEX): ${moneyFormatter.format(0)}.`);
         const projectCargoAssessment = calcResults.projectCargoAssessment;
         if (projectCargoAssessment?.isProjectCargo) {
@@ -514,6 +749,16 @@
                 if (!root.State.operationalWarnings.includes(REEFER_BREAKBULK_OPERATIONAL_WARNING)) root.State.operationalWarnings.push(REEFER_BREAKBULK_OPERATIONAL_WARNING);
             }
         }
+        // Estacionalidad Frutícola (Geopolítica) & Peak Season Surcharge
+        const fruitSeasonality = evaluateFruitSeasonality({
+            pol: calcResults.pol,
+            cargo: calcResults.cargoType || calcResults.cargo || riskData.cargo,
+            month: calcResults.month || (calcResults.eta ? new Date(calcResults.eta).getUTCMonth() + 1 : (new Date().getUTCMonth() + 1))
+        });
+        if (fruitSeasonality.isPeakSeason && fruitSeasonality.insightMessage) {
+            insightParts.push(fruitSeasonality.insightMessage);
+        }
+
         setText('exec-insight-text', insightParts.join(' '));
         return true;
     }
@@ -970,7 +1215,10 @@
             toNumber(extrasCanal) +
             toNumber(tugCost) +
             costeTermicoAuxiliar;
-        const breakEvenOperativo = toNumber(state.toneladas_carga) > 0 ? costeTotalViaje / toNumber(state.toneladas_carga) : 0;
+        const isPalletMode = toText(state.rateUnit || state.freightRateUnit || state.tipo_tarifa).toUpperCase() === 'PALLET';
+        const totalPallets = Math.max(0, toNumber(state.totalPallets ?? state.palletQuantity ?? state.cantidadPalets));
+        const billableUnits = (isPalletMode && totalPallets > 0) ? totalPallets : toNumber(state.toneladas_carga);
+        const breakEvenOperativo = billableUnits > 0 ? costeTotalViaje / billableUnits : 0;
         const commissionFactor = 1 - (toNumber(state.comisiones_porcentaje) / 100);
         const breakEven = commissionFactor > 0 ? breakEvenOperativo / commissionFactor : 0;
 
@@ -982,7 +1230,11 @@
             coste_trincaje: costeTrincaje,
             coste_total_viaje: costeTotalViaje,
             break_even_operativo: breakEvenOperativo,
-            break_even: breakEven
+            break_even: breakEven,
+            isPalletMode,
+            totalPallets,
+            billableUnits,
+            rateUnit: isPalletMode ? 'Pallet' : 'MT'
         };
     }
 
@@ -1059,22 +1311,47 @@
      */
     function resolveFreightBase(options = {}) {
         const actualCargoMT = Math.max(0, toNumber(options.actualCargoMT));
+        const totalPallets = Math.max(0, toNumber(options.totalPallets ?? options.palletQuantity ?? options.pallets));
         const vesselDWT = Math.max(0, toNumber(options.vesselDWT));
         const isLumpsumMode = Boolean(options.isLumpsumMode);
+        const rateUnit = toText(options.rateUnit || options.freightRateUnit || options.unit || 'MT').toUpperCase();
+        const isPalletMode = rateUnit === 'PALLET' || rateUnit === 'PALLETS' || options.isPalletMode === true;
         const requestedTargetBase = options.targetLumpsumBase === undefined || options.targetLumpsumBase === null || options.targetLumpsumBase === ''
             ? DEFAULT_LUMPSUM_TARGET_BASE_MT
             : toNumber(options.targetLumpsumBase);
         const targetLumpsumBase = Math.max(0, requestedTargetBase);
 
+        if (isPalletMode && totalPallets > 0) {
+            return {
+                isLumpsumMode: false,
+                isPalletMode: true,
+                mode: 'PALLET',
+                rateUnit: 'Pallet',
+                actualCargoMT,
+                totalPallets,
+                vesselDWT,
+                targetLumpsumBase,
+                finalLumpsumBase: 0,
+                freightBaseMT: totalPallets,
+                billableUnits: totalPallets,
+                dwtCapApplied: false,
+                dwtCapDeltaMT: 0
+            };
+        }
+
         if (!isLumpsumMode) {
             return {
                 isLumpsumMode: false,
+                isPalletMode: false,
                 mode: 'PMT',
+                rateUnit: 'MT',
                 actualCargoMT,
+                totalPallets,
                 vesselDWT,
                 targetLumpsumBase,
                 finalLumpsumBase: 0,
                 freightBaseMT: actualCargoMT,
+                billableUnits: actualCargoMT,
                 dwtCapApplied: false,
                 dwtCapDeltaMT: 0
             };
@@ -1087,12 +1364,16 @@
 
         return {
             isLumpsumMode: true,
+            isPalletMode: false,
             mode: 'LUMPSUM',
+            rateUnit: 'LUMPSUM',
             actualCargoMT,
+            totalPallets,
             vesselDWT,
             targetLumpsumBase,
             finalLumpsumBase,
             freightBaseMT: finalLumpsumBase,
+            billableUnits: finalLumpsumBase,
             dwtCapApplied: vesselDWT > 0 && vesselDWT < targetLumpsumBase,
             dwtCapDeltaMT: Math.max(0, targetLumpsumBase - finalLumpsumBase)
         };
@@ -1105,16 +1386,18 @@
      */
     function calculateVoyageFinancials(params = {}) {
         const base = resolveFreightBase(params);
-        const freightBaseMT = base.freightBaseMT;
+        const isPalletMode = Boolean(base.isPalletMode || toText(params.rateUnit || params.freightRateUnit).toUpperCase() === 'PALLET');
+        const totalPallets = Math.max(0, toNumber(params.totalPallets ?? params.palletQuantity ?? base.totalPallets));
+        const freightBase = (isPalletMode && totalPallets > 0) ? totalPallets : base.freightBaseMT;
         const ownerRate = Math.max(0, toNumber(params.ownerRate));
         const chartererRate = Math.max(0, toNumber(params.chartererRate));
         const commissionPct = Math.min(100, Math.max(0, toNumber(params.commissionPct)));
         const revenueExtras = toNumber(params.revenueExtras);
         const additionalCosts = toNumber(params.additionalCosts);
 
-        // Sale side (charterer revenue) and purchase side (owner freight cost) share freightBaseMT.
-        const grossRevenue = freightBaseMT * chartererRate;
-        const ownerFreightCost = freightBaseMT * ownerRate;
+        // Sale side (charterer revenue) and purchase side (owner freight cost) share freightBase.
+        const grossRevenue = freightBase * chartererRate;
+        const ownerFreightCost = freightBase * ownerRate;
         const commissionCost = grossRevenue * (commissionPct / 100);
 
         const totalRevenue = roundMoney(grossRevenue + revenueExtras);
@@ -1123,6 +1406,9 @@
 
         return {
             ...base,
+            isPalletMode,
+            totalPallets,
+            billableUnits: freightBase,
             ownerRate,
             chartererRate,
             commissionPct,
@@ -1137,7 +1423,9 @@
             netMarginPct: totalRevenue > 0 ? roundMoney((netProfit / totalRevenue) * 100) : 0,
             // Equivalent rates over the tonnage physically carried, for display only.
             effectiveOwnerRatePerMT: base.actualCargoMT > 0 ? roundMoney(ownerFreightCost / base.actualCargoMT) : 0,
-            effectiveChartererRatePerMT: base.actualCargoMT > 0 ? roundMoney(grossRevenue / base.actualCargoMT) : 0
+            effectiveChartererRatePerMT: base.actualCargoMT > 0 ? roundMoney(grossRevenue / base.actualCargoMT) : 0,
+            effectiveOwnerRatePerPallet: totalPallets > 0 ? roundMoney(ownerFreightCost / totalPallets) : 0,
+            effectiveChartererRatePerPallet: totalPallets > 0 ? roundMoney(grossRevenue / totalPallets) : 0
         };
     }
 
@@ -1154,21 +1442,33 @@
     function readCurrentFreightRevenue(baseResult = {}, documentRef = root.document) {
         const ownerBreakdown = baseResult.ownerNetBreakdown || {};
         const cargo = toNumber(baseResult.cargo);
+        const isPalletMode = baseResult.rateUnit === 'Pallet' ||
+            toText(baseResult.freightRateUnit).toUpperCase() === 'PALLET' ||
+            (documentRef && documentRef.getElementById('freight-rate-unit')?.value === 'Pallet');
+        const totalPallets = Math.max(0, toNumber(
+            baseResult.totalPallets ??
+            baseResult.palletQuantity ??
+            (documentRef ? (documentRef.getElementById('pallet-quantity')?.value || documentRef.getElementById('reverse-pallet-quantity')?.value) : 0)
+        ));
         const freightRate = toNumber(baseResult.freightRate);
         const revenueExtras = toNumber(baseResult.cargoSurcharge);
-        const currentFreightRevenue = (cargo * freightRate) + revenueExtras;
+        const units = (isPalletMode && totalPallets > 0) ? totalPallets : cargo;
+        const currentFreightRevenue = (units * freightRate) + revenueExtras;
 
         if (currentFreightRevenue > 0) return currentFreightRevenue;
 
         if (documentRef) {
             const currentCargo = toNumber(documentRef.getElementById('cargo-qty')?.value);
+            const currentPallets = toNumber(documentRef.getElementById('pallet-quantity')?.value || documentRef.getElementById('reverse-pallet-quantity')?.value);
             const currentFreightRate = toNumber(documentRef.getElementById('freight-rate')?.value);
             const currentRevenueExtras = toNumber(documentRef.getElementById('cargo-surcharge')?.value);
-            const currentFormRevenue = (currentCargo * currentFreightRate) + currentRevenueExtras;
+            const isDocPalletMode = documentRef.getElementById('freight-rate-unit')?.value === 'Pallet';
+            const currentUnits = (isDocPalletMode && currentPallets > 0) ? currentPallets : currentCargo;
+            const currentFormRevenue = (currentUnits * currentFreightRate) + currentRevenueExtras;
             if (currentFormRevenue > 0) return currentFormRevenue;
         }
 
-        return Math.max(0, toNumber(ownerBreakdown.grossRevenue) || (cargo * freightRate));
+        return Math.max(0, toNumber(ownerBreakdown.grossRevenue) || (units * freightRate));
     }
 
     function pickSensitivityBase(baseResult = {}) {
@@ -1756,6 +2056,10 @@
                 grab_capacity_cbm: this.readPossiblyEstimatedNumber('grab-capacity-cbm'),
                 canal_seleccionado: toText(this.el('selected-canal')?.value) || 'Auto',
                 charter_party_standard: toText(this.el('charter-party-standard')?.value) || 'BIMCO REEFERCON 94',
+                rateUnit: toText(this.el('freight-rate-unit')?.value) || 'MT',
+                freightRateUnit: toText(this.el('freight-rate-unit')?.value) || 'MT',
+                totalPallets: this.readNumber('pallet-quantity') || this.readNumber('reverse-pallet-quantity'),
+                palletQuantity: this.readNumber('pallet-quantity') || this.readNumber('reverse-pallet-quantity'),
                 auxiliaryGensetDailyCost: this.readNumber('auxiliary-genset-cost') ||
                     this.readNumber('auxiliary-genset-daily-cost') ||
                     this.readNumber('reverse-auxiliary-genset-cost') ||
@@ -2184,12 +2488,25 @@
         REEFER_OPEX_MULTIPLIER,
         REEFER_PDA_MULTIPLIER,
         REEFER_BREAKBULK_OPERATIONAL_WARNING,
+        DEFAULT_AGENCY_BASE_FEE,
+        MIN_PDA_POL_REEFER,
+        MIN_PDA_POD_REEFER,
+        DEFAULT_GENERAL_PDA,
+        DEFAULT_STANDARD_HOURLY_RATE,
+        DEFAULT_FHEX_SHEX_OVERTIME_MULTIPLIER,
+        DEFAULT_PDA_TEMPLATE,
+        calculatePortCosts,
+        MATRIZ_ESTACIONAL_GLOBAL,
+        normalizeRegion,
+        isFreshFruitCargo,
+        evaluateFruitSeasonality,
         VoyageCostDomController
     };
 
     root.SeaCharterVoyageCostEngine = api;
     root.ISLAMIC_WEEKEND_COUNTRIES = ISLAMIC_WEEKEND_COUNTRIES;
     root.calculateOperationalRisk = calculateOperationalRisk;
+    root.calculatePortCosts = calculatePortCosts;
     root.updateExecutiveDashboard = updateExecutiveDashboard;
     root.calculateDailyCapex = calculateDailyCapex;
     root.REEFER_FINANCIAL_MULTIPLIERS = REEFER_FINANCIAL_MULTIPLIERS;
@@ -2197,6 +2514,17 @@
     root.REEFER_OPEX_MULTIPLIER = REEFER_OPEX_MULTIPLIER;
     root.REEFER_PDA_MULTIPLIER = REEFER_PDA_MULTIPLIER;
     root.REEFER_BREAKBULK_OPERATIONAL_WARNING = REEFER_BREAKBULK_OPERATIONAL_WARNING;
+    root.DEFAULT_AGENCY_BASE_FEE = DEFAULT_AGENCY_BASE_FEE;
+    root.MIN_PDA_POL_REEFER = MIN_PDA_POL_REEFER;
+    root.MIN_PDA_POD_REEFER = MIN_PDA_POD_REEFER;
+    root.DEFAULT_GENERAL_PDA = DEFAULT_GENERAL_PDA;
+    root.DEFAULT_STANDARD_HOURLY_RATE = DEFAULT_STANDARD_HOURLY_RATE;
+    root.DEFAULT_FHEX_SHEX_OVERTIME_MULTIPLIER = DEFAULT_FHEX_SHEX_OVERTIME_MULTIPLIER;
+    root.DEFAULT_PDA_TEMPLATE = DEFAULT_PDA_TEMPLATE;
+    root.MATRIZ_ESTACIONAL_GLOBAL = MATRIZ_ESTACIONAL_GLOBAL;
+    root.normalizeRegion = normalizeRegion;
+    root.isFreshFruitCargo = isFreshFruitCargo;
+    root.evaluateFruitSeasonality = evaluateFruitSeasonality;
 
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = api;
