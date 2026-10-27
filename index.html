@@ -10573,7 +10573,7 @@
                             <div class="input-group">
                                 <label id="label-vessel-dwt" class="text-blue-400 flex items-center min-h-[28px]">Capacidad DWT (TM)</label>
                                 <input type="number" id="vessel-dwt" class="input-gc font-bold text-blue-300" value="0" step="any" oninput="updateSection2LocalState('vessel-dwt', this.value); handleDWTChange(true, false)" onblur="detectVesselSegmentFromInputs()">
-                                <div id="tbn-auto-sizing-badge" class="hidden mt-1 block text-[11px] font-bold text-teal-300 bg-slate-900 px-2 py-1 rounded border border-teal-500 shadow-sm">⚡ Buque auto-dimensionado a 0 DWT según exigencias volumétricas.</div>
+                                <div id="tbn-auto-sizing-badge" class="hidden mt-1 block text-[11px] font-bold text-teal-300 bg-slate-900 px-2 py-1 rounded border border-teal-500 shadow-sm">⚡ Buque auto-dimensionado a 0 DWT según requerimientos volumétricos (Reefer).</div>
                             </div>
                             <div class="input-group">
                                 <label for="vessel-has-scrubber-no" class="text-blue-400 flex items-center gap-1 min-h-[28px]">
@@ -10655,7 +10655,7 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-4 p-3 bg-slate-900/60 rounded-xl border border-teal-500/30 items-end">
                             <div class="input-group flex flex-col justify-end">
                                 <label id="label-pallet-quantity" for="pallet-quantity" class="text-action-required flex items-center min-h-[24px] text-teal-300 font-bold text-xs">Cantidad de Palets</label>
-                                <input type="number" id="pallet-quantity" class="input-gc action-required-field required-use-highlight text-action-required font-bold h-9" value="0" min="0" step="1" placeholder="0" oninput="handleReeferInputChange('palletQuantity', this.value)">
+                                <input type="number" id="pallet-quantity" class="input-gc action-required-field required-use-highlight text-action-required font-bold h-9" value="0" min="0" step="1" placeholder="0" oninput="handleReeferInputChange('palletQuantity', this.value); if(typeof autoDimensionVessel==='function') autoDimensionVessel();">
                             </div>
                             <div class="input-group flex flex-col justify-end">
                                 <label id="label-cargo-volume-cbm" for="cargo-volume-cbm" class="text-action-required flex items-center min-h-[24px] text-teal-300 font-bold text-xs">Volumen CBM</label>
@@ -10680,14 +10680,15 @@
                                     <span class="text-xs font-bold text-teal-200 whitespace-nowrap">Atmósfera Controlada (CA)</span>
                                 </label>
                             </div>
-                            <input type="hidden" id="cargo-qty" value="0" oninput="updateSection2LocalState('cargo-qty', this.value)">
+                            <input type="hidden" id="cargo-qty" value="0" oninput="updateSection2LocalState('cargo-qty', this.value); if(typeof autoDimensionVessel==='function') autoDimensionVessel();">
+                            <input type="hidden" id="cargo-category" value="">
                             <span id="cargo-vessel-class-display" class="hidden"></span>
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                             <div class="input-group">
                                 <label id="label-cargo-type" class="text-action-required flex items-center min-h-[24px]">Categoría de Carga</label>
-                                <select id="cargo-type" class="input-gc action-required-field required-use-highlight text-action-required" required aria-required="true" onchange="markCargoSelectionCommitted(); updateSection2LocalState('cargo-type', this.value); handleCargoCategoryChange(); populateCargoProducts(); autoPopulateRouteLimits();">
+                                <select id="cargo-type" class="input-gc action-required-field required-use-highlight text-action-required" required aria-required="true" onchange="markCargoSelectionCommitted(); updateSection2LocalState('cargo-type', this.value); (function(v){ const c = document.getElementById('cargo-category'); if(c) c.value = v; })(this.value); handleCargoCategoryChange(); populateCargoProducts(); autoPopulateRouteLimits(); if(typeof autoDimensionVessel==='function') autoDimensionVessel();">
                                     <option value="" selected>Selecciona una categoría</option>
                                     <option value="Frutas Cítricas">Frutas Cítricas</option>
                                     <option value="Frutas Tropicales y Exóticas">Frutas Tropicales y Exóticas</option>
@@ -11177,6 +11178,7 @@
 	                                    <input type="number" id="pda-pol" class="input-gc required-use-highlight text-emerald-300 font-bold" value="0" placeholder="0" step="any" oninput="runEngine()">
 	                                    <button id="btn-estimate-pda-pol" onclick="autoFillPDA('pol')" class="required-use-highlight bg-slate-800 text-slate-400 px-2 rounded hover:text-white" title="Consultar Data Bridge o estimar algorítmicamente por DWT"><i class="fa-solid fa-rotate-right"></i></button>
 	                                </div>
+	                                <div id="pda-pol-subtext" class="text-[10px] text-slate-400 mt-1">Consultar Data Bridge o estimar algorítmicamente por DWT</div>
 	                                <div id="pda-pol-status" class="hidden mt-1 inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-black uppercase tracking-[0.08em]" role="status" aria-live="polite"></div>
 	                            </div>
 	                            <div class="input-group">
@@ -11185,6 +11187,7 @@
 	                                    <input type="number" id="pda-pod" class="input-gc required-use-highlight text-emerald-300 font-bold" value="0" placeholder="0" step="any" oninput="runEngine()">
 	                                    <button id="btn-estimate-pda-pod" onclick="autoFillPDA('pod')" class="required-use-highlight bg-slate-800 text-slate-400 px-2 rounded hover:text-white" title="Consultar Data Bridge o estimar algorítmicamente por DWT"><i class="fa-solid fa-rotate-right"></i></button>
 	                                </div>
+	                                <div id="pda-pod-subtext" class="text-[10px] text-slate-400 mt-1">Consultar Data Bridge o estimar algorítmicamente por DWT</div>
 	                                <div id="pda-pod-status" class="hidden mt-1 inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-black uppercase tracking-[0.08em]" role="status" aria-live="polite"></div>
 	                            </div>
                             <div class="input-group">
@@ -12233,6 +12236,10 @@
                                 <label id="label-buying-freight" class="mb-1 block text-[10px] font-bold uppercase text-indigo-700">Flete Compra Armador ($)</label>
                                 <div class="flex">
                                     <input type="number" id="freight-rate" class="input-gc h-9 rounded-r-none border-slate-300 bg-white text-lg font-bold text-slate-900" value="32.50" step="any" oninput="runEngine()">
+                                    <select id="freight-rate-unit" class="h-9 border-y border-slate-300 bg-slate-100 px-2 text-xs font-bold text-slate-700 transition hover:bg-slate-200" onchange="runEngine()" title="Unidad de Flete (MT / Pallet)">
+                                        <option value="MT" selected>USD/MT</option>
+                                        <option value="Pallet">USD/Pallet</option>
+                                    </select>
                                     <button type="button" id="btn-calc-owner-freight" onclick="handleFreightMasterTrigger('owner', event)" class="border-y border-indigo-700 bg-indigo-700 px-2 text-white transition hover:bg-indigo-800" title="Calcular e iniciar Auto-Flow"><i class="fa-solid fa-calculator"></i></button>
                                     <button id="btn-spot-owner-freight" onclick="predictSpotMarketLocal()" class="rounded-r-md border border-blue-700 bg-blue-700 px-2 text-white transition hover:bg-blue-800" title="Estimación Algorítmica Spot Real (PMT)"><i class="fa-solid fa-chart-line"></i></button>
                                 </div>
@@ -34761,11 +34768,96 @@ function createRouteAnchorElement(type) {
             return fallback.segment;
         }
 
+        function autoDimensionVessel(options = {}) {
+            let suggestedDWT = 0;
+            const totalPalletsInput = parseFloat(document.getElementById('pallet-quantity')?.value)
+                || (typeof State !== 'undefined' ? Number(State?.palletQuantity) : 0)
+                || 0;
+            const isPalletRateMode = (document.getElementById('freight-rate-unit')?.value === 'Pallet')
+                || (document.getElementById('freight-unit')?.value === 'Pallet')
+                || (typeof State !== 'undefined' && State?.rateUnit === 'Pallet')
+                || (totalPalletsInput > 0);
+
+            const isReeferVolume = isPalletRateMode || Boolean(
+                document.getElementById('cargo-category')?.value?.includes('Frutas')
+                || document.getElementById('cargo-type')?.value?.includes('Frutas')
+                || (typeof State !== 'undefined' && String(State?.cargoType || '').includes('Frutas'))
+            );
+
+            const cargoTons = parseFloat(document.getElementById('cargo-qty')?.value)
+                || (typeof State !== 'undefined' ? (Number(State?.cargo) || Number(State?.cargoQty)) : 0)
+                || (totalPalletsInput > 0 ? totalPalletsInput * 1.0 : 0);
+
+            if (isReeferVolume) {
+                // La fruta paletizada requiere alto volumen. Relación empírica: ~2.75 DWT estructurales por pallet.
+                suggestedDWT = Math.ceil((totalPalletsInput * 2.75) / 100) * 100;
+            } else {
+                // Lógica estándar para carga seca (peso de la carga + 10% de margen para constante/bunkers)
+                suggestedDWT = Math.ceil((cargoTons * 1.10) / 100) * 100;
+            }
+
+            if (suggestedDWT > 0) {
+                const dwtInput = document.getElementById('vessel-dwt');
+                if (dwtInput && Number(dwtInput.value) !== suggestedDWT) {
+                    dwtInput.value = String(suggestedDWT);
+                    if (typeof updateSection2LocalState === 'function') {
+                        updateSection2LocalState('vessel-dwt', suggestedDWT);
+                    }
+                }
+                const idDwtInput = document.getElementById('vessel-identity-dwt');
+                if (idDwtInput && Number(idDwtInput.value) !== suggestedDWT) {
+                    idDwtInput.value = String(suggestedDWT);
+                }
+
+                if (typeof State !== 'undefined' && State) {
+                    State.vesselDwt = suggestedDWT;
+                    State.dwt = suggestedDWT;
+                    State.capacidad_dwt = suggestedDWT;
+                }
+
+                const badgeEl = document.getElementById('tbn-auto-sizing-badge');
+                if (badgeEl) {
+                    badgeEl.classList.remove('hidden');
+                    const badgeText = isReeferVolume
+                        ? `⚡ Buque auto-dimensionado a ${suggestedDWT} DWT según requerimientos volumétricos (Reefer).`
+                        : `⚡ Buque auto-dimensionado a ${suggestedDWT} DWT según exigencias volumétricas.`;
+                    badgeEl.textContent = badgeText;
+                    badgeEl.innerText = badgeText;
+                }
+
+                if (window.voyageStore?.getState()?.patchSection2Vessel) {
+                    window.voyageStore.getState().patchSection2Vessel({
+                        dwt: suggestedDWT,
+                        vesselDwt: suggestedDWT,
+                        name: 'TBN'
+                    });
+                }
+
+                if (!options.deferDwtChange && typeof handleDWTChange === 'function') {
+                    handleDWTChange(true, false);
+                }
+                if (!options.deferEngine && typeof runEngine === 'function') {
+                    runEngine();
+                }
+            }
+            return suggestedDWT;
+        }
+
+        function calculateDWT(options = {}) {
+            return autoDimensionVessel(options);
+        }
+        window.autoDimensionVessel = autoDimensionVessel;
+        window.calculateDWT = calculateDWT;
+
         window.section2LocalState = window.section2LocalState || {};
 
         function updateSection2LocalState(id, value) {
             if (id) {
                 window.section2LocalState[id] = value;
+            }
+            if (id === 'cargo-type' || id === 'cargo-category') {
+                const catEl = document.getElementById('cargo-category');
+                if (catEl) catEl.value = value;
             }
             if (id === 'nombre-buque-calculadora' || id === 'vessel-name') {
                 if (typeof State !== 'undefined' && State) {
@@ -34781,38 +34873,7 @@ function createRouteAnchorElement(type) {
                 const vStr = String(value || '').trim().toUpperCase();
                 const isTbn = vStr === '' || vStr === 'TBN' || vStr.includes('TO BE NAMED') || vStr.includes('TO BE NOMINATED');
                 if (isTbn) {
-                    const cWeight = Number(State?.cargo) || Number(State?.cargoQty) || (typeof document !== 'undefined' ? (parseFloat(document.getElementById('cargo-qty')?.value) || parseFloat(document.getElementById('pallet-quantity')?.value) || 0) : 0);
-                    const sfVal = parseFloat(document.getElementById('cargo-sf')?.value) || Number(State?.stowageFactor) || (State?.cargoVolumeCBM && cWeight > 0 ? (State.cargoVolumeCBM / cWeight) : 1.35) || 1.35;
-                    const reqCbm = Number(State?.cargoVolumeCBM) > 0 ? Number(State.cargoVolumeCBM) : (cWeight * sfVal);
-                    if (reqCbm > 0) {
-                        const optimalDwt = Math.ceil(((reqCbm / 1.25) * 1.05) / 100) * 100;
-                        if (optimalDwt > 0) {
-                            if (State) {
-                                State.vesselDwt = optimalDwt;
-                                State.dwt = optimalDwt;
-                                State.capacidad_dwt = optimalDwt;
-                            }
-                            const dwtInput = document.getElementById('vessel-dwt');
-                            if (dwtInput && Number(dwtInput.value) !== optimalDwt) {
-                                dwtInput.value = String(optimalDwt);
-                            }
-                            const idDwtInput = document.getElementById('vessel-identity-dwt');
-                            if (idDwtInput && Number(idDwtInput.value) !== optimalDwt) {
-                                idDwtInput.value = String(optimalDwt);
-                            }
-                            const badgeEl = document.getElementById('tbn-auto-sizing-badge');
-                            if (badgeEl) {
-                                badgeEl.classList.remove('hidden');
-                                badgeEl.textContent = `⚡ Buque auto-dimensionado a ${optimalDwt} DWT según exigencias volumétricas.`;
-                            }
-                            if (typeof handleDWTChange === 'function') {
-                                handleDWTChange(true, false);
-                            }
-                            if (typeof runEngine === 'function') {
-                                runEngine();
-                            }
-                        }
-                    }
+                    autoDimensionVessel();
                 } else {
                     const badgeEl = document.getElementById('tbn-auto-sizing-badge');
                     if (badgeEl) {
@@ -34907,37 +34968,8 @@ function createRouteAnchorElement(type) {
             const vName = String(rawVName || '').trim().toUpperCase();
             const isTbn = vName === '' || vName === 'TBN' || vName.includes('TO BE NAMED') || vName.includes('TO BE NOMINATED');
             if (isTbn) {
-                const cWeight = effectiveWeight > 0 ? effectiveWeight : (Number(State.cargo) || Number(State.cargoQty) || (typeof document !== 'undefined' ? (parseFloat(document.getElementById('cargo-qty')?.value) || 0) : 0));
-                const sfVal = parseFloat(document.getElementById('cargo-sf')?.value) || Number(State.stowageFactor) || (State.cargoVolumeCBM && cWeight > 0 ? (State.cargoVolumeCBM / cWeight) : 1.35) || 1.35;
-                const reqCbm = Number(State.cargoVolumeCBM) > 0 ? Number(State.cargoVolumeCBM) : (cWeight * sfVal);
-                if (reqCbm > 0) {
-                    const optimalDwt = Math.ceil(((reqCbm / 1.25) * 1.05) / 100) * 100;
-                    if (optimalDwt > 0) {
-                        State.vesselDwt = optimalDwt;
-                        State.dwt = optimalDwt;
-                        State.capacidad_dwt = optimalDwt;
-                        const dwtInput = document.getElementById('vessel-dwt');
-                        if (dwtInput) {
-                            dwtInput.value = String(optimalDwt);
-                            updateSection2LocalState('vessel-dwt', optimalDwt);
-                        }
-                        const idDwtInput = document.getElementById('vessel-identity-dwt');
-                        if (idDwtInput) idDwtInput.value = String(optimalDwt);
-
-                        const badgeEl = document.getElementById('tbn-auto-sizing-badge');
-                        if (badgeEl) {
-                            badgeEl.classList.remove('hidden');
-                            badgeEl.textContent = `⚡ Buque auto-dimensionado a ${optimalDwt} DWT según exigencias volumétricas.`;
-                        }
-
-                        if (window.voyageStore?.getState()?.patchSection2Vessel) {
-                            window.voyageStore.getState().patchSection2Vessel({
-                                dwt: optimalDwt,
-                                vesselDwt: optimalDwt,
-                                name: 'TBN'
-                            });
-                        }
-                    }
+                if (typeof autoDimensionVessel === 'function') {
+                    autoDimensionVessel();
                 }
             }
 
@@ -36253,7 +36285,8 @@ function createRouteAnchorElement(type) {
             return totalPda;
         }
 
-        function buildOperationalPdaBreakdown(type, basePda, incrementalCost, projectCargoCost = 0) {
+        function buildOperationalPdaBreakdown(type, basePda, incrementalCost) {
+            const projectCargoCost = arguments[3] || 0;
             const stateKey = type === 'pol' ? 'pdaPolBreakdown' : 'pdaPodBreakdown';
             const existingBaseBreakdown = Array.isArray(State[stateKey])
                 ? State[stateKey].filter(item => item?.kind !== 'operational-overtime' && item?.kind !== 'project-cargo')
@@ -36439,10 +36472,40 @@ function createRouteAnchorElement(type) {
 
 	        function setPdaCalculationStatus(type, mode) {
 	            const status = document.getElementById(`pda-${type}-status`);
-	            if (!status) return;
+	            const subtext = document.getElementById(`pda-${type}-subtext`);
+	            const btn = document.getElementById(`btn-estimate-pda-${type}`);
+
+	            if (mode === 'reefer-minimum' || mode === 'reefer') {
+	                const reeferText = "Mínimo Operativo Reefer Aplicado (Base + FHEX si aplica)";
+	                if (status) {
+	                    status.classList.remove('hidden');
+	                    status.className = 'mt-1 inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-black uppercase tracking-[0.08em] border-emerald-400/50 bg-emerald-950/40 text-emerald-300';
+	                    status.innerHTML = `<i class="fa-solid fa-snowflake text-emerald-400"></i><span>${reeferText}</span>`;
+	                }
+	                if (subtext) {
+	                    subtext.textContent = reeferText;
+	                    subtext.className = 'text-[10px] text-emerald-400 font-semibold mt-1';
+	                }
+	                if (btn) {
+	                    btn.title = reeferText;
+	                }
+	                return;
+	            }
+
 	            const official = mode === 'official';
-	            status.className = `mt-1 inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-black uppercase tracking-[0.08em] ${official ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-300' : 'border-sky-400/40 bg-sky-500/10 text-sky-300'}`;
-	            status.innerHTML = `<i class="fa-solid ${official ? 'fa-circle-check' : 'fa-chart-line'}"></i><span>${official ? 'Cálculo Oficial' : 'Estimación Algorítmica Global'}</span>`;
+	            const standardText = official ? 'Cálculo Oficial' : 'Estimación Algorítmica Global';
+	            if (status) {
+	                status.classList.remove('hidden');
+	                status.className = `mt-1 inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[10px] font-black uppercase tracking-[0.08em] ${official ? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-300' : 'border-sky-400/40 bg-sky-500/10 text-sky-300'}`;
+	                status.innerHTML = `<i class="fa-solid ${official ? 'fa-circle-check' : 'fa-chart-line'}"></i><span>${standardText}</span>`;
+	            }
+	            if (subtext) {
+	                subtext.textContent = official ? 'Cálculo Oficial (Data Bridge)' : 'Consultar Data Bridge o estimar algorítmicamente por DWT';
+	                subtext.className = 'text-[10px] text-slate-400 mt-1';
+	            }
+	            if (btn) {
+	                btn.title = official ? 'Cálculo Oficial (Data Bridge)' : 'Consultar Data Bridge o estimar algorítmicamente por DWT';
+	            }
 	        }
 
         function getPdaPersistenceIdentity() {
@@ -36612,104 +36675,189 @@ function createRouteAnchorElement(type) {
                 marginInput.value = marginDays.toFixed(2);
             }
 
-            // Pre-cálculos navales: priorizar siempre el GT real del buque y estimarlo solo como fallback.
-            const netTonnage = readNumber('vessel-net-tonnage');
-            const storedVessel = window.GlobalStore?.calculatorVessel || window.GlobalStore?.activeVessel || {};
-            const manualGt = readNumber('vessel-identity-gt');
-            const vessel = { ...storedVessel, dwt, gt: manualGt > 0 ? manualGt : storedVessel.gt };
-            const gtParaCalculo = (vessel.gt && Number(vessel.gt) > 0) ? Number(vessel.gt) : (Number(vessel.dwt) * 0.60);
-            const loaFromInput = readNumber('vessel-loa');
-            const loa = Math.round(loaFromInput > 0 ? loaFromInput : Math.pow(dwt, 0.333) * 5.2);
-            const beam = Math.round(Math.pow(dwt, 0.333) * 0.82);
-	            const daysInPort = cargo > 0 && activeRate > 0 ? (cargo / activeRate) : 0;
-	            const totalDaysInPort = daysInPort + (marginDays / 2);
+            const isPalletMode = (document.getElementById('freight-rate-unit')?.value === 'Pallet')
+                || (document.getElementById('freight-unit')?.value === 'Pallet')
+                || (typeof State !== 'undefined' && State?.rateUnit === 'Pallet')
+                || (readNumber('pallet-quantity') > 0)
+                || (typeof State !== 'undefined' && Number(State?.palletQuantity) > 0);
+            const isReefer = (typeof isReeferOperation === 'function' && isReeferOperation()) || isPalletMode;
 
-	            const vesselData = { ...vessel, portName, dwt, cargo, gt: gtParaCalculo, loa, beam, totalDaysInPort, netTonnage, loaFromInput };
-	            const calculation = calculateGlobalPdaEstimateBreakdown(vesselData);
-	            const calculationMode = 'global-estimate';
+            let finalPDA = 0;
+            let calculationMode = 'global-estimate';
+            let breakdownItems = [];
+            let navManiobra = 0;
+            let tasasAutoridad = 0;
+            let agenciaVarios = 0;
+            let muelleEstadia = 0;
+            let overtimeSurcharge = 0;
+            let extraSurcharges = '';
 
-	            let { totalPDA, tasasAutoridad, navManiobra, muelleEstadia, agenciaVarios } = calculation;
+            if (isReefer) {
+                calculationMode = 'reefer-minimum';
+                const baseReeferPda = (type === 'pod') ? 26000 : 28000;
+                const etaDate = document.getElementById('map-laycan-date')?.value
+                    || document.getElementById('gc-laycan-date')?.value
+                    || document.getElementById('asb-laycan-date')?.value
+                    || State?.laycanDate
+                    || State?.laydaysDate
+                    || null;
+                const laytimeRule = (document.getElementById(`laytime-${type}-condition`)?.value
+                    || (type === 'pol' ? State?.laytimePOL : State?.laytimePOD)
+                    || '').toUpperCase();
+                const portCountry = (type === 'pol' ? (State?.portPolCountry || State?.polCountry) : (State?.portPodCountry || State?.podCountry)) || '';
+                const totalDaysInPort = (cargo > 0 && activeRate > 0 ? (cargo / activeRate) : 0) + (marginDays / 2);
 
-	            if (type === 'pod') totalPDA *= 1.10; // Recargo general POD (MARPOL, etc)
-
-            // Adjustments based on Cargo Type (Dry vs Liquid bulk)
-            const cargoType = document.getElementById('cargo-type')?.value || '';
-            let liquidSurchargeTag = '';
-            if (cargoType === 'Granel Líquido (Liquid Bulk)') {
-                totalPDA *= 1.30; // Liquid bulk requires slop disposal, safety supervision, specialized terminals (30% increase)
-                liquidSurchargeTag = ' (+30% Liquid Bulk Surcharge)';
-            }
-
-            // Adjustments for Reefer Operations (Fruit terminals & priority tugs)
-            let reeferSurchargeTag = '';
-            if (typeof isReeferOperation === 'function' && isReeferOperation()) {
-                totalPDA *= 1.25; // Terminales fruteras y remolcadores prioritarios (+25%)
-                reeferSurchargeTag = ' (+25% Terminal Frutera / Reefer Priority Surcharge)';
-            }
-
-            let finalPDA = Math.round(totalPDA / 50) * 50;
-
-            // Validación de seguridad por defecto para POD
-            let freePortTag = '';
-            if (type === 'pod') {
-                const polPda = parseFloat(document.getElementById('pda-pol')?.value) || parseFloat(window.State?.pdaPol) || parseFloat(window.State?.basePdaPol) || 0;
-                const podPortName = String(document.getElementById('port-pod')?.value || window.State?.pod || '').toLowerCase();
-                const podInputEl = document.getElementById('port-pod');
-                const isFreePort = podPortName.includes('libre') || podPortName.includes('free') || podPortName.includes('ftz') || podPortName.includes('exento') || podPortName.includes('arancel reducido') || podInputEl?.dataset?.freePort === 'true';
-
-                if (polPda > 0 && !isFreePort && finalPDA < polPda * 0.70) {
-                    finalPDA = Math.max(finalPDA, Math.round(polPda * 0.85));
-                } else if (isFreePort && polPda > 0 && finalPDA < polPda) {
-                    freePortTag = ' (Puerto Libre / Arancel Reducido)';
+                if (typeof window !== 'undefined' && window.SeaCharterVoyageCostEngine?.calculatePortCosts) {
+                    try {
+                        const portCostResult = window.SeaCharterVoyageCostEngine.calculatePortCosts({
+                            portType: type,
+                            isReefer: true,
+                            basePDA: baseReeferPda,
+                            etaDate,
+                            portDays: totalDaysInPort,
+                            cargoQuantity: cargo,
+                            portDailyRate: activeRate,
+                            laytimeRule,
+                            portCountry
+                        });
+                        overtimeSurcharge = Number(portCostResult?.overtimeSurcharge || portCostResult?.incrementalCost) || 0;
+                    } catch (_) {}
                 }
-            }
-            const tugCost = State.smartAdjustments?.tugTotalCost || 0;
-            const tugPort = Math.round(tugCost / 2);
-            const tugShare = Math.min(Math.round(navManiobra * 0.5), Math.max(tugPort, Math.round(navManiobra * 0.3)));
-            const pilotShare = Math.max(0, Math.round(navManiobra) - tugShare);
 
-            const breakdownItems = [
-                { item: 'Agencia y Despacho', amount: Math.round(agenciaVarios) },
-                { item: 'Remolcadores', amount: tugShare },
-                { item: 'Practicaje y Amarre', amount: pilotShare },
-                { item: 'Tasas de Muelle y Autoridad', amount: Math.round(tasasAutoridad) },
-                { item: 'Estadía y Derechos de Puerto', amount: Math.round(muelleEstadia) }
-            ];
-            const itemSum = breakdownItems.reduce((acc, curr) => acc + curr.amount, 0);
-            const diff = finalPDA - itemSum;
-            if (diff !== 0 && breakdownItems.length > 0) breakdownItems[0].amount += diff;
+                finalPDA = baseReeferPda + overtimeSurcharge;
+                const agencyFee = 2300; // DEFAULT_AGENCY_BASE_FEE
+                tasasAutoridad = Math.round(baseReeferPda * 0.35);
+                navManiobra = Math.round(baseReeferPda * 0.35);
+                agenciaVarios = agencyFee;
+                muelleEstadia = Math.max(0, finalPDA - (agencyFee + tasasAutoridad + navManiobra));
+
+                breakdownItems = [
+                    { item: 'Agencia y Despacho (Tarifa Base)', amount: agencyFee },
+                    { item: 'Remolcadores', amount: Math.round(baseReeferPda * 0.20) },
+                    { item: 'Practicaje y Amarre', amount: Math.round(baseReeferPda * 0.15) },
+                    { item: 'Tasas de Muelle y Autoridad', amount: tasasAutoridad },
+                    { item: 'Estadía y Derechos de Puerto', amount: muelleEstadia }
+                ];
+            } else {
+                // Pre-cálculos navales: priorizar siempre el GT real del buque y estimarlo solo como fallback.
+                const netTonnage = readNumber('vessel-net-tonnage');
+                const storedVessel = window.GlobalStore?.calculatorVessel || window.GlobalStore?.activeVessel || {};
+                const manualGt = readNumber('vessel-identity-gt');
+                const vessel = { ...storedVessel, dwt, gt: manualGt > 0 ? manualGt : storedVessel.gt };
+                const gtParaCalculo = (vessel.gt && Number(vessel.gt) > 0) ? Number(vessel.gt) : (Number(vessel.dwt) * 0.60);
+                const loaFromInput = readNumber('vessel-loa');
+                const loa = Math.round(loaFromInput > 0 ? loaFromInput : Math.pow(dwt, 0.333) * 5.2);
+                const beam = Math.round(Math.pow(dwt, 0.333) * 0.82);
+                const daysInPort = cargo > 0 && activeRate > 0 ? (cargo / activeRate) : 0;
+                const totalDaysInPort = daysInPort + (marginDays / 2);
+
+                const vesselData = { ...vessel, portName, dwt, cargo, gt: gtParaCalculo, loa, beam, totalDaysInPort, netTonnage, loaFromInput };
+                const calculation = calculateGlobalPdaEstimateBreakdown(vesselData);
+                calculationMode = 'global-estimate';
+
+                let totalPDA = calculation.totalPDA;
+                tasasAutoridad = calculation.tasasAutoridad;
+                navManiobra = calculation.navManiobra;
+                muelleEstadia = calculation.muelleEstadia;
+                agenciaVarios = calculation.agenciaVarios;
+
+                if (type === 'pod') totalPDA *= 1.10; // Recargo general POD (MARPOL, etc)
+
+                // Adjustments based on Cargo Type (Dry vs Liquid bulk)
+                const cargoType = document.getElementById('cargo-type')?.value || '';
+                let liquidSurchargeTag = '';
+                if (cargoType === 'Granel Líquido (Liquid Bulk)') {
+                    totalPDA *= 1.30;
+                    liquidSurchargeTag = ' (+30% Liquid Bulk Surcharge)';
+                }
+
+                finalPDA = Math.round(totalPDA / 50) * 50;
+
+                // Validación de seguridad por defecto para POD
+                let freePortTag = '';
+                if (type === 'pod') {
+                    const polPda = parseFloat(document.getElementById('pda-pol')?.value) || parseFloat(window.State?.pdaPol) || parseFloat(window.State?.basePdaPol) || 0;
+                    const podPortName = String(document.getElementById('port-pod')?.value || window.State?.pod || '').toLowerCase();
+                    const podInputEl = document.getElementById('port-pod');
+                    const isFreePort = podPortName.includes('libre') || podPortName.includes('free') || podPortName.includes('ftz') || podPortName.includes('exento') || podPortName.includes('arancel reducido') || podInputEl?.dataset?.freePort === 'true';
+
+                    if (polPda > 0 && !isFreePort && finalPDA < polPda * 0.70) {
+                        finalPDA = Math.max(finalPDA, Math.round(polPda * 0.85));
+                    } else if (isFreePort && polPda > 0 && finalPDA < polPda) {
+                        freePortTag = ' (Puerto Libre / Arancel Reducido)';
+                    }
+                }
+                const tugCost = State?.smartAdjustments?.tugTotalCost || 0;
+                const tugPort = Math.round(tugCost / 2);
+                const tugShare = Math.min(Math.round(navManiobra * 0.5), Math.max(tugPort, Math.round(navManiobra * 0.3)));
+                const pilotShare = Math.max(0, Math.round(navManiobra) - tugShare);
+
+                breakdownItems = [
+                    { item: 'Agencia y Despacho', amount: Math.round(agenciaVarios) },
+                    { item: 'Remolcadores', amount: tugShare },
+                    { item: 'Practicaje y Amarre', amount: pilotShare },
+                    { item: 'Tasas de Muelle y Autoridad', amount: Math.round(tasasAutoridad) },
+                    { item: 'Estadía y Derechos de Puerto', amount: Math.round(muelleEstadia) }
+                ];
+                const itemSum = breakdownItems.reduce((acc, curr) => acc + curr.amount, 0);
+                const diff = finalPDA - itemSum;
+                if (diff !== 0 && breakdownItems.length > 0) breakdownItems[0].amount += diff;
+
+                const podTag = type === 'pod' ? ' (+10% POD)' : '';
+                extraSurcharges = `${podTag}${liquidSurchargeTag}${freePortTag}`;
+            }
 
             if (type === 'pol') {
-                State.pdaPolBreakdown = breakdownItems;
+                if (window.State) window.State.pdaPolBreakdown = breakdownItems;
             } else {
-                State.pdaPodBreakdown = breakdownItems;
+                if (window.State) window.State.pdaPodBreakdown = breakdownItems;
             }
 
             const pdaInput = document.getElementById(`pda-${type}`);
             if (!pdaInput) return;
+            pdaInput.value = finalPDA;
             pdaInput.dataset.basePda = String(finalPDA);
-            if (window.State) {
-                if (type === 'pol') window.State.basePdaPol = finalPDA;
-                else window.State.basePdaPod = finalPDA;
-            }
+            pdaInput.dataset.operationalPdaBase = String(isReefer ? (type === 'pod' ? 26000 : 28000) : finalPDA);
+            pdaInput.dataset.operationalPdaIncrement = String(overtimeSurcharge);
+            pdaInput.dataset.operationalPdaTotal = String(finalPDA);
             pdaInput.dataset.calculationMode = calculationMode;
+            if (window.State) {
+                if (type === 'pol') {
+                    window.State.basePdaPol = isReefer ? 28000 : finalPDA;
+                    window.State.pdaPol = finalPDA;
+                } else {
+                    window.State.basePdaPod = isReefer ? 26000 : finalPDA;
+                    window.State.pdaPod = finalPDA;
+                }
+            }
             pdaInput.dispatchEvent(new Event('input', { bubbles: true }));
+            pdaInput.dispatchEvent(new Event('change', { bubbles: true }));
             setPdaCalculationStatus(type, calculationMode);
 
-            // Reaplicar modificadores dinámicos (ajuste de días/muellaje y grúas de buque) partiendo de basePda
-            const finalCalculatedPda = typeof actualizarPDADinamica === 'function'
-                ? actualizarPDADinamica(type)
-                : finalPDA;
+            // Reaplicar modificadores dinámicos si no es modo Reefer
+            const finalCalculatedPda = isReefer
+                ? finalPDA
+                : (typeof actualizarPDADinamica === 'function' ? actualizarPDADinamica(type) : finalPDA);
 
             if (showNotification) {
-                const podTag = type === 'pod' ? ' (+10% POD)' : '';
-                const extraSurcharges = `${podTag}${liquidSurchargeTag}${reeferSurchargeTag}${freePortTag}`;
-                const sourceTag = calculationMode === 'official' ? ' | Data Bridge' : ' | Curva global DWT';
-                const sourceLabel = calculationMode === 'official' ? 'Cálculo Oficial' : 'Estimación Algorítmica Global';
-                showToast(`PDA ${type.toUpperCase()}: $${finalCalculatedPda.toLocaleString('en-US')} · ${sourceLabel}${extraSurcharges}<br><span class="text-[10px] text-emerald-300 mt-1 block font-mono">Nav/Maniobra: $${Math.round(navManiobra)} | Tasas: $${Math.round(tasasAutoridad)} | Agencia/Misc: $${Math.round(agenciaVarios)} | Muelle: $${Math.round(muelleEstadia)}${sourceTag}</span>`);
+                if (isReefer) {
+                    const surchargeNote = overtimeSurcharge > 0 ? ` (+FHEX/Overtime: $${overtimeSurcharge.toLocaleString('en-US')})` : '';
+                    showToast(`PDA ${type.toUpperCase()}: $${finalPDA.toLocaleString('en-US')} · Mínimo Operativo Reefer Aplicado (Base + FHEX si aplica)${surchargeNote}<br><span class="text-[10px] text-emerald-300 mt-1 block font-mono">Base Reefer: $${(type === 'pod' ? 26000 : 28000).toLocaleString('en-US')} | Overtime/FHEX: $${overtimeSurcharge.toLocaleString('en-US')} | Despacho: $${Math.round(agenciaVarios)}</span>`);
+                } else {
+                    const sourceTag = calculationMode === 'official' ? ' | Data Bridge' : ' | Curva global DWT';
+                    const sourceLabel = calculationMode === 'official' ? 'Cálculo Oficial' : 'Estimación Algorítmica Global';
+                    showToast(`PDA ${type.toUpperCase()}: $${finalCalculatedPda.toLocaleString('en-US')} · ${sourceLabel}${extraSurcharges}<br><span class="text-[10px] text-emerald-300 mt-1 block font-mono">Nav/Maniobra: $${Math.round(navManiobra)} | Tasas: $${Math.round(tasasAutoridad)} | Agencia/Misc: $${Math.round(agenciaVarios)} | Muelle: $${Math.round(muelleEstadia)}${sourceTag}</span>`);
+                }
             }
             if (!options.deferEngine && typeof runEngine === 'function') runEngine();
 	        }
+
+        if (typeof window !== 'undefined') {
+            window.autoFillPDA = autoFillPDA;
+            window.calculateAutoPDA = autoFillPDA;
+            window.estimatePDAByDWT = autoFillPDA;
+            window.fillDefaultPDAs = (options) => { autoFillPDA('pol', false, options); autoFillPDA('pod', false, options); };
+        }
 
         async function autoFillVesselSpecs() {
             let vesselName = document.getElementById('vessel-name').value.trim();
@@ -39006,7 +39154,7 @@ function createRouteAnchorElement(type) {
                 State.freightSell = roundedValue;
             }
             if (!options.deferEngine && typeof runEngine === 'function') runEngine();
-        }
+	        }
 
         function buildMatchingRequest(calculation = {}) {
             const voyageParams = getGlobalVoyageParams();
@@ -41084,15 +41232,16 @@ function scheduleReactiveEngine() {
             const podPortHours = rateDisch > 0 ? (cargo / rateDisch) * 24 : dPortDisch * 24;
             const totalStevedoringHours = polPortHours + podPortHours;
             const stevedoringHourlyRate = totalStevedoringHours > 0
-                ? stevedoringAllocation.ownerCost / totalStevedoringHours
-                : 0;
+                ? ((stevedoringAllocation.ownerCost > 0 ? stevedoringAllocation.ownerCost / totalStevedoringHours : 100))
+                : 100;
             const buildOperationalContext = (portContext, portDailyRate) => ({
                 hasAdjustedRates,
                 cargoQuantity: cargo,
                 portDailyRate,
                 berths: portContext.berths,
                 standardHourlyRate: stevedoringHourlyRate,
-                overtimeMultiplier: 1.5
+                overtimeMultiplier: 1.5,
+                enforceDefaultRate: true
             });
             const polOperationalRisk = calculateRisk
                 ? calculateRisk(basePdaPol, etaBase, dPortLoad, polOperationalContext.countryCode || polOperationalContext.countryName, vesselDraft, polOperationalContext.maxDraft, buildOperationalContext(polOperationalContext, rateLoad))
@@ -41312,35 +41461,45 @@ function scheduleReactiveEngine() {
             let pdaPolVal = parseFloat(document.getElementById('pda-pol')?.value) || State.pdaPol || 0;
             let pdaPodVal = parseFloat(document.getElementById('pda-pod')?.value) || State.pdaPod || 0;
             if ((pdaPolVal <= 0 || pdaPodVal <= 0) && typeof autoFillPDA === 'function') {
-                const rawDwt = parseFloat(document.getElementById('vessel-dwt')?.value || State.dwt || 0) || 0;
-                const cargoQty = parseFloat(document.getElementById('cargo-qty')?.value || State.cargoQty || 0) || 0;
-                const dwt = rawDwt > 0 ? rawDwt : (cargoQty > 0 ? Math.round(cargoQty * 1.15) : 15000);
-                const polPortName = document.getElementById('port-pol')?.value || State.pol || '';
-                const podPortName = document.getElementById('port-pod')?.value || State.pod || '';
-                const vessel = getCalculatorVesselForPda(dwt);
-                const { gtParaCalculo } = getPdaGtCalculationContext(vessel);
-                if (dwt > 0 && typeof calculateGlobalPdaEstimateBreakdown === 'function') {
-                    if (pdaPolVal <= 0) {
-                        const fallbackPol = calculateGlobalPdaEstimateBreakdown({ ...vessel, portName: polPortName, dwt, gt: gtParaCalculo, loa: Math.pow(dwt, 0.333) * 5.2 });
-                        if (fallbackPol && fallbackPol.totalPDA > 0) {
-                            pdaPolVal = fallbackPol.totalPDA;
-                            const el = document.getElementById('pda-pol');
-                            if (el && (!el.value || parseFloat(el.value) <= 0)) el.value = String(pdaPolVal);
-                            State.pdaPol = pdaPolVal;
+                const isPallet = (document.getElementById('freight-rate-unit')?.value === 'Pallet')
+                    || (document.getElementById('freight-unit')?.value === 'Pallet')
+                    || (State?.rateUnit === 'Pallet')
+                    || (Number(State?.palletQuantity) > 0);
+                const isReefer = (typeof isReeferOperation === 'function' && isReeferOperation()) || isPallet;
+                if (isReefer) {
+                    if (pdaPolVal <= 0) autoFillPDA('pol', false);
+                    if (pdaPodVal <= 0) autoFillPDA('pod', false);
+                } else {
+                    const rawDwt = parseFloat(document.getElementById('vessel-dwt')?.value || State.dwt || 0) || 0;
+                    const cargoQty = parseFloat(document.getElementById('cargo-qty')?.value || State.cargoQty || 0) || 0;
+                    const dwt = rawDwt > 0 ? rawDwt : (cargoQty > 0 ? Math.round(cargoQty * 1.15) : 15000);
+                    const polPortName = document.getElementById('port-pol')?.value || State.pol || '';
+                    const podPortName = document.getElementById('port-pod')?.value || State.pod || '';
+                    const vessel = getCalculatorVesselForPda(dwt);
+                    const { gtParaCalculo } = getPdaGtCalculationContext(vessel);
+                    if (dwt > 0 && typeof calculateGlobalPdaEstimateBreakdown === 'function') {
+                        if (pdaPolVal <= 0) {
+                            const fallbackPol = calculateGlobalPdaEstimateBreakdown({ ...vessel, portName: polPortName, dwt, gt: gtParaCalculo, loa: Math.pow(dwt, 0.333) * 5.2 });
+                            if (fallbackPol && fallbackPol.totalPDA > 0) {
+                                pdaPolVal = fallbackPol.totalPDA;
+                                const el = document.getElementById('pda-pol');
+                                if (el && (!el.value || parseFloat(el.value) <= 0)) el.value = String(pdaPolVal);
+                                State.pdaPol = pdaPolVal;
+                            }
+                        }
+                        if (pdaPodVal <= 0) {
+                            const fallbackPod = calculateGlobalPdaEstimateBreakdown({ ...vessel, portName: podPortName, dwt, gt: gtParaCalculo, loa: Math.pow(dwt, 0.333) * 5.2 });
+                            if (fallbackPod && fallbackPod.totalPDA > 0) {
+                                pdaPodVal = Math.round(fallbackPod.totalPDA * 1.10);
+                                const el = document.getElementById('pda-pod');
+                                if (el && (!el.value || parseFloat(el.value) <= 0)) el.value = String(pdaPodVal);
+                                State.pdaPod = pdaPodVal;
+                            }
                         }
                     }
-                    if (pdaPodVal <= 0) {
-                        const fallbackPod = calculateGlobalPdaEstimateBreakdown({ ...vessel, portName: podPortName, dwt, gt: gtParaCalculo, loa: Math.pow(dwt, 0.333) * 5.2 });
-                        if (fallbackPod && fallbackPod.totalPDA > 0) {
-                            pdaPodVal = Math.round(fallbackPod.totalPDA * 1.10);
-                            const el = document.getElementById('pda-pod');
-                            if (el && (!el.value || parseFloat(el.value) <= 0)) el.value = String(pdaPodVal);
-                            State.pdaPod = pdaPodVal;
-                        }
-                    }
+                    if (pdaPolVal <= 0) autoFillPDA('pol', false);
+                    if (pdaPodVal <= 0) autoFillPDA('pod', false);
                 }
-                if (pdaPolVal <= 0) autoFillPDA('pol', false);
-                if (pdaPodVal <= 0) autoFillPDA('pod', false);
                 pdaPolVal = parseFloat(document.getElementById('pda-pol')?.value) || State.pdaPol || 0;
                 pdaPodVal = parseFloat(document.getElementById('pda-pod')?.value) || State.pdaPod || 0;
             }
@@ -41419,20 +41578,25 @@ function scheduleReactiveEngine() {
                 if (costDisplay) costDisplay.textContent = `$0.00 USD`;
             }
 
+            const freightRateUnit = document.getElementById('freight-rate-unit')?.value || 'MT';
+            const isPalletRateMode = freightRateUnit === 'Pallet';
+            const totalPalletsInput = parseFloat(document.getElementById('pallet-quantity')?.value) || State.palletQuantity || 0;
+            const palletDivisor = (isPalletRateMode && totalPalletsInput > 0) ? totalPalletsInput : multiplier;
+
             const commissionFactor = 1 - (commPct / 100);
             const baseCostWithoutEts = isZeroCalculation ? 0 : (basicBunkers + basicPortExpenses + (basicOperationalDays * (opex + capexDaily)));
             const temporalRiskCost = isZeroCalculation ? 0 : Math.max(0, smartBreakEvenNumerator - baseCostWithoutEts - etsCost);
-            const bepBaseOperativo = isZeroCalculation ? 0 : (baseCostWithoutEts / (multiplier || 1));
-            const etsBreakEvenOperativo = isZeroCalculation ? 0 : (etsCost / (multiplier || 1));
-            const temporalRiskBreakEvenOperativo = isZeroCalculation ? 0 : (temporalRiskCost / (multiplier || 1));
-            const basicBreakEvenOperativo = isZeroCalculation ? 0 : (basicBreakEvenNumerator / (multiplier || 1));
-            const breakEvenOperativo = isZeroCalculation ? 0 : (smartBreakEvenNumerator / (multiplier || 1));
+            const bepBaseOperativo = isZeroCalculation ? 0 : (baseCostWithoutEts / (palletDivisor || 1));
+            const etsBreakEvenOperativo = isZeroCalculation ? 0 : (etsCost / (palletDivisor || 1));
+            const temporalRiskBreakEvenOperativo = isZeroCalculation ? 0 : (temporalRiskCost / (palletDivisor || 1));
+            const basicBreakEvenOperativo = isZeroCalculation ? 0 : (basicBreakEvenNumerator / (palletDivisor || 1));
+            const breakEvenOperativo = isZeroCalculation ? 0 : (smartBreakEvenNumerator / (palletDivisor || 1));
             const bepBase = (isZeroCalculation || commissionFactor <= 0) ? 0 : (bepBaseOperativo / commissionFactor);
             const etsBreakEvenImpact = (isZeroCalculation || commissionFactor <= 0) ? 0 : (etsBreakEvenOperativo / commissionFactor);
             const temporalRiskImpact = (isZeroCalculation || commissionFactor <= 0) ? 0 : (temporalRiskBreakEvenOperativo / commissionFactor);
             const basicBreakEven = (isZeroCalculation || commissionFactor <= 0) ? 0 : (basicBreakEvenOperativo / commissionFactor);
             const breakEven = bepBase + etsBreakEvenImpact + temporalRiskImpact;
-            const breakEvenWithoutEts = (isZeroCalculation || commissionFactor <= 0) ? 0 : ((costTotalWithoutEts / commissionFactor) / (multiplier || 1));
+            const breakEvenWithoutEts = (isZeroCalculation || commissionFactor <= 0) ? 0 : ((costTotalWithoutEts / commissionFactor) / (palletDivisor || 1));
             const sugOwnerBase = isZeroCalculation ? 0 : calcularPrecioObjetivo(breakEven, marginOwner);
             const sugChartBase = isZeroCalculation ? 0 : calcularPrecioObjetivo(sugOwnerBase, marginChart);
 
@@ -41453,14 +41617,16 @@ function scheduleReactiveEngine() {
                     actualCargoMT: cargo,
                     ownerRate: baseFreightBuy,
                     chartererRate: freightSell,
-                    commissionPct: commPct
+                    commissionPct: commPct,
+                    rateUnit: freightRateUnit,
+                    totalPallets: totalPalletsInput
                 })
                 : {
                     grossRevenue: multiplier * freightSell,
-                    ownerFreightCost: multiplier * baseFreightBuy,
+                    ownerFreightCost: (isPalletRateMode && totalPalletsInput > 0 ? totalPalletsInput : multiplier) * baseFreightBuy,
                     commissionCost: multiplier * freightSell * (commPct / 100),
                     totalRevenue: multiplier * freightSell,
-                    totalCost: (multiplier * baseFreightBuy) + (multiplier * freightSell * (commPct / 100))
+                    totalCost: ((isPalletRateMode && totalPalletsInput > 0 ? totalPalletsInput : multiplier) * baseFreightBuy) + (multiplier * freightSell * (commPct / 100))
                 };
 
             const grossRevOwner = isZeroCalculation ? 0 : voyageFinancials.ownerFreightCost;
@@ -41475,8 +41641,10 @@ function scheduleReactiveEngine() {
             // Función auxiliar para limpiar texto de moneda (ej. "$25,000" -> 25000)
         const cleanNum = (val) => Number(String(val).replace(/[^0-9.-]+/g,"")) || 0;
 
-        // 1. Ingresos Brutos limpios
-        const totalGrossRevenueOwner = cleanNum(freightBuy) * cleanNum(cargoTons);
+        // 1. Ingresos Brutos limpios (soportando modo Pallet de Dedicated Reefers)
+        const totalGrossRevenueOwner = (isPalletRateMode && totalPalletsInput > 0)
+            ? cleanNum(freightBuy) * totalPalletsInput
+            : cleanNum(freightBuy) * cleanNum(cargoTons);
 
         // 2. Costes Variables limpios (Bunkers + PDAs + ETS)
         const totalVoyageCosts = cleanNum(costBunkers) + cleanNum(costPda) + cleanNum(etsCost);
@@ -41517,10 +41685,11 @@ function scheduleReactiveEngine() {
             });
 
             const breakEvenArmadorDisplay = breakEven;
+            const rateUnitSuffix = isPalletRateMode ? '/Pallet' : '/MT';
             document.getElementById('res-breakeven').innerText = `$${breakEvenArmadorDisplay.toFixed(2)}`;
             const baseCostBreakEvenEl = document.getElementById('res-cost-base-break-even');
             if (baseCostBreakEvenEl) {
-                baseCostBreakEvenEl.innerText = `$${breakEvenArmadorDisplay.toFixed(2)} /MT`;
+                baseCostBreakEvenEl.innerText = `$${breakEvenArmadorDisplay.toFixed(2)} ${rateUnitSuffix}`;
             }
             const breakEvenBreakdownEl = document.getElementById('res-breakeven-breakdown');
             if (breakEvenBreakdownEl) {
@@ -41764,22 +41933,23 @@ function scheduleReactiveEngine() {
                 ? `Flete Total Venta (Anclado a Mercado $${fleteObjetivoMercado.toFixed(2)} /MT)`
                 : (marginChart > 0 ? `Armador + Margen Fletador ${marginChart.toFixed(2).replace(/\.00$/, '')}%` : 'Flete Total Venta (All-in)');
 
+            const sugUnitLabel = isPalletRateMode ? '/Pallet' : '/TM';
             if (isZeroCalculation) {
                 document.getElementById('res-sug-owner').innerHTML = `
-                    <div style="font-size: 18px; font-weight: bold; color: ${suggestedSaleColor}; font-family: monospace;">$0.00 /TM</div>
+                    <div style="font-size: 18px; font-weight: bold; color: ${suggestedSaleColor}; font-family: monospace;">$0.00 ${sugUnitLabel}</div>
                     <div style="font-size: 9px; color: #64748b; font-weight: 600; text-transform: uppercase; margin-top: 1px;">Tarifa Neta Armador</div>
                 `;
                 document.getElementById('res-sug-charterer').innerHTML = `
-                    <div style="font-size: 18px; font-weight: bold; color: ${suggestedSaleColor}; font-family: monospace;">$0.00 /TM</div>
+                    <div style="font-size: 18px; font-weight: bold; color: ${suggestedSaleColor}; font-family: monospace;">$0.00 ${sugUnitLabel}</div>
                     <div style="font-size: 9px; color: #64748b; font-weight: 600; text-transform: uppercase; margin-top: 1px;">Flete Total Venta</div>
                 `;
             } else {
                 document.getElementById('res-sug-owner').innerHTML = `
-                    <div style="font-size: 18px; font-weight: bold; color: ${suggestedSaleColor}; font-family: monospace;">$${sugOwner.toFixed(2)} /TM</div>
+                    <div style="font-size: 18px; font-weight: bold; color: ${suggestedSaleColor}; font-family: monospace;">$${sugOwner.toFixed(2)} ${sugUnitLabel}</div>
                     <div style="font-size: 9px; color: #64748b; font-weight: 600; text-transform: uppercase; margin-top: 1px;">${ownerSubtext}</div>
                 `;
                 document.getElementById('res-sug-charterer').innerHTML = `
-                    <div style="font-size: 18px; font-weight: bold; color: ${suggestedSaleColor}; font-family: monospace;">$${sugChart.toFixed(2)} /TM</div>
+                    <div style="font-size: 18px; font-weight: bold; color: ${suggestedSaleColor}; font-family: monospace;">$${sugChart.toFixed(2)} ${sugUnitLabel}</div>
                     <div style="font-size: 9px; color: #64748b; font-weight: 600; text-transform: uppercase; margin-top: 1px;">${chartererSubtext}</div>
                 `;
             }
@@ -42383,6 +42553,18 @@ function scheduleReactiveEngine() {
             if (typeof calculateAdjustedEtaAndDays === 'function') {
                 calculateAdjustedEtaAndDays();
             }
+            // Fruit Seasonality Factor (PSS)
+            const activeFruitSeasonality = window.SeaCharterVoyageCostEngine?.evaluateFruitSeasonality
+                ? window.SeaCharterVoyageCostEngine.evaluateFruitSeasonality({
+                    pol: idxLoad,
+                    cargoType: State.cargoTypeManual || State.cargoType || document.getElementById('cargo-type')?.value,
+                    laycanDate: State.laycanDate
+                })
+                : null;
+            if (activeFruitSeasonality && activeFruitSeasonality.isSeasonActive && activeFruitSeasonality.factor > 1.0) {
+                State.fruitSeasonality = activeFruitSeasonality;
+            }
+
             const syncExecutiveDashboard = window.updateExecutiveDashboard
                 || window.SeaCharterVoyageCostEngine?.updateExecutiveDashboard;
             if (typeof syncExecutiveDashboard === 'function') {
@@ -42412,7 +42594,11 @@ function scheduleReactiveEngine() {
                     sellFreight: freightSell,
                     chartererProfit: netProfitCharterer,
                     pdaIncrementalCost: operationalPenaltyAmount,
-                    projectCargoAssessment
+                    projectCargoAssessment,
+                    isPalletMode: isPalletRateMode,
+                    rateUnit: freightRateUnit,
+                    totalPallets: totalPalletsInput,
+                    fruitSeasonality: activeFruitSeasonality
                 }, operationalRisk);
             }
             if (typeof window !== 'undefined') {
@@ -66379,6 +66565,18 @@ Compara el documento suministrado (que puede ser un contrato, carta de crédito 
                 }
             }
 
+            const isPalletMode = (document.getElementById('freight-rate-unit')?.value === 'Pallet')
+                || (document.getElementById('freight-unit')?.value === 'Pallet')
+                || (window.State?.rateUnit === 'Pallet')
+                || (Number(window.State?.palletQuantity) > 0);
+            const isReeferMode = (typeof isReeferOperation === 'function' && isReeferOperation())
+                || isPalletMode
+                || pdaInput.dataset.calculationMode === 'reefer-minimum';
+            if (isReeferMode) {
+                const minReefer = side === 'pod' ? 26000 : 28000;
+                if (pdaModificada < minReefer) pdaModificada = minReefer;
+            }
+
             pdaInput.value = pdaModificada;
 
             if (window.State) {
@@ -76995,20 +77193,8 @@ window.actualizarGrabCapacityVisibility = function() {
         const isTbn = (vName === '' || vName === 'TBN' || vName.includes('TO BE NAMED') || vName.includes('TO BE NOMINATED'));
         
         if (isTbn) {
-          // Find CBM volume safely
-          const cbmInput = document.getElementById('volumen-cbm') || document.querySelector('input[id*="cbm"]');
-          const reqCbm = (cbmInput ? parseFloat(cbmInput.value) : 0) || Number(window.State?.cargoVolumeCBM) || 0;
-          
-          if (reqCbm > 0) {
-            const optimal = Math.ceil(((reqCbm / 1.25) * 1.05) / 100) * 100;
-            if (Number(dwtInput.value) !== optimal) {
-              dwtInput.value = optimal;
-              if (window.State) { window.State.capacidad_dwt = optimal; window.State.dwt = optimal; window.State.vesselDwt = optimal; }
-              if (badge) {
-                badge.classList.remove('hidden');
-                badge.innerText = `⚡ Buque auto-dimensionado a ${optimal} DWT según exigencias volumétricas.`;
-              }
-            }
+          if (typeof autoDimensionVessel === 'function') {
+            autoDimensionVessel({ deferEngine: true, deferDwtChange: true });
           }
         } else if (badge && !badge.classList.contains('hidden')) {
           badge.classList.add('hidden');

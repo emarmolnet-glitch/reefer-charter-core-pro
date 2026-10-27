@@ -97,6 +97,9 @@ export const defaultDSSState = {
   actualCargoIntake: 50000,
   targetCargoMT: 50000,
   cargoQty: 50000,
+  palletQuantity: 0,
+  totalPallets: 0,
+  freightRateUnit: 'MT',
   ladenDays: 8,
   seaDays: 8,
   estimatedVoyageDays: 8,
@@ -111,10 +114,14 @@ export const defaultDSSState = {
 };
 
 export function calculateMarketFreightWithRisk(dssState, globalMarketTCE) {
-  // 1. Sanitización de entradas (Prevención de NaN)
-  const safeIntake = (dssState && Number(dssState.actualCargoIntake) > 0)
-    ? Number(dssState.actualCargoIntake)
-    : (Number(dssState?.targetCargoMT || dssState?.cargoQty || dssState?.cargo) || 1);
+  // 1. Sanitización de entradas (Prevención de NaN) con soporte de tarifas por Pallet
+  const isPalletMode = dssState?.rateUnit === 'Pallet' || dssState?.freightRateUnit === 'Pallet' || dssState?.rateType === 'pallet';
+  const totalPallets = Number(dssState?.totalPallets ?? dssState?.palletQuantity ?? dssState?.pallets ?? 0);
+  const safeIntake = (isPalletMode && totalPallets > 0)
+    ? totalPallets
+    : ((dssState && Number(dssState.actualCargoIntake) > 0)
+        ? Number(dssState.actualCargoIntake)
+        : (Number(dssState?.targetCargoMT || dssState?.cargoQty || dssState?.cargo) || 1));
   const safeBallast = Number(dssState?.ballastDays) || 0;
   const safeJWLA = dssState?.jwlaRiskActive ? (Number(dssState?.jwlaPremiumUSD) || 0) : 0;
   
@@ -453,16 +460,20 @@ export function calculateAutoExportDeficitBallast(podInput, manualBallastDays = 
 }
 
 export function calculateAllInFreightGross(dssState = {}, options = {}) {
-  // 1. Data Binding de Tonelaje (Corrección cargoQty): lectura estricta de la cantidad real de carga (State.cargoQty / dssState.cargoQty)
-  const realCargoQty = Number(
-    dssState.cargoQty ??
-    dssState.actualCargoIntake ??
-    dssState.targetCargoMT ??
-    dssState.cargo ??
-    dssState.tons ??
-    options.cargoQty ??
-    (typeof State !== 'undefined' && State ? (State.cargoQty || State.actualCargoIntake) : null)
-  );
+  // 1. Data Binding de Tonelaje (Corrección cargoQty): lectura estricta de la cantidad real de carga o pallets
+  const isPalletMode = dssState?.rateUnit === 'Pallet' || dssState?.freightRateUnit === 'Pallet' || options?.rateUnit === 'Pallet';
+  const totalPallets = Number(dssState?.totalPallets ?? dssState?.palletQuantity ?? dssState?.pallets ?? 0);
+  const realCargoQty = (isPalletMode && totalPallets > 0)
+    ? totalPallets
+    : Number(
+        dssState.cargoQty ??
+        dssState.actualCargoIntake ??
+        dssState.targetCargoMT ??
+        dssState.cargo ??
+        dssState.tons ??
+        options.cargoQty ??
+        (typeof State !== 'undefined' && State ? (State.cargoQty || State.actualCargoIntake) : null)
+      );
   const safeIntake = (realCargoQty > 0) ? realCargoQty : 50000;
 
   const pol = dssState.pol || options.pol || '';
@@ -556,6 +567,9 @@ export function calculateAllInFreightGross(dssState = {}, options = {}) {
     netFreightRate: Number(baseNetFreight.toFixed(2)),
     totalNetRate: Number(totalNetRate.toFixed(2)),
     allInRateGross: Number(allInRateGross.toFixed(2)),
+    isPalletMode,
+    rateUnit: isPalletMode ? 'Pallet' : 'MT',
+    freightRevenueGross: Number((allInRateGross * safeIntake).toFixed(2)),
     jwcRiskActive: isJwcActive,
     jwcPremiumUSD,
     jwcZone: jwcEval.zoneName,
@@ -571,6 +585,104 @@ export function calculateAllInFreightGross(dssState = {}, options = {}) {
     calculationMode,
     totalDaysWithBallast,
     safeIntake
+  };
+}
+
+export const DEFAULT_PDA_TEMPLATE = Object.freeze({
+  baseAgencyFee: 2300,
+  polReeferMinimum: 28000,
+  podReeferMinimum: 26000,
+  generalPdaDefault: 15000,
+  standardHourlyRate: 100,
+  overtimeMultiplier: 1.50
+});
+
+export function calculatePortCosts(options = {}) {
+  const pda = Number(options?.basePDA ?? options?.portCosts ?? options?.pda ?? 0) || 0;
+  const isReefer = Boolean(
+    options?.isReefer ||
+    options?.commodity === 'Reefer' ||
+    Number(options?.palletQuantity) > 0 ||
+    /reefer|fruta|pl[aá]tano|banana/i.test(String(options?.cargo || options?.cargoType || ''))
+  );
+  const portType = String(options?.portType || options?.type || 'pol').toLowerCase();
+  let basePDA = pda;
+  if (basePDA <= 0) {
+    basePDA = isReefer ? (portType === 'pod' ? 26000 : 28000) : 15000;
+  }
+  const hourlyRate = Number(options?.standardHourlyRate) > 0 ? Number(options.standardHourlyRate) : 100;
+  const overtimeMult = Number(options?.overtimeMultiplier) > 1 ? Number(options.overtimeMultiplier) : 1.5;
+  const overtimeHours = Number(options?.overtimeHours) || 0;
+  const overtimeSurcharge = overtimeHours * (hourlyRate * (overtimeMult - 1.0));
+  const adjustedPDA = (isReefer ? basePDA * 1.50 : basePDA) + overtimeSurcharge;
+
+  return {
+    basePDA,
+    adjustedPDA,
+    overtimeSurcharge,
+    penaltyAmount: adjustedPDA - basePDA,
+    agencyFeeBase: 2300,
+    standardHourlyRate: hourlyRate,
+    overtimeMultiplier: overtimeMult
+  };
+}
+
+export const MATRIZ_ESTACIONAL_GLOBAL = Object.freeze({
+  WEST_AFRICA: {
+    Reefer: { 1: 1.15, 2: 1.15, 3: 1.18, 10: 1.20, 11: 1.20, 12: 1.20 },
+    "Frutas Frescas": { 1: 1.15, 2: 1.15, 3: 1.18, 10: 1.20, 11: 1.20, 12: 1.20 },
+    Grain: { 10: 1.22, 11: 1.25 }
+  },
+  CENTRAL_AMERICA: {
+    Reefer: { 1: 1.20, 2: 1.22, 3: 1.25, 4: 1.20, 5: 1.15, 10: 1.18, 11: 1.20, 12: 1.25 },
+    "Frutas Frescas": { 1: 1.20, 2: 1.22, 3: 1.25, 4: 1.20, 5: 1.15, 10: 1.18, 11: 1.20, 12: 1.25 }
+  },
+  SOUTH_AMERICA: {
+    Reefer: { 1: 1.30, 2: 1.32, 3: 1.35 },
+    "Frutas Frescas": { 1: 1.30, 2: 1.32, 3: 1.35 },
+    Grain: { 3: 1.30, 4: 1.38 }
+  },
+  MEDITERRANEAN: {
+    Citrus: { 0: 1.15, 1: 1.18, 11: 1.15, 12: 1.15 },
+    "Frutas Frescas": { 0: 1.15, 1: 1.18, 11: 1.15, 12: 1.15 }
+  },
+  SOUTH_EAST_ASIA: {
+    Rice: { 10: 1.16, 11: 1.18 }
+  }
+});
+
+export function evaluateFruitSeasonality(options = {}) {
+  const pol = String(options?.pol || options?.port || '').toUpperCase();
+  const cargo = String(options?.cargo || options?.cargoType || options?.commodity || '').toLowerCase();
+  const month = Number(options?.month) || (new Date().getUTCMonth() + 1);
+  const isFruit = /fruta|frutas|banana|pl[aá]tano|citric|fresh fruit/i.test(cargo);
+
+  let region = 'DEFAULT';
+  if (pol.includes('AFRICA') || pol.includes('ABIDJAN') || pol.includes('IVORY') || pol.includes('GHANA') || pol.includes('DAKAR') || pol.includes('BANJUL') || pol.includes('CAMEROON') || pol.includes('SAN PEDRO')) {
+    region = 'WEST_AFRICA';
+  } else if (pol.includes('CENTROAMERICA') || pol.includes('CENTRAL AMERICA') || pol.includes('COSTA RICA') || pol.includes('LIMON') || pol.includes('GUATEMALA') || pol.includes('HONDURAS') || pol.includes('PANAMA') || pol.includes('ECUADOR') || pol.includes('GUAYAQUIL') || pol.includes('SANTA MARTA') || pol.includes('TURBO')) {
+    region = 'CENTRAL_AMERICA';
+  } else if (pol.includes('SOUTH AMERICA') || pol.includes('ECSA') || pol.includes('BRASIL') || pol.includes('ARGENTINA')) {
+    region = 'SOUTH_AMERICA';
+  }
+
+  const matrixRegion = MATRIZ_ESTACIONAL_GLOBAL[region];
+  const rawFactor = (matrixRegion && (matrixRegion['Frutas Frescas']?.[month] || matrixRegion.Reefer?.[month])) || 1.0;
+  const factor = isFruit ? rawFactor : 1.0;
+  const isPeakSeason = isFruit && (region === 'WEST_AFRICA' || region === 'CENTRAL_AMERICA' || region === 'SOUTH_AMERICA') && factor > 1.0;
+  const surchargePct = Math.round((factor - 1.0) * 100);
+  const regionLabel = region === 'WEST_AFRICA' ? 'África Occidental (ej. Abidjan)' : (region === 'CENTRAL_AMERICA' ? 'Centroamérica' : region);
+
+  return {
+    isFruit,
+    region,
+    month,
+    factor,
+    isPeakSeason,
+    surchargePct,
+    insightMessage: isPeakSeason
+      ? `Estacionalidad Frutícola Activa (${regionLabel}): La carga de Frutas Frescas en el mes ${month} opera bajo temporada alta. Se aplica un recargo Peak Season Surcharge (PSS) de +${surchargePct}% sobre la estimación del flete.`
+      : null
   };
 }
 

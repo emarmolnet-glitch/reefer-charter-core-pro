@@ -4,7 +4,16 @@ import { useState, useEffect, useRef } from 'react';
  * Calculates optimal vessel DWT based on cargo weight, stowage factor, and naval cubic coefficient.
  * Optimal_DWT = Math.ceil((cargo_weight * stowage_factor / 1.25) * 1.05 / 100) * 100;
  */
-export function calculateOptimalDwt(cargoWeight, stowageFactor) {
+export function calculateOptimalDwt(cargoWeight, stowageFactor, options = {}) {
+  const totalPallets = Number(options?.totalPallets ?? options?.palletQuantity ?? 0);
+  const isPalletRateMode = Boolean(options?.isPalletRateMode || options?.isPalletMode || totalPallets > 0);
+  const cargoCategory = String(options?.cargoCategory || options?.cargoType || '');
+  const isReeferVolume = isPalletRateMode || cargoCategory.includes('Frutas');
+
+  if (isReeferVolume && totalPallets > 0) {
+    return Math.ceil((totalPallets * 2.75) / 100) * 100;
+  }
+
   const weight = Number(cargoWeight) || 0;
   const sf = Number(stowageFactor) || 0;
   if (weight <= 0 || sf <= 0) return 0;
@@ -78,8 +87,15 @@ export function useReeferAutoSizing({
     const sf = Number(rawSf) || 1.35;
     const isTbn = isTbnVessel(rawVessel);
 
-    if (weight > 0 && sf > 0) {
-      const calculatedDwt = calculateOptimalDwt(weight, sf);
+    const totalPallets = Number(storeState.draft?.palletQuantity || winState.palletQuantity || (typeof document !== 'undefined' ? document.getElementById('pallet-quantity')?.value : 0)) || 0;
+    const isPalletRateMode = (typeof document !== 'undefined' && document.getElementById('freight-rate-unit')?.value === 'Pallet')
+      || (winState.rateUnit === 'Pallet')
+      || (totalPallets > 0);
+    const cargoCat = (typeof document !== 'undefined' ? (document.getElementById('cargo-category')?.value || document.getElementById('cargo-type')?.value) : '') || '';
+    const isReeferVolume = isPalletRateMode || cargoCat.includes('Frutas');
+
+    if ((weight > 0 && sf > 0) || (isReeferVolume && totalPallets > 0)) {
+      const calculatedDwt = calculateOptimalDwt(weight, sf, { totalPallets, isPalletRateMode, cargoCategory: cargoCat });
       setOptimalDwt(calculatedDwt);
 
       if (isTbn && calculatedDwt > 0) {
@@ -104,7 +120,9 @@ export function useReeferAutoSizing({
           const badgeEl = document.getElementById('tbn-auto-sizing-badge');
           if (badgeEl) {
             badgeEl.classList.remove('hidden');
-            badgeEl.textContent = `⚡ Buque auto-dimensionado a ${calculatedDwt} DWT según exigencias volumétricas.`;
+            badgeEl.textContent = isReeferVolume
+              ? `⚡ Buque auto-dimensionado a ${calculatedDwt} DWT según requerimientos volumétricos (Reefer).`
+              : `⚡ Buque auto-dimensionado a ${calculatedDwt} DWT según exigencias volumétricas.`;
           }
         }
 

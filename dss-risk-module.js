@@ -12,7 +12,11 @@ import {
   getFallbackPortAndDistance,
   calculateAutoExportDeficitBallast,
   calculateAllInFreightGross,
-  REEFER_BREAKBULK_OPERATIONAL_WARNING
+  REEFER_BREAKBULK_OPERATIONAL_WARNING,
+  DEFAULT_PDA_TEMPLATE,
+  calculatePortCosts,
+  MATRIZ_ESTACIONAL_GLOBAL,
+  evaluateFruitSeasonality
 } from './dss-risk-module.mjs';
 
 export {
@@ -28,7 +32,11 @@ export {
   getFallbackPortAndDistance,
   calculateAutoExportDeficitBallast,
   calculateAllInFreightGross,
-  REEFER_BREAKBULK_OPERATIONAL_WARNING
+  REEFER_BREAKBULK_OPERATIONAL_WARNING,
+  DEFAULT_PDA_TEMPLATE,
+  calculatePortCosts,
+  MATRIZ_ESTACIONAL_GLOBAL,
+  evaluateFruitSeasonality
 };
 
 if (typeof module !== 'undefined' && module.exports) {
@@ -45,6 +53,10 @@ if (typeof module !== 'undefined' && module.exports) {
     getFallbackPortAndDistance,
     calculateAutoExportDeficitBallast,
     calculateAllInFreightGross,
-    REEFER_BREAKBULK_OPERATIONAL_WARNING
+    REEFER_BREAKBULK_OPERATIONAL_WARNING,
+    DEFAULT_PDA_TEMPLATE,
+    calculatePortCosts,
+    MATRIZ_ESTACIONAL_GLOBAL,
+    evaluateFruitSeasonality
   };
 }
