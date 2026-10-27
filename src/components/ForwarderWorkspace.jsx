@@ -1147,7 +1147,7 @@ export function ForwarderWorkspace() {
     const cleanBallast = String(ballastEl?.value || sessionSource.portBallast || '').trim();
     const cleanMetodoCarga = String(methodLoadEl?.value || sessionSource.metodoCarga || '').trim();
     const cleanMetodoDescarga = String(methodDischEl?.value || sessionSource.metodoDescarga || '').trim();
-    const cleanCharterParty = String(charterPartyEl?.value || sessionSource.charterPartyStandard || 'GENCON').trim();
+    const cleanCharterParty = String(charterPartyEl?.value || sessionSource.charterPartyStandard || 'BIMCO REEFERCON 94').trim();
 
     const isBigBags = /big[- ]?bag|ensacad|saco/i.test(cleanCargoProduct) ||
                       /big[- ]?bag|ensacad|saco/i.test(cleanCargoType) ||
@@ -2492,7 +2492,7 @@ export function ForwarderWorkspace() {
         exchange_rate: exchangeRateUsdEur,
         metodo_carga: methodLoadEl?.value || sessionSource.metodoCarga || '',
         metodo_descarga: methodDischEl?.value || sessionSource.metodoDescarga || '',
-        charter_party_standard: charterPartyEl?.value || sessionSource.charterPartyStandard || 'GENCON',
+        charter_party_standard: charterPartyEl?.value || sessionSource.charterPartyStandard || 'BIMCO REEFERCON 94',
         dias_carga: diasCarga,
         dias_descarga: diasDescarga,
         dias_muelle: diasMuelle,

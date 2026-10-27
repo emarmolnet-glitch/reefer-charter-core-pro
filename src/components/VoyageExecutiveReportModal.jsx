@@ -34,7 +34,7 @@ export default function VoyageExecutiveReportModal({
   const ballastPort = data.ballastPort || data.portBallast || 'N/A (Carga Directa)';
   const totalDays = Number(data.totalDays || 0);
   const distTotal = Number(data.distTotal || (Number(data.distBallast || 0) + Number(data.distLaden || 0)) || 0);
-  const cpStandard = data.charterPartyStandard || (cargoType.includes('Líquido') ? 'ASBATANKVOY' : 'GENCON');
+  const cpStandard = data.charterPartyStandard || (cargoType.includes('Líquido') ? 'ASBATANKVOY' : 'BIMCO REEFERCON 94');
   const estId = data.activeReference ? `EST-${data.activeReference}` : 'RDM-EST-001';
 
   // Métricas financieras

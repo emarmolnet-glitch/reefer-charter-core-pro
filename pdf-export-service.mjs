@@ -127,13 +127,13 @@ export function exportCommercialRecapPdf(rawData = {}) {
     document.setTextColor(...COLORS.white);
     document.setFont('helvetica', 'bold');
     document.setFontSize(9);
-    document.text('SEACHARTER CORE PRO', PAGE.margin, 15);
+    document.text('SEACHARTER CORE PRO · BIMCO REEFERCON 94', PAGE.margin, 15);
     document.setFontSize(22);
-    document.text('Commercial Recap', PAGE.margin, 27);
+    document.text('Fixture Recap (REEFERCON 94)', PAGE.margin, 27);
     document.setFont('helvetica', 'normal');
     document.setFontSize(8);
     document.setTextColor(203, 213, 225);
-    document.text(`Snapshot comercial · ${new Date().toLocaleString('es-ES')}`, PAGE.margin, 35);
+    document.text(`Snapshot comercial · BIMCO REEFERCON 94 · ${new Date().toLocaleString('es-ES')}`, PAGE.margin, 35);
 
     drawSectionTitle(document, 'Viaje y carga', 50);
     drawField(document, {
@@ -250,7 +250,7 @@ export function exportCommercialRecapPdf(rawData = {}) {
     document.setTextColor(...COLORS.muted);
     document.setFont('helvetica', 'normal');
     document.setFontSize(7);
-    document.text('Documento generado desde una fotografía de solo lectura de la sesión activa.', PAGE.margin, 279);
+    document.text('Documento generado bajo proforma BIMCO REEFERCON 94 desde la sesión activa.', PAGE.margin, 279);
     document.text('SeaCharter Core PRO', PAGE.width - PAGE.margin, 279, { align: 'right' });
 
     if (rawData.save !== false && rawData.skipSave !== true && typeof document.save === 'function') {

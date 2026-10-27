@@ -1883,10 +1883,10 @@ function collectChatContext() {
   const dualModeContext = getDualModeContext();
   const contractType = firstText(
     activeModule === "EDITOR ASBATANKVOY" ? "ASBATANKVOY" : "",
-    activeModule === "EDITOR" ? "GENCON" : "",
+    activeModule === "EDITOR" ? "BIMCO REEFERCON 94" : "",
     readElementValue("charter-party-standard"),
     state.charterPartyStandard,
-    "GENCON",
+    "BIMCO REEFERCON 94",
   ).toUpperCase();
   const cargoQuantity = firstNumber(
     state.cargoQty,

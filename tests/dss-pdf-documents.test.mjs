@@ -139,7 +139,7 @@ test('buildFixtureRecapHTMLTemplate generates traditional shipping telex fixture
   assert.match(text, /4\. SPECIAL CLAUSES/, 'Section 4 header');
   assert.match(text, /GEAR CLAUSE/, 'Gear clause');
   assert.match(text, /WEATHER CLAUSE/, 'Weather clause');
-  assert.match(text, /GENCON 1994/, 'GENCON 94 charterparty form');
+  assert.match(text, /REEFERCON 94|GENCON 1994/, 'BIMCO REEFERCON 94 charterparty form');
 });
 
 test('buildFixtureRecapHTMLTemplate renders label-value pairs without a standalone colon cell', () => {

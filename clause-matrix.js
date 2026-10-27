@@ -5,6 +5,8 @@
  * y de la perspectiva comercial asumida (Armador / Owner vs Fletador / Charterer).
  */
 
+export const DEFAULT_CHARTER_PARTY = "BIMCO REEFERCON 94";
+
 export const CLAUSE_MATRIX = Object.freeze({
     "Bananas / Tropical Fruits": Object.freeze({
         owner_terms: Object.freeze([
@@ -257,6 +259,7 @@ export function getOperationalClauses(params = {}) {
 
 // Exponer en entorno global de navegador si está disponible
 if (typeof window !== 'undefined') {
+    window.DEFAULT_CHARTER_PARTY = DEFAULT_CHARTER_PARTY;
     window.CLAUSE_MATRIX = CLAUSE_MATRIX;
     window.resolveCargoKey = resolveCargoKey;
     window.resolveCommercialRole = resolveCommercialRole;
