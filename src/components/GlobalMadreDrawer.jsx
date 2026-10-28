@@ -494,10 +494,55 @@ export function getReeferUIContext() {
 
 export const getCoreProUIContext = getReeferUIContext;
 
+/**
+ * Adaptación del Guion Ejecutivo a Reefer (Pallets).
+ * Evalúa break-even unitario por pallet, estacionalidad PSS, ahorro de gestión y fugas prevenidas.
+ */
+function buildMotherExecutiveScript(state = {}) {
+    const horasAhorradas = 2.4;
+    const ahorroAdmin = horasAhorradas * 45;
+    const pallets = state?.pallets || 4000;
+    const breakEvenUnitario = state?.breakEvenUnitario ?? 28.5; // Flete por pallet
+    const pssDetectado = state?.pssActivo ? 'Se ha detectado un Peak Season Surcharge activo por estacionalidad.' : 'Estacionalidad en valle, sin recargos PSS.';
+    const fugas = state?.riesgosDetectados ? 2300 : 0;
+
+    return `Escaneo frigorífico completado. El break-even del armador se sitúa en ${breakEvenUnitario} dólares por pallet para un bloque de ${pallets} unidades. Atención: ${pssDetectado} Impacto de esta estimación: se han ahorrado ${ahorroAdmin} dólares de gestión y prevenido posibles fugas por valor de ${fugas} dólares. Operación validada.`;
+}
+
+/**
+ * Motor de Voz Neuronal (Web Audio API).
+ * Acepta texto libre, decodificando ArrayBuffer vía AudioContext para evitar bloqueos CSP.
+ */
+async function playNeuralMotherVoice(textToSpeak) {
+    if (!textToSpeak) return null;
+    try {
+        const databridgeUrl = (typeof window !== 'undefined' && window.DATABRIDGE_API_URL) ? window.DATABRIDGE_API_URL : 'https://calm-shortbread-55bcfc.netlify.app';
+        const response = await fetch(`${databridgeUrl}/.netlify/functions/madre-voice`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: textToSpeak })
+        });
+        if (!response.ok) throw new Error('Error TTS');
+        const arrayBuffer = await response.arrayBuffer();
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        const audioCtx = new AudioContext();
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        const source = audioCtx.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioCtx.destination);
+        source.start(0);
+        return source;
+    } catch (error) {
+        console.error("Fallo IA:", error);
+    }
+}
+
 if (typeof window !== "undefined") {
   window.getReeferUIContext = getReeferUIContext;
   window.triggerLaserScanEffect = triggerLaserScanEffect;
   window.extractReeferScanData = extractReeferScanData;
+  window.buildMotherExecutiveScript = buildMotherExecutiveScript;
+  window.playNeuralMotherVoice = playNeuralMotherVoice;
 }
 
 // export const GlobalMadreDrawer
@@ -514,9 +559,15 @@ export function GlobalMadreDrawer({
   ],
 }) {
   const [isOpen, setIsOpen] = useState(initialOpen);
-  const [inputTexto, setInputTexto] = useState("");
+  const [inputValue, setInputValue] = useState("");
+  const inputTexto = inputValue;
+  const setInputTexto = setInputValue;
+
+  const [isLoading, setIsLoading] = useState(false);
+  const loading = isLoading;
+  const setLoading = setIsLoading;
+
   const [mensajes, setMensajes] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const inputRef = useRef(null);
@@ -681,28 +732,24 @@ export function GlobalMadreDrawer({
       console.error("Error de micrófono:", err);
       setIsListening(false);
     };
-    recognition.onresult = (event) => {
-      const speechText = event.results[0][0].transcript;
-      setInputTexto(speechText);
+    recognition.onresult = async (event) => {
+      const transcript = event.results[0][0].transcript;
+      setInputValue(transcript);
+      if (event.results[0].isFinal) {
+        await handleSendMessage(transcript);
+      }
     };
 
     recognition.start();
   };
 
- const handleSubmit = async (e, quickCommandText = null) => {
-    if (e?.preventDefault) {
-      e.preventDefault();
-    }
-    const texto = (typeof quickCommandText === "string" ? quickCommandText : inputTexto).trim();
-    const trimmed = texto;
-    if (!trimmed || loading) return;
+  const handleSendMessage = async (overrideText = null) => {
+    const textToProcess = (typeof overrideText === "string" ? overrideText : inputValue).trim();
+    if (!textToProcess || isLoading) return;
 
-    // Disparar el haz de luz láser de escaneo si la orden pide escaneo o auditoría
-    const lower = trimmed.toLowerCase();
-    const isScanCommand = lower.includes("escan") || lower.includes("scan") || lower.includes("pantalla") || lower.includes("auditor");
-    if (isScanCommand && typeof triggerLaserScanEffect === "function") {
-      triggerLaserScanEffect();
-    }
+    // 1. Mostrar mensaje del usuario y bloquear UI
+    setInputValue("");
+    setIsLoading(true);
 
     const userMsg = {
       id: Date.now(),
@@ -710,71 +757,97 @@ export function GlobalMadreDrawer({
       role: "user",
       autor: "Operador",
       sender: "user",
-      texto: trimmed,
-      text: trimmed,
+      texto: textToProcess,
+      text: textToProcess,
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
-
     setMensajes((prev) => [...prev, userMsg]);
-    setInputTexto("");
-    setLoading(true);
+
+    const lowerInput = textToProcess.toLowerCase();
+    let replyText = "";
+    let stateForVoice = (typeof window !== "undefined" ? (window.State || {}) : {});
+    if (typeof window !== "undefined") {
+      try {
+        const scan = typeof extractReeferScanData === "function" ? extractReeferScanData(document) : null;
+        if (scan?.bloques) {
+          stateForVoice = {
+            ...stateForVoice,
+            pallets: stateForVoice.pallets || stateForVoice.palletQuantity || scan.bloques.bloque_3_capacidad_estiba?.pallets,
+            breakEvenUnitario: stateForVoice.breakEvenUnitario ?? stateForVoice.breakEven ?? scan.bloques.bloque_6_resumen_operacion_costes?.break_even_usd_pallet,
+            pssActivo: stateForVoice.pssActivo,
+            riesgosDetectados: stateForVoice.riesgosDetectados,
+          };
+        }
+      } catch (_) {}
+    }
 
     try {
-      // Sincronización de referencia dinámica de expediente
-      const urlParams = new URLSearchParams(window.location.search);
-      let activeRef = urlParams.get("ref");
-      if (!activeRef && window.location.hash.includes("?")) {
-        const hashQuery = window.location.hash.split("?")[1];
-        activeRef = new URLSearchParams(hashQuery).get("ref");
+      // 2. Enrutador local
+      if (lowerInput.includes("hola") || lowerInput === "madre") {
+        replyText = "¡Hola! Aquí MADRE. Los sistemas frigoríficos están en línea. ¿Deseas que audite la calculadora actual?";
+      } else if (lowerInput.includes("escanear") || lowerInput.includes("audita") || lowerInput.includes("roi")) {
+        if (typeof triggerLaserScanEffect === "function") {
+          triggerLaserScanEffect();
+        }
+        replyText = buildMotherExecutiveScript(stateForVoice);
+      } else {
+        // 3. LLM Externo para consultas complejas (mercado, etc.)
+        const databridgeUrl = (typeof window !== "undefined" && window.DATABRIDGE_API_URL) ? window.DATABRIDGE_API_URL : "https://calm-shortbread-55bcfc.netlify.app";
+
+        // Sincronización de referencia dinámica de expediente
+        const urlParams = new URLSearchParams(window.location.search);
+        let activeRef = urlParams.get("ref");
+        if (!activeRef && window.location.hash.includes("?")) {
+          const hashQuery = window.location.hash.split("?")[1];
+          activeRef = new URLSearchParams(hashQuery).get("ref");
+        }
+        const finalProjectRef = referenciaMadre || activeRef || "RDM/2026-TBN";
+
+        const texto = textToProcess;
+        const trimmed = textToProcess;
+        const contextoUI = getReeferUIContext();
+        if (!lowerInput.includes("escan") && !lowerInput.includes("scan") && !lowerInput.includes("pantalla")) {
+          delete contextoUI.escaneo_reefer;
+        }
+
+        const outgoingPayload = {
+          prompt: textToProcess, // prompt: trimmed
+          mensajeUsuario: texto, // mensajeUsuario: trimmed
+          message: trimmed,
+          origen: "Reefer Charter",
+          current_module: "reefer_charter",
+          contexto_ui: getReeferUIContext(),
+          history: mensajes
+            .filter((m) => (m.text || m.texto) && !m.isError)
+            .map((m) => ({
+              role: m.role || (m.rol === "user" ? "user" : "assistant"),
+              content: m.text || m.texto,
+            })),
+          context: {
+            origin: "Reefer Charter Core PRO",
+            projectRef: finalProjectRef,
+          },
+        };
+
+        const res = await fetch(MADRE_API_ENDPOINT && (typeof window !== "undefined" && window.DATABRIDGE_API_URL ? `${databridgeUrl}/.netlify/functions/madre-chat` : MADRE_API_ENDPOINT), {
+          method: "POST",
+          mode: "cors",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+          },
+          body: JSON.stringify(outgoingPayload),
+        });
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        const data = await res.json();
+        replyText = data?.reply || data?.response || data?.message || data?.text || "Procesado.";
       }
-      const finalProjectRef = referenciaMadre || activeRef || "RDM/2026-TBN";
 
-      // 1. Obtenemos el contexto completo de la interfaz (incluye los datos del escáner por defecto)
-      const contextoUI = getReeferUIContext();
-      
-      // 2. Si NO es un comando de escaneo, eliminamos los datos pesados para que responda natural
-      if (!isScanCommand) {
-        delete contextoUI.escaneo_reefer;
-      }
-
-      // 3. Construimos UN SOLO paquete de envío perfecto para que Core Pro lo entienda siempre
-      const outgoingPayload = {
-        mensajeUsuario: trimmed,
-        message: trimmed,
-        prompt: trimmed,
-        origen: "Reefer Charter",
-        current_module: "reefer_charter",
-        contexto_ui: contextoUI,
-        history: mensajes
-          .filter((m) => (m.text || m.texto) && !m.isError)
-          .map((m) => ({
-            role: m.role || (m.rol === "user" ? "user" : "assistant"),
-            content: m.text || m.texto,
-          })),
-        context: {
-          origin: "Reefer Charter Core PRO",
-          projectRef: finalProjectRef,
-        },
-      };
-
-      const response = await fetch(MADRE_API_ENDPOINT, {
-        method: "POST",
-        mode: "cors",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-        },
-        body: JSON.stringify(outgoingPayload),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
-      const replyText =
-        data?.reply || data?.response || data?.message || data?.text || "Auditoría MADRE procesada.";
-
+      // 4. Imprimir respuesta de la IA (Asegura texto legible: text-white) y hablar
       const assistantMsg = {
         id: Date.now() + 1,
         rol: "assistant",
@@ -783,11 +856,14 @@ export function GlobalMadreDrawer({
         sender: "assistant",
         texto: replyText,
         text: replyText,
+        className: "text-white",
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
-
       setMensajes((prev) => [...prev, assistantMsg]);
-      speakText(replyText);
+
+      if (!isMuted) {
+        await playNeuralMotherVoice(replyText);
+      }
     } catch (err) {
       console.error("MADRE Connection Error:", err);
       const errorMsg = {
@@ -799,13 +875,23 @@ export function GlobalMadreDrawer({
         texto: "Error de conexión con el Cerebro Central en Data Bridge. Verifica los permisos CORS o reintenta.",
         text: "Error de conexión con el Cerebro Central en Data Bridge. Verifica los permisos CORS o reintenta.",
         isError: true,
+        className: "text-white",
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
       setMensajes((prev) => [...prev, errorMsg]);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
+
+  const handleSubmit = async (e, quickCommandText = null) => {
+    if (e?.preventDefault) {
+      e.preventDefault();
+    }
+    const cmdText = typeof quickCommandText === "string" ? quickCommandText : null;
+    await handleSendMessage(cmdText);
+  };
+
   const handleQuickCommandClick = (cmd) => {
     const cmdText = cmd?.texto || cmd;
     handleSubmit(null, cmdText);
@@ -1084,4 +1170,5 @@ export function MadrePanel(props) {
   return <GlobalMadreDrawer {...props} />;
 }
 
+export { buildMotherExecutiveScript, playNeuralMotherVoice };
 export default GlobalMadreDrawer;

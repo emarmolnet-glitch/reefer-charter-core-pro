@@ -647,7 +647,7 @@ export function useHeaderVisibility(defaultVisible = true) {
 
 import { ProjectProvider, ProjectContext, useProject, useProjectRef, generateRandomProjectRef } from './context/ProjectContext.jsx';
 import { useReeferAutoSizing } from './hooks/useReeferAutoSizing.js';
-import { GlobalMadreDrawer, MadrePanel } from './components/GlobalMadreDrawer.jsx';
+import { GlobalMadreDrawer, MadrePanel, buildMotherExecutiveScript, playNeuralMotherVoice } from './components/GlobalMadreDrawer.jsx';
 
 export function AppLayout({ children }) {
   const [currentView, setCurrentView] = useState(() => (typeof window !== 'undefined' ? window.currentView || '' : ''));
@@ -804,5 +804,5 @@ export function TopNav() {
 export { HashRouter, HashRouter as BrowserRouter };
 export { ProjectProvider, ProjectContext, useProject, useProjectRef, generateRandomProjectRef };
 export { default as VoyageExecutiveReportModal, buildVoyageStowagePlan } from './components/VoyageExecutiveReportModal.jsx';
-export { GlobalMadreDrawer, MadrePanel };
+export { GlobalMadreDrawer, MadrePanel, buildMotherExecutiveScript, playNeuralMotherVoice };
 
