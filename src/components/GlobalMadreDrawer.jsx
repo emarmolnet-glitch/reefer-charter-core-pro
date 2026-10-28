@@ -47,6 +47,7 @@ export function extractReeferScanData(doc = typeof document !== "undefined" ? do
     };
     const defaultBloque2 = {
       tipo_producto: "Carga Frigorífica",
+      producto_especifico: "Carga Frigorífica",
       temperatura_objetivo_c: 13.0,
       ventilacion_cbm_h: "15 CBM/h",
       humedad_controlada: "Estándar Reefer",
@@ -67,6 +68,7 @@ export function extractReeferScanData(doc = typeof document !== "undefined" ? do
     const defaultBloque6 = {
       break_even_usd_pallet: 28.5,
       coste_total_operacion_usd: 128250.0,
+      total_dias_operativos: 15.0,
     };
     const defaultBloque7 = {
       flete_venta_fletador_pallet: 35.0,
@@ -81,6 +83,7 @@ export function extractReeferScanData(doc = typeof document !== "undefined" ? do
     const defaultBloques = {
       bloque_1_ruta_tiempos: defaultBloque1,
       bloque_2_mercancia_frio: defaultBloque2,
+      bloque_2_especificaciones_buque: defaultBloque2,
       bloque_3_capacidad_estiba: defaultBloque3,
       bloque_4_costes_fletes: defaultBloque4,
       bloque_6_resumen_operacion_costes: defaultBloque6,
@@ -284,6 +287,7 @@ export function extractReeferScanData(doc = typeof document !== "undefined" ? do
 
   const bloque2 = {
     tipo_producto: String(producto),
+    producto_especifico: String(producto),
     temperatura_objetivo_c: tempObj,
     ventilacion_cbm_h: String(ventilacion),
     humedad_controlada: String(humedad),
@@ -396,6 +400,7 @@ export function extractReeferScanData(doc = typeof document !== "undefined" ? do
   const bloque6 = {
     break_even_usd_pallet: breakEvenFinal,
     coste_total_operacion_usd: costeTotalFinal,
+    total_dias_operativos: diasTotalesViaje,
   };
 
   const bloque7 = {
@@ -412,6 +417,7 @@ export function extractReeferScanData(doc = typeof document !== "undefined" ? do
   const bloques = {
     bloque_1_ruta_tiempos: bloque1,
     bloque_2_mercancia_frio: bloque2,
+    bloque_2_especificaciones_buque: bloque2,
     bloque_3_capacidad_estiba: bloque3,
     bloque_4_costes_fletes: bloque4,
     bloque_6_resumen_operacion_costes: bloque6,
@@ -423,6 +429,7 @@ export function extractReeferScanData(doc = typeof document !== "undefined" ? do
     bloques,
     bloque_1_ruta_tiempos: bloque1,
     bloque_2_mercancia_frio: bloque2,
+    bloque_2_especificaciones_buque: bloque2,
     bloque_3_capacidad_estiba: bloque3,
     bloque_4_costes_fletes: bloque4,
     bloque_6_resumen_operacion_costes: bloque6,
@@ -488,25 +495,52 @@ export function getReeferUIContext() {
     vista_activa: "Reefer Charter - Control de Frigoríficos",
     parametros_activos: params,
     escaneo_reefer: escaneoReefer,
+    bloques: datosExtraidos?.bloques || datosExtraidos,
     referenciaMadre: referenciaActiva,
   };
 }
 
 export const getCoreProUIContext = getReeferUIContext;
 
+const getMaxTransitDays = (producto = '') => {
+    const prod = String(producto || '').toLowerCase();
+    if (prod.includes('banana') || prod.includes('plátano') || prod.includes('platano')) return 26;
+    if (prod.includes('carne fresca') || prod.includes('pescado fresco')) return 18;
+    if (prod.includes('verdura') || prod.includes('hortaliza')) return 21;
+    if (prod.includes('fármaco') || prod.includes('farmaco') || prod.includes('medicamento') || prod.includes('pharma')) return 30;
+    if (prod.includes('cítrico') || prod.includes('citrico') || prod.includes('manzana')) return 35;
+    if (prod.includes('congelado') || prod.includes('frozen')) return 60;
+    return 40; // Margen por defecto
+};
+
 /**
- * Adaptación del Guion Ejecutivo a Reefer (Pallets).
- * Evalúa break-even unitario por pallet, estacionalidad PSS, ahorro de gestión y fugas prevenidas.
+ * Adaptación del Guion Ejecutivo a Reefer (Pallets, PSS y Shelf-Life).
+ * Evalúa break-even unitario por pallet, estacionalidad PSS, caducidad comercial shelf-life, ahorro y fugas prevenidas.
  */
 function buildMotherExecutiveScript(state = {}) {
-    const horasAhorradas = 2.4;
-    const ahorroAdmin = horasAhorradas * 45;
-    const pallets = state?.pallets || 4000;
-    const breakEvenUnitario = state?.breakEvenUnitario ?? 28.5; // Flete por pallet
-    const pssDetectado = state?.pssActivo ? 'Se ha detectado un Peak Season Surcharge activo por estacionalidad.' : 'Estacionalidad en valle, sin recargos PSS.';
-    const fugas = state?.riesgosDetectados ? 2300 : 0;
+  const breakEven = Number(state?.breakEven ?? 0).toFixed(2);
+  const pallets = Number(state?.pallets || 4000);
+  const diasTotales = Number(state?.diasTotales || 0).toFixed(1);
+  const limiteDias = getMaxTransitDays(state?.producto);
+  
+  const ahorroAdmin = state?.pdaInyectada ? Math.round(4.5 * 45) : Math.round(2.0 * 45); 
+  let fugas = 0;
 
-    return `Escaneo frigorífico completado. El break-even del armador se sitúa en ${breakEvenUnitario} dólares por pallet para un bloque de ${pallets} unidades. Atención: ${pssDetectado} Impacto de esta estimación: se han ahorrado ${ahorroAdmin} dólares de gestión y prevenido posibles fugas por valor de ${fugas} dólares. Operación validada.`;
+  let advertencia = 'Las condiciones operativas y térmicas proyectadas son favorables.';
+  let alertaFinanciera = state?.pssActivo ? 'Alerta financiera: Peak Season Surcharge (PSS) detectado. Blindar recargos.' : '';
+  
+  // Lógica de pudrición / caducidad comercial
+  if (diasTotales > limiteDias) {
+      advertencia = `¡ALERTA CRÍTICA DE SHELF-LIFE! El tiempo de tránsito estimado de ${diasTotales} días supera el límite de caducidad comercial de ${limiteDias} días para esta mercancía. Riesgo inminente de maduración prematura o pudrición total.`;
+      fugas = Math.round(pallets * 120); // Simulación de pérdida millonaria por reclamación
+  } else if (state?.riesgosDetectados) {
+      advertencia = 'Se detectan desviaciones térmicas en el Escenario Estrés. Revise los márgenes de seguridad en puerto.';
+  }
+
+  // Concatenar alertas
+  const mensajeAtencion = [advertencia, alertaFinanciera].filter(Boolean).join(' ');
+
+  return `Escaneo analítico completado. El buque es óptimo para los requerimientos de cubicaje. El break-even del armador se sitúa en ${breakEven} dólares por pallet. Atención: ${mensajeAtencion} Impacto de esta estimación paramétrica: se han ahorrado ${ahorroAdmin} dólares en horas de gestión y prevenido exposiciones de riesgo por valor de ${fugas} dólares.`;
 }
 
 /**
@@ -543,6 +577,7 @@ if (typeof window !== "undefined") {
   window.extractReeferScanData = extractReeferScanData;
   window.buildMotherExecutiveScript = buildMotherExecutiveScript;
   window.playNeuralMotherVoice = playNeuralMotherVoice;
+  window.getMaxTransitDays = getMaxTransitDays;
 }
 
 // export const GlobalMadreDrawer
@@ -765,21 +800,15 @@ export function GlobalMadreDrawer({
 
     const lowerInput = textToProcess.toLowerCase();
     let replyText = "";
-    let stateForVoice = (typeof window !== "undefined" ? (window.State || {}) : {});
-    if (typeof window !== "undefined") {
-      try {
-        const scan = typeof extractReeferScanData === "function" ? extractReeferScanData(document) : null;
-        if (scan?.bloques) {
-          stateForVoice = {
-            ...stateForVoice,
-            pallets: stateForVoice.pallets || stateForVoice.palletQuantity || scan.bloques.bloque_3_capacidad_estiba?.pallets,
-            breakEvenUnitario: stateForVoice.breakEvenUnitario ?? stateForVoice.breakEven ?? scan.bloques.bloque_6_resumen_operacion_costes?.break_even_usd_pallet,
-            pssActivo: stateForVoice.pssActivo,
-            riesgosDetectados: stateForVoice.riesgosDetectados,
-          };
-        }
-      } catch (_) {}
-    }
+    const contextoUI = getReeferUIContext();
+    let stateForVoice = {
+      ...(typeof window !== 'undefined' ? window.State : {}),
+      breakEven: contextoUI.bloques?.bloque_6_resumen_operacion_costes?.break_even_usd_pallet || contextoUI.parametros_activos?.breakEven || 0,
+      pallets: contextoUI.bloques?.bloque_3_capacidad_estiba?.pallets || contextoUI.parametros_activos?.palletQuantity || 4000,
+      producto: contextoUI.bloques?.bloque_2_especificaciones_buque?.producto_especifico || contextoUI.parametros_activos?.commodity || (typeof window !== 'undefined' && window.State?.producto) || 'Carga Frigorífica',
+      diasTotales: contextoUI.bloques?.bloque_6_resumen_operacion_costes?.total_dias_operativos || (Number(contextoUI.parametros_activos?.seaDays || 0) + Number(contextoUI.parametros_activos?.portDays || 0)) || (typeof window !== 'undefined' && window.State?.diasTotales) || 0,
+      pssActivo: !!(contextoUI.insights?.includes('PSS') || contextoUI.parametros_activos?.pssApplied || (typeof window !== 'undefined' && window.State?.pssActivo)) // O tu bandera booleana exacta
+    };
 
     try {
       // 2. Enrutador local
@@ -805,7 +834,6 @@ export function GlobalMadreDrawer({
 
         const texto = textToProcess;
         const trimmed = textToProcess;
-        const contextoUI = getReeferUIContext();
         if (!lowerInput.includes("escan") && !lowerInput.includes("scan") && !lowerInput.includes("pantalla")) {
           delete contextoUI.escaneo_reefer;
         }
@@ -1170,5 +1198,5 @@ export function MadrePanel(props) {
   return <GlobalMadreDrawer {...props} />;
 }
 
-export { buildMotherExecutiveScript, playNeuralMotherVoice };
+export { buildMotherExecutiveScript, playNeuralMotherVoice, getMaxTransitDays };
 export default GlobalMadreDrawer;
