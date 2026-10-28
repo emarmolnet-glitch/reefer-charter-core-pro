@@ -20,39 +20,69 @@ function getDrawerFunctions() {
     
     out_buildMotherExecutiveScript = buildMotherExecutiveScript;
     out_playNeuralMotherVoice = playNeuralMotherVoice;
+    out_getMaxTransitDays = typeof getMaxTransitDays !== 'undefined' ? getMaxTransitDays : null;
   `;
   vm.runInNewContext(script, sandbox);
   return {
     buildMotherExecutiveScript: sandbox.out_buildMotherExecutiveScript,
     playNeuralMotherVoice: sandbox.out_playNeuralMotherVoice,
+    getMaxTransitDays: sandbox.out_getMaxTransitDays,
   };
 }
 
-test('Paso 1: buildMotherExecutiveScript evaluates Reefer carga en pallets with correct defaults and formulas', () => {
-  const { buildMotherExecutiveScript } = getDrawerFunctions();
+test('Paso 1: getMaxTransitDays and buildMotherExecutiveScript evaluate Shelf-Life and PSS', () => {
+  const { buildMotherExecutiveScript, getMaxTransitDays } = getDrawerFunctions();
   assert.equal(typeof buildMotherExecutiveScript, 'function');
+  assert.equal(typeof getMaxTransitDays, 'function');
+
+  // Test Shelf-Life limits catalog
+  assert.equal(getMaxTransitDays('Plátano de Canarias'), 26);
+  assert.equal(getMaxTransitDays('Bananas Cavendish'), 26);
+  assert.equal(getMaxTransitDays('Carne Fresca Porcina'), 18);
+  assert.equal(getMaxTransitDays('Pescado Fresco'), 18);
+  assert.equal(getMaxTransitDays('Verduras Variadas'), 21);
+  assert.equal(getMaxTransitDays('Hortalizas'), 21);
+  assert.equal(getMaxTransitDays('Pharma Vaccines'), 30);
+  assert.equal(getMaxTransitDays('Cítricos / Naranjas'), 35);
+  assert.equal(getMaxTransitDays('Pescado Congelado'), 60);
+  assert.equal(getMaxTransitDays('Carga Genérica'), 40);
 
   // Test with default state
   const defaultScript = buildMotherExecutiveScript({});
-  assert.match(defaultScript, /Escaneo frigorífico completado\./);
-  assert.match(defaultScript, /28\.5 dólares por pallet/);
-  assert.match(defaultScript, /4000 unidades/);
-  assert.match(defaultScript, /Estacionalidad en valle, sin recargos PSS\./);
-  assert.match(defaultScript, /108 dólares de gestión/);
-  assert.match(defaultScript, /0 dólares/);
-  assert.match(defaultScript, /Operación validada\./);
+  assert.match(defaultScript, /Escaneo analítico completado\./);
+  assert.match(defaultScript, /El buque es óptimo para los requerimientos de cubicaje\./);
+  assert.match(defaultScript, /0\.00 dólares por pallet/);
+  assert.match(defaultScript, /Las condiciones operativas y térmicas proyectadas son favorables\./);
+  assert.match(defaultScript, /se han ahorrado 90 dólares en horas de gestión/);
+  assert.match(defaultScript, /prevenido exposiciones de riesgo por valor de 0 dólares/);
 
-  // Test with custom active state
-  const customScript = buildMotherExecutiveScript({
-    pallets: 5500,
-    breakEvenUnitario: 32.75,
+  // Test Shelf-Life critical alert (transit days > shelf life) + PSS alert
+  const shelfLifeAlertScript = buildMotherExecutiveScript({
+    producto: 'Bananas Frescas',
+    diasTotales: 29.5,
+    pallets: 5000,
+    breakEven: 32.75,
+    pdaInyectada: true,
     pssActivo: true,
+  });
+  assert.match(shelfLifeAlertScript, /32\.75 dólares por pallet/);
+  assert.match(shelfLifeAlertScript, /¡ALERTA CRÍTICA DE SHELF-LIFE!/);
+  assert.match(shelfLifeAlertScript, /29\.5 días supera el límite de caducidad comercial de 26 días/);
+  assert.match(shelfLifeAlertScript, /Riesgo inminente de maduración prematura o pudrición total\./);
+  assert.match(shelfLifeAlertScript, /Alerta financiera: Peak Season Surcharge \(PSS\) detectado\. Blindar recargos\./);
+  assert.match(shelfLifeAlertScript, /se han ahorrado 203 dólares en horas de gestión/);
+  // Fugas: 5000 pallets * $120 = $600,000
+  assert.match(shelfLifeAlertScript, /prevenido exposiciones de riesgo por valor de 600000 dólares/);
+
+  // Test with normal transit time but thermal stress deviations
+  const stressScript = buildMotherExecutiveScript({
+    producto: 'Bananas Frescas',
+    diasTotales: 18.0,
+    pallets: 4000,
+    breakEven: 28.5,
     riesgosDetectados: true,
   });
-  assert.match(customScript, /32\.75 dólares por pallet/);
-  assert.match(customScript, /5500 unidades/);
-  assert.match(customScript, /Se ha detectado un Peak Season Surcharge activo por estacionalidad\./);
-  assert.match(customScript, /prevenido posibles fugas por valor de 2300 dólares/);
+  assert.match(stressScript, /Se detectan desviaciones térmicas en el Escenario Estrés\. Revise los márgenes de seguridad en puerto\./);
 });
 
 test('Paso 2: playNeuralMotherVoice bypasses CSP with Web Audio API without blob: URLs', async () => {
