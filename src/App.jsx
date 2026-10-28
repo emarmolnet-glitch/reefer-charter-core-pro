@@ -530,23 +530,25 @@ export const HEADER_STORAGE_KEY = 'seacharter_header_visible';
 
 /**
  * Returns stored header visibility preference or true by default.
+ * Blindaje: El estado permanente de la cabecera superior es forzado a true.
  */
 export function getStoredHeaderVisibility(defaultVisible = true) {
-  if (typeof window === 'undefined') return defaultVisible;
+  if (typeof window === 'undefined') return true;
   try {
     const stored = window.localStorage?.getItem(HEADER_STORAGE_KEY);
     if (stored !== null && stored !== undefined) {
-      return stored === 'true';
+      return true;
     }
   } catch (_) {}
-  return defaultVisible;
+  return true;
 }
 
 /**
  * Persists header visibility preference to localStorage and emits an event.
+ * Blindaje: Siempre persiste true para garantizar que la cabecera nunca se colapse.
  */
 export function setStoredHeaderVisibility(visible) {
-  const boolVal = Boolean(visible);
+  const boolVal = true;
   if (typeof window !== 'undefined') {
     try {
       window.localStorage?.setItem(HEADER_STORAGE_KEY, String(boolVal));
@@ -563,69 +565,69 @@ export function setStoredHeaderVisibility(visible) {
 /**
  * Global Header Visibility management hook for SeaCharter Core PRO.
  * Keeps state in sync with localStorage, DOM layout, and window resize events.
+ * Fuerza que el estado inicial y permanente sea true, deshabilitando cualquier listener externo que intente colapsar la cabecera.
  */
 export function useHeaderVisibility(defaultVisible = true) {
-  const [isHeaderVisible, setIsHeaderVisible] = useState(() => getStoredHeaderVisibility(defaultVisible));
+  const [isHeaderVisible, setIsHeaderVisible] = useState(() => getStoredHeaderVisibility(defaultVisible) && true);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     // Apply visibility class and ARIA states to DOM elements
-    const syncDom = (visible) => {
+    const syncDom = (visible = true) => {
+      const forcedVisible = true;
       if (typeof document !== 'undefined') {
         if (document.body) {
           document.body.classList.toggle('header-collapsed', !visible);
-          document.body.dataset.headerVisible = String(visible);
+          document.body.dataset.headerVisible = String(forcedVisible);
         }
         const appHeader = document.querySelector('header.app-header');
         if (appHeader) {
           appHeader.classList.toggle('header-collapsed', !visible);
-          appHeader.setAttribute('aria-hidden', String(!visible));
+          appHeader.setAttribute('aria-hidden', String(!forcedVisible));
         }
         const collapseBtn = document.getElementById('btn-collapse-header');
         if (collapseBtn) {
-          collapseBtn.setAttribute('aria-expanded', String(visible));
+          collapseBtn.setAttribute('aria-expanded', String(forcedVisible));
         }
         const expandBtn = document.getElementById('btn-expand-header');
         if (expandBtn) {
-          expandBtn.setAttribute('aria-expanded', String(visible));
+          expandBtn.setAttribute('aria-expanded', String(forcedVisible));
         }
       }
       window.dispatchEvent(new Event('resize'));
     };
 
-    syncDom(isHeaderVisible);
+    syncDom(true);
 
     const handleVisibilityEvent = (event) => {
+      // Bloquea cualquier intento externo o de cálculos de colapsar la barra superior
       const nextVal = event?.detail?.isHeaderVisible ?? event?.detail?.visible;
-      if (typeof nextVal === 'boolean') {
-        setIsHeaderVisible(nextVal);
+      if (nextVal === false) {
+        return;
       }
+      setIsHeaderVisible(true);
     };
 
     const handleToggleEvent = () => {
-      setIsHeaderVisible((prev) => {
-        const next = !prev;
-        setStoredHeaderVisibility(next);
-        return next;
-      });
+      // Deshabilitado: La barra de navegación superior permanece permanentemente visible
+      setIsHeaderVisible(true);
+      setStoredHeaderVisibility(true);
     };
 
     window.addEventListener('header:visibility-change', handleVisibilityEvent);
     window.addEventListener('header:toggle', handleToggleEvent);
 
-    window.isHeaderVisible = isHeaderVisible;
+    window.isHeaderVisible = true;
     window.setHeaderVisibility = (val) => {
-      const next = Boolean(val);
+      const next = true;
       setStoredHeaderVisibility(next);
       setIsHeaderVisible(next);
     };
     window.toggleHeaderVisibility = () => {
-      setIsHeaderVisible((prev) => {
-        const next = !prev;
-        setStoredHeaderVisibility(next);
-        return next;
-      });
+      const next = true;
+      setStoredHeaderVisibility(next);
+      setIsHeaderVisible(next);
     };
 
     return () => {
@@ -635,12 +637,12 @@ export function useHeaderVisibility(defaultVisible = true) {
   }, [isHeaderVisible]);
 
   const toggleHeader = () => {
-    const next = !isHeaderVisible;
+    const next = true;
     setStoredHeaderVisibility(next);
     setIsHeaderVisible(next);
   };
 
-  return { isHeaderVisible, setIsHeaderVisible, toggleHeader };
+  return { isHeaderVisible: true, setIsHeaderVisible, toggleHeader };
 }
 
 import { ProjectProvider, ProjectContext, useProject, useProjectRef, generateRandomProjectRef } from './context/ProjectContext.jsx';

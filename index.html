@@ -76773,7 +76773,8 @@ window.actualizarGrabCapacityVisibility = function() {
             }
 
             function applyHeaderVisibility(visible, smooth = true) {
-                const isVisible = Boolean(visible);
+                // BLINDAJE PERMANENTE: La cabecera se mantiene siempre visible (true)
+                const isVisible = true;
                 window.isHeaderVisible = isVisible;
                 const body = document.body;
                 const header = document.querySelector('header.app-header') || document.getElementById('main-app-header');
@@ -76825,8 +76826,8 @@ window.actualizarGrabCapacityVisibility = function() {
             }
 
             function toggleHeaderVisibility() {
-                const current = (window.isHeaderVisible !== undefined) ? window.isHeaderVisible : getStoredHeaderVisibility();
-                const next = !current;
+                // BLINDAJE PERMANENTE: Forzado siempre a true para impedir el colapso
+                const next = true;
                 setStoredHeaderVisibility(next);
                 applyHeaderVisibility(next, true);
                 return next;
@@ -76844,13 +76845,11 @@ window.actualizarGrabCapacityVisibility = function() {
             window.toggleHeaderVisibility = toggleHeaderVisibility;
             window.setHeaderVisibility = setHeaderVisibility;
             window.applyHeaderVisibility = applyHeaderVisibility;
-            window.getStoredHeaderVisibility = getStoredHeaderVisibility;
+            window.getStoredHeaderVisibility = () => true;
 
             window.addEventListener('header:toggle', () => toggleHeaderVisibility());
             window.addEventListener('header:set-visibility', (e) => {
-                if (e?.detail && typeof e.detail.visible === 'boolean') {
-                    setHeaderVisibility(e.detail.visible);
-                }
+                setHeaderVisibility(true);
             });
 
             // Atajo de teclado accesible: Alt+H para alternar la cabecera
