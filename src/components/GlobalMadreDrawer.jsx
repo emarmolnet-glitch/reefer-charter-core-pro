@@ -548,32 +548,55 @@ export function GlobalMadreDrawer({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [mensajes]);
 
- // Window API and custom events synchronization
+  // Window API and custom events synchronization
   useEffect(() => {
     const handleOpen = (e) => {
-      // BLINDAJE ABSOLUTO: Bloquea aperturas automáticas por cálculos o eventos del sistema
-      if (e?.detail?.fromCalculation || e?.fromCalculation || e?.detail?.autoOpen === false) {
+      // Si el evento viene del motor de cálculo, de una alerta de radar o no es un evento de usuario, IGNORAR.
+      if (e?.detail?.fromCalculation || e?.fromCalculation || e?.detail?.autoOpen === false || (e && e.isTrusted === false && !e?.detail?.userInitiated)) {
         return;
       }
       setIsOpen(true);
     };
     const handleClose = () => setIsOpen(false);
     const handleToggle = (e) => {
-      if (e && e.isTrusted === false && !e?.detail?.userInitiated) {
+      // Si el evento viene del motor de cálculo, de una alerta de radar o no es un evento de usuario, IGNORAR.
+      if (e?.detail?.fromCalculation || e?.fromCalculation || e?.detail?.autoOpen === false || (e && e.isTrusted === false && !e?.detail?.userInitiated)) {
         return;
       }
       setIsOpen((prev) => !prev);
+    };
+    const handleRadarAlert = (e) => {
+      // Las alertas del radar se limitan únicamente a inyectar el mensaje en el historial del chat sin abrir el panel
+      const alertMsg = e?.detail?.message || e?.detail?.text || (typeof e?.detail === "string" ? e.detail : null) || e?.message || "Alerta de radar detectada.";
+      const newMsg = {
+        id: Date.now(),
+        rol: "assistant",
+        role: "assistant",
+        autor: e?.detail?.autor || "Radar AIS",
+        sender: "assistant",
+        texto: alertMsg,
+        text: alertMsg,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      };
+      setMensajes((prev) => [...prev, newMsg]);
     };
 
     window.addEventListener("madre:open", handleOpen);
     window.addEventListener("madre:close", handleClose);
     window.addEventListener("madre:toggle", handleToggle);
+    window.addEventListener("radar:alert", handleRadarAlert);
 
     if (typeof window !== "undefined") {
       window.MadrePanelUI = {
-        open: () => setIsOpen(true),
+        open: (opts) => {
+          if (opts?.fromCalculation || opts?.autoOpen === false) return;
+          setIsOpen(true);
+        },
         close: () => setIsOpen(false),
-        toggle: () => setIsOpen((prev) => !prev),
+        toggle: (opts) => {
+          if (opts?.fromCalculation || opts?.autoOpen === false) return;
+          setIsOpen((prev) => !prev);
+        },
         isOpen: () => isOpen,
       };
 
@@ -602,6 +625,7 @@ export function GlobalMadreDrawer({
       window.removeEventListener("madre:open", handleOpen);
       window.removeEventListener("madre:close", handleClose);
       window.removeEventListener("madre:toggle", handleToggle);
+      window.removeEventListener("radar:alert", handleRadarAlert);
     };
   }, [isOpen, isListening]);
 
