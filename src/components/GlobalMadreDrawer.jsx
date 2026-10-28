@@ -518,26 +518,50 @@ const getMaxTransitDays = (producto = '') => {
  * Evalúa break-even unitario por pallet, estacionalidad PSS, caducidad comercial shelf-life, ahorro y fugas prevenidas.
  */
 function buildMotherExecutiveScript(state = {}) {
-  const breakEven = Number(state?.breakEven ?? 0).toFixed(2);
+  // 1. SCRAPING VISUAL DIRECTO AL DOM (Ojos de MADRE)
+  let liveDays = 0;
+  let liveProduct = state?.producto || 'Carga Frigorífica';
+  let livePss = state?.pssActivo || false;
+
+  if (typeof document !== 'undefined') {
+      const domText = document.body.innerText || '';
+      
+      // Extraer Días Totales reales visibles
+      const matchDays = domText.match(/(?:Dias Mar \+ Puerto \+ Margen Clima:)\s*(\d+[\.,]\d+)/i);
+      if (matchDays) liveDays = parseFloat(matchDays[1].replace(',', '.'));
+
+      // Extraer Producto real
+      if (domText.match(/banana|plátano|platano/i)) liveProduct = 'Bananas';
+      else if (domText.match(/carne fresca|pescado fresco/i)) liveProduct = 'Carne Fresca';
+      else if (domText.match(/verdura|hortaliza/i)) liveProduct = 'Verdura';
+      else if (domText.match(/fármaco|pharma|medicamento/i)) liveProduct = 'Fármacos';
+      else if (domText.match(/cítrico|manzana/i)) liveProduct = 'Cítricos';
+
+      // Extraer PSS real
+      if (domText.match(/Peak Season Surcharge|PSS/i)) livePss = true;
+  }
+
+  // 2. CONSOLIDACIÓN DE DATOS
+  const breakEven = Number(state?.breakEvenUnitario ?? state?.breakEven ?? 0).toFixed(2);
   const pallets = Number(state?.pallets || 4000);
-  const diasTotales = Number(state?.diasTotales || 0).toFixed(1);
-  const limiteDias = getMaxTransitDays(state?.producto);
+  const diasTotales = liveDays > 0 ? liveDays : Number(state?.diasTotales || 0);
+  const limiteDias = typeof getMaxTransitDays === 'function' ? getMaxTransitDays(liveProduct) : 40;
+  const pssActivo = livePss || state?.pssActivo;
   
   const ahorroAdmin = state?.pdaInyectada ? Math.round(4.5 * 45) : Math.round(2.0 * 45); 
   let fugas = 0;
 
+  // 3. LÓGICA DE AUDITORÍA
   let advertencia = 'Las condiciones operativas y térmicas proyectadas son favorables.';
-  let alertaFinanciera = state?.pssActivo ? 'Alerta financiera: Peak Season Surcharge (PSS) detectado. Blindar recargos.' : '';
+  let alertaFinanciera = pssActivo ? 'Alerta financiera: Peak Season Surcharge (PSS) detectado. Blindar recargos.' : '';
   
-  // Lógica de pudrición / caducidad comercial
   if (diasTotales > limiteDias) {
-      advertencia = `¡ALERTA CRÍTICA DE SHELF-LIFE! El tiempo de tránsito estimado de ${diasTotales} días supera el límite de caducidad comercial de ${limiteDias} días para esta mercancía. Riesgo inminente de maduración prematura o pudrición total.`;
-      fugas = Math.round(pallets * 120); // Simulación de pérdida millonaria por reclamación
+      advertencia = `¡ALERTA CRÍTICA DE SHELF-LIFE! El tiempo de tránsito estimado de ${diasTotales.toFixed(1)} días supera el límite de caducidad comercial de ${limiteDias} días para esta mercancía. Riesgo inminente de maduración prematura o pudrición total.`;
+      fugas = Math.round(pallets * 120);
   } else if (state?.riesgosDetectados) {
       advertencia = 'Se detectan desviaciones térmicas en el Escenario Estrés. Revise los márgenes de seguridad en puerto.';
   }
 
-  // Concatenar alertas
   const mensajeAtencion = [advertencia, alertaFinanciera].filter(Boolean).join(' ');
 
   return `Escaneo analítico completado. El buque es óptimo para los requerimientos de cubicaje. El break-even del armador se sitúa en ${breakEven} dólares por pallet. Atención: ${mensajeAtencion} Impacto de esta estimación paramétrica: se han ahorrado ${ahorroAdmin} dólares en horas de gestión y prevenido exposiciones de riesgo por valor de ${fugas} dólares.`;
