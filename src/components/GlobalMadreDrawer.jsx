@@ -548,11 +548,22 @@ export function GlobalMadreDrawer({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [mensajes]);
 
-  // Window API and custom events synchronization
+ // Window API and custom events synchronization
   useEffect(() => {
-    const handleOpen = () => setIsOpen(true);
+    const handleOpen = (e) => {
+      // BLINDAJE ABSOLUTO: Bloquea aperturas automáticas por cálculos o eventos del sistema
+      if (e?.detail?.fromCalculation || e?.fromCalculation || e?.detail?.autoOpen === false) {
+        return;
+      }
+      setIsOpen(true);
+    };
     const handleClose = () => setIsOpen(false);
-    const handleToggle = () => setIsOpen((prev) => !prev);
+    const handleToggle = (e) => {
+      if (e && e.isTrusted === false && !e?.detail?.userInitiated) {
+        return;
+      }
+      setIsOpen((prev) => !prev);
+    };
 
     window.addEventListener("madre:open", handleOpen);
     window.addEventListener("madre:close", handleClose);
