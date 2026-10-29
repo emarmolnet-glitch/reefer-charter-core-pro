@@ -773,7 +773,7 @@ export function TopNav() {
             if (window.MadrePanelUI?.toggle) {
               window.MadrePanelUI.toggle();
             } else {
-              window.dispatchEvent(new CustomEvent('madre:toggle'));
+              window.dispatchEvent(new CustomEvent('madre:toggle', { detail: { userInitiated: true } }));
             }
           }}
           aria-label="Abrir panel MADRE"

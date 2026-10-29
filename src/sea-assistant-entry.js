@@ -2321,7 +2321,16 @@ const fileInput = root.querySelector("#sca-file-input");
 
   const agregarMensajeAsistenteMounted = (mensaje, options = {}) => {
     setActiveAgent("core");
-    setOpen(true);
+    // Desacoplamiento estricto: Bloquea apertura automática si proviene de cálculo o no fue iniciado por el usuario
+    const isFromCalculation = Boolean(
+      options.fromCalculation ||
+      options.background ||
+      (typeof window !== "undefined" && (window.isEngineCalculating || window.isCalculatingMaster)) ||
+      !options.userInitiated
+    );
+    if (!isFromCalculation && options.userInitiated === true) {
+      setOpen(true);
+    }
     const assistantOptions = {
       meta: formatTime(),
       aiType: "local",
@@ -2341,13 +2350,13 @@ const fileInput = root.querySelector("#sca-file-input");
     window.addEventListener("seacharter:radar-no-vessels", (event) => {
       const detail = event?.detail || {};
       const msg = buildVesselRescueMessage(detail);
-      agregarMensajeAsistenteMounted(msg);
+      agregarMensajeAsistenteMounted(msg, { fromCalculation: true, background: true });
     });
 
     window.addEventListener("seacharter:vessel-validation-empty", (event) => {
       const detail = event?.detail || {};
       const msg = buildVesselRescueMessage(detail);
-      agregarMensajeAsistenteMounted(msg);
+      agregarMensajeAsistenteMounted(msg, { fromCalculation: true, background: true });
     });
   }
 
@@ -2526,7 +2535,7 @@ const fileInput = root.querySelector("#sca-file-input");
       }
       requestAnimationFrame(() => {
         if (!hasCustomPosition) initializePosition();
-        input.focus();
+        // input.focus(); // Auto-focus eliminado para evitar zoom no deseado en dispositivos
       });
       scrollToLatest();
     } else {
@@ -2537,6 +2546,11 @@ const fileInput = root.querySelector("#sca-file-input");
   };
 
   const openFromContext = (event) => {
+    // BLOQUEO ABSOLUTO: Si no viene explícitamente de un clic del usuario, abortar.
+    if (!event?.detail?.userInitiated) {
+      console.log("Apertura automática bloqueada en Reefer Charter.");
+      return;
+    }
     const prompt = String(event?.detail?.prompt || "").trim();
     setOpen(true);
     if (prompt) {
@@ -2735,7 +2749,18 @@ const fileInput = root.querySelector("#sca-file-input");
           createAndSpeakAssistantMessage(transitionMessage, {
             meta: formatTime(),
             aiType: "local",
+            fromCalculation: true,
+            background: true,
           });
+        }
+
+        // Notificación Visual Sutil (Passive Glow): Avisa al operador en el botón superior sin desplegar el panel
+        if (typeof window !== "undefined") {
+          if (typeof window.triggerMadrePassiveGlow === "function") {
+            window.triggerMadrePassiveGlow();
+          } else {
+            window.dispatchEvent(new CustomEvent("madre:notification"));
+          }
         }
       }
     } catch (error) {

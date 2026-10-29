@@ -602,6 +602,33 @@ if (typeof window !== "undefined") {
   window.buildMotherExecutiveScript = buildMotherExecutiveScript;
   window.playNeuralMotherVoice = playNeuralMotherVoice;
   window.getMaxTransitDays = getMaxTransitDays;
+  window.triggerMadrePassiveGlow = triggerMadrePassiveGlow;
+}
+
+/**
+ * Notificación Visual Sutil (Passive Glow)
+ * Enciende el resplandor del botón superior sin abrir el panel.
+ */
+export function triggerMadrePassiveGlow() {
+  if (typeof document !== "undefined") {
+    const topbarGlowElements = document.querySelectorAll(".madre-topbar-glow, #madre-topbar-glow");
+    topbarGlowElements.forEach((glow) => {
+      glow.style.display = "block";
+      glow.classList.add("has-passive-glow");
+    });
+    const topbarImgElements = document.querySelectorAll(".madre-topbar-img, #madre-topbar-img");
+    topbarImgElements.forEach((img) => {
+      img.classList.add("grayscale-0", "opacity-100");
+      img.classList.remove("grayscale", "opacity-70");
+    });
+    const topbarBtnElements = document.querySelectorAll(".madre-topbar-btn, #madre-topbar-button");
+    topbarBtnElements.forEach((btn) => {
+      btn.title = "MADRE: Análisis e informe listos (Clic para abrir)";
+    });
+  }
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("madre:notification", { detail: { pending: true } }));
+  }
 }
 
 // export const GlobalMadreDrawer
@@ -618,6 +645,7 @@ export function GlobalMadreDrawer({
   ],
 }) {
   const [isOpen, setIsOpen] = useState(initialOpen);
+  const [hasPendingReport, setHasPendingReport] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const inputTexto = inputValue;
   const setInputTexto = setInputValue;
@@ -646,6 +674,14 @@ export function GlobalMadreDrawer({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen]);
 
+  // Reset pending state upon opening; Auto-focus ELIMINADO para evitar auto-zoom de pantalla y rotura de layout
+  useEffect(() => {
+    if (isOpen) {
+      setHasPendingReport(false);
+      // Auto-focus eliminado: MADRE no debe robar el foco del teclado al abrirse, el usuario debe hacer clic en el input manualmente
+    }
+  }, [isOpen]);
+
   // Auto-scroll whenever mensajes change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -658,6 +694,12 @@ export function GlobalMadreDrawer({
       if (e?.detail?.fromCalculation || e?.fromCalculation || e?.detail?.autoOpen === false || (e && e.isTrusted === false && !e?.detail?.userInitiated)) {
         return;
       }
+      // BLOQUEO ABSOLUTO: Si no viene explícitamente de un clic del usuario, abortar.
+      if (!e?.detail?.userInitiated) {
+        console.log("Apertura automática bloqueada en Reefer Charter.");
+        return;
+      }
+      setHasPendingReport(false);
       setIsOpen(true);
     };
     const handleClose = () => setIsOpen(false);
@@ -666,6 +708,12 @@ export function GlobalMadreDrawer({
       if (e?.detail?.fromCalculation || e?.fromCalculation || e?.detail?.autoOpen === false || (e && e.isTrusted === false && !e?.detail?.userInitiated)) {
         return;
       }
+      // BLOQUEO ABSOLUTO: Si no viene explícitamente de un clic del usuario, abortar.
+      if (!e?.detail?.userInitiated) {
+        console.log("Toggle automático bloqueado en Reefer Charter.");
+        return;
+      }
+      setHasPendingReport(false);
       setIsOpen((prev) => !prev);
     };
     const handleRadarAlert = (e) => {
@@ -683,21 +731,35 @@ export function GlobalMadreDrawer({
       };
       setMensajes((prev) => [...prev, newMsg]);
     };
+    const handleNotification = () => {
+      setHasPendingReport(true);
+    };
 
     window.addEventListener("madre:open", handleOpen);
     window.addEventListener("madre:close", handleClose);
     window.addEventListener("madre:toggle", handleToggle);
     window.addEventListener("radar:alert", handleRadarAlert);
+    window.addEventListener("madre:notification", handleNotification);
 
     if (typeof window !== "undefined") {
       window.MadrePanelUI = {
         open: (opts) => {
-          if (opts?.fromCalculation || opts?.autoOpen === false) return;
+          // BLOQUEO ABSOLUTO: Exige siempre opts?.userInitiated === true
+          if (!opts?.userInitiated) {
+            console.log("Apertura automática bloqueada en Reefer Charter.");
+          }
+          if (opts?.fromCalculation || opts?.autoOpen === false || !opts?.userInitiated) return;
+          setHasPendingReport(false);
           setIsOpen(true);
         },
         close: () => setIsOpen(false),
-        toggle: (opts) => {
-          if (opts?.fromCalculation || opts?.autoOpen === false) return;
+        toggle: (opts = { userInitiated: true }) => {
+          // BLOQUEO ABSOLUTO: Exige siempre opts?.userInitiated === true
+          if (!opts?.userInitiated) {
+            console.log("Toggle automático bloqueado en Reefer Charter.");
+          }
+          if (opts?.fromCalculation || opts?.autoOpen === false || !opts?.userInitiated) return;
+          setHasPendingReport(false);
           setIsOpen((prev) => !prev);
         },
         isOpen: () => isOpen,
@@ -711,10 +773,15 @@ export function GlobalMadreDrawer({
         btn.setAttribute("aria-expanded", String(isOpen));
       });
       topbarGlowElements.forEach((glow) => {
-        glow.style.display = isOpen || isListening ? "block" : "none";
+        glow.style.display = isOpen || isListening || hasPendingReport ? "block" : "none";
+        if (hasPendingReport && !isOpen) {
+          glow.classList.add("has-passive-glow");
+        } else {
+          glow.classList.remove("has-passive-glow");
+        }
       });
       topbarImgElements.forEach((img) => {
-        if (isOpen || isListening) {
+        if (isOpen || isListening || hasPendingReport) {
           img.classList.add("grayscale-0", "opacity-100", "scale-110");
           img.classList.remove("grayscale", "opacity-70", "scale-100");
         } else {
@@ -729,8 +796,9 @@ export function GlobalMadreDrawer({
       window.removeEventListener("madre:close", handleClose);
       window.removeEventListener("madre:toggle", handleToggle);
       window.removeEventListener("radar:alert", handleRadarAlert);
+      window.removeEventListener("madre:notification", handleNotification);
     };
-  }, [isOpen, isListening]);
+  }, [isOpen, isListening, hasPendingReport]);
 
   const speakText = (text) => {
     if (isMuted || typeof window === "undefined" || !window.speechSynthesis) return;
@@ -987,7 +1055,7 @@ export function GlobalMadreDrawer({
 
           <aside
             id="madre-drawer-panel"
-            className="madre-drawer fixed top-0 left-0 bottom-0 w-full max-w-lg bg-slate-900 text-slate-100 shadow-2xl z-[2147483647] flex flex-col border-r border-slate-800 animate-in slide-in-from-left duration-300"
+            className={`madre-drawer fixed top-0 left-0 bottom-0 w-full max-w-lg bg-slate-900 text-slate-100 shadow-2xl z-[2147483647] flex flex-col border-r border-slate-800 animate-in slide-in-from-left duration-300 transform transition-transform ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
             style={{ backgroundColor: "#0f172a", color: "#f1f5f9", zIndex: 2147483647 }}
             role="dialog"
             aria-modal="true"
@@ -1192,7 +1260,7 @@ export function GlobalMadreDrawer({
                   value={inputTexto}
                   onChange={(e) => setInputTexto(e.target.value)}
                   placeholder="Pregunta a MADRE o escribe 'Escanear pantalla'..."
-                  className="madre-chat-input flex-1 min-w-0 px-3 py-2 text-xs bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                  className="madre-chat-input flex-1 min-w-0 px-3 py-2 text-[16px] md:text-xs bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
                 />
                 <button
                   id="madre-send-button"

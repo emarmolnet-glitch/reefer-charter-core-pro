@@ -135,6 +135,7 @@ class DualTradingCharteringView extends HTMLElement {
         this.shadowRoot.getElementById('consult-dual-copilot')?.addEventListener('click', () => {
             this.ownerDocument.defaultView?.dispatchEvent(new CustomEvent('sea-assistant:open', {
                 detail: {
+                    userInitiated: true,
                     prompt: 'Analiza los márgenes actuales de Trading y Fletamento del Modo Dual. Señala el margen bruto, el coste de flete, el margen neto y cualquier riesgo comercial.',
                 },
             }));

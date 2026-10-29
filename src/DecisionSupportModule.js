@@ -1353,7 +1353,7 @@ export function renderizarAuditoriaDss(auditoriaData) {
                 </p>
             </div>
         `;
-        cardContainer.classList.remove('hidden');
+        // Desacoplamiento: La tarjeta de auditoría se renderiza pero permanece oculta en segundo plano
     }
 
     const veredictoVal = document.getElementById('madre-offcanvas-veredicto-val');
