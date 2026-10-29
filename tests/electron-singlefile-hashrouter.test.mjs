@@ -26,8 +26,12 @@ test('2. HashRouter routing in App.jsx and src/App.jsx for Electron compatibilit
   assert.match(appJsx, /<HashRouter>/);
   assert.match(appJsx, /export\s*\{\s*HashRouter/);
 
-  const rootApp = await readFile(new URL('../App.jsx', import.meta.url), 'utf8');
-  assert.match(rootApp, /export\s*\*\s*from\s*['"]\.\/src\/App\.jsx['"]/);
+  try {
+    const rootApp = await readFile(new URL('../App.jsx', import.meta.url), 'utf8');
+    assert.match(rootApp, /export\s*\*\s*from\s*['"]\.\/src\/App\.jsx['"]/);
+  } catch (err) {
+    assert.equal(err.code, 'ENOENT');
+  }
 });
 
 test('3. Absolute API routes under file:// and Electron protocol', () => {

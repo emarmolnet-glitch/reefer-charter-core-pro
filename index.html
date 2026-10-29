@@ -9004,33 +9004,43 @@
                 text-align: left !important;
             }
 
-            header.app-header > .header-actions-right {
+            /* Deprecated legacy rule: header.app-header > .header-actions-right { display: none !important; } */
+            header.app-header {
+                display: flex !important;
+                flex-direction: row !important;
+                align-items: center !important;
+                justify-content: flex-end !important;
+                gap: 0.5rem !important;
+                padding: 0.35rem 0.5rem !important;
+                overflow: visible !important;
+            }
+
+            header.app-header > .hidden.md\:flex,
+            header.app-header #header-vessel-search-container,
+            header.app-header #header-voyage-ref-container,
+            header.app-header #connection-status-root {
                 display: none !important;
             }
 
+            header.app-header > .header-actions-right {
+                display: flex !important;
+                align-items: center !important;
+                width: auto !important;
+                gap: 0.5rem !important;
+                justify-content: flex-end !important;
+                margin-left: auto !important;
+            }
+
+            header.app-header #madre-topbar-button,
+            header.app-header #btn-open-faq-modal,
+            header.app-header #global-view-mode-switch,
             header.app-header #btn-collapse-header {
                 display: inline-flex !important;
+                align-items: center !important;
             }
 
             header.app-header > .header-left .header-app-title {
                 display: none !important;
-            }
-
-            header.app-header > .header-center {
-                flex: 1 1 auto !important;
-                width: 100% !important;
-                justify-content: flex-end !important;
-                gap: 0.35rem !important;
-            }
-
-            #header-vessel-search-container {
-                flex: 1 1 140px !important;
-                max-width: none !important;
-                min-width: 120px !important;
-            }
-
-            #header-voyage-ref-container {
-                flex-shrink: 0 !important;
             }
         }
 
@@ -9664,9 +9674,9 @@
 </div>
 
     <!-- NAVBAR TOP -->
-    <header class="app-header bg-white border-b border-slate-200 px-4 py-2 md:px-6 flex items-center justify-between shadow-md shrink-0 no-print z-50" role="banner" aria-label="Cabecera principal de navegación">
+    <header class="app-header bg-white border-b border-slate-200 px-4 py-2 md:px-6 flex items-center justify-end md:justify-between shadow-md shrink-0 no-print z-50" role="banner" aria-label="Cabecera principal de navegación">
         <!-- IZQUIERDA: LOGO CORPORATIVO -->
-        <div class="header-left flex items-center gap-3 shrink-0">
+        <div class="header-left hidden md:flex items-center gap-3 shrink-0">
             <div class="bg-blue-600 p-0.5 rounded-lg text-white shadow-md flex items-center justify-center w-8 h-8 overflow-hidden">
                 <img src="./assets/reefer-logo.jpg" alt="Reefer Charter Core PRO Logo" class="w-full h-full object-cover rounded-md" />
             </div>
@@ -9679,11 +9689,11 @@
         </div>
 
         <!-- CENTRO: STATUS BRIDGE, BUSCADOR IMO, VOYAGE REF -->
-        <div class="header-center flex items-center gap-2 md:gap-3 flex-1 justify-center max-w-3xl mx-2 md:mx-4">
+        <div class="header-center hidden md:flex items-center gap-2 md:gap-3 flex-1 justify-center max-w-3xl mx-2 md:mx-4">
             <div id="connection-status-root" class="shrink-0"></div>
 
             <!-- BUSCADOR DIRECTO DE BUQUES EN BASE DE DATOS NEON -->
-            <div id="header-vessel-search-container" class="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 border border-slate-300 text-slate-700 text-xs shadow-2xs flex-1 min-w-[160px] focus-within:ring-2 focus-within:ring-sky-500 focus-within:border-sky-500 transition-all">
+            <div id="header-vessel-search-container" class="relative hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 border border-slate-300 text-slate-700 text-xs shadow-2xs flex-1 min-w-[160px] focus-within:ring-2 focus-within:ring-sky-500 focus-within:border-sky-500 transition-all">
                 <svg class="w-3.5 h-3.5 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="11" cy="11" r="8"></circle>
                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -9711,7 +9721,7 @@
             </div>
 
             <!-- SELECTOR REFERENCIA DE VIAJE / EXPEDIENTE ACTIVO -->
-            <div id="header-voyage-ref-container" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50/90 border border-blue-300 text-blue-900 text-xs font-mono shadow-xs shrink-0 transition-all hover:border-blue-400" title="Expediente Activo (project_ref)">
+            <div id="header-voyage-ref-container" class="hidden md:inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50/90 border border-blue-300 text-blue-900 text-xs font-mono shadow-xs shrink-0 transition-all hover:border-blue-400" title="Expediente Activo (project_ref)">
                 <i class="fa-solid fa-folder-closed text-xs text-blue-600"></i>
                 <span class="text-blue-800 font-sans text-[10px] uppercase font-black tracking-wider bg-blue-100 px-1.5 py-0.5 rounded border border-blue-200">Expediente:</span>
                 <input type="text" id="quick-ref" class="bg-transparent font-mono text-xs font-bold text-blue-950 focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1 w-28 sm:w-36 transition-all uppercase placeholder-blue-300" placeholder="RDM/2026-..." value="" oninput="syncQuickRef(this.value)" title="Referencia Única del Expediente (project_ref)">
@@ -9719,7 +9729,7 @@
         </div>
 
         <!-- DERECHA: BOTONES DE ACCIÓN (FAQ, OWN/CHR, COLAPSAR) -->
-        <div class="header-actions-right hidden md:flex items-center gap-1.5 shrink-0">
+        <div class="header-actions-right !flex items-center gap-1.5 shrink-0">
             <!-- DISPARADOR SUPERIOR MADRE (TOPBAR TRIGGER) -->
             <button
                 id="madre-topbar-button"
