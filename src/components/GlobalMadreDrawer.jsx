@@ -710,9 +710,171 @@ export function detectActiveModule(doc = (typeof document !== "undefined" ? docu
 export const detectarModuloActivo = detectActiveModule;
 
 /**
+ * Diccionario Estructural de Lectura DOM para Reefer Charter Core PRO.
+ * Mapeo prioritario para el Escáner Universal de MADRE hacia Data Bridge.
+ */
+export const REEFER_DOM_DICTIONARY = {
+  mapa: {
+    contenedor: "#view-map",
+    inputs: ["#map-port-ballast", "#map-port-pol", "#map-port-pod", "#map-laycan-date", "#map-cancelling-date"],
+    metricas: ["#sync-miles-label", "#sync-miles-breakdown", "#sync-pol-label", "#sync-pod-label"]
+  },
+  calculadora: {
+    contenedor: "#view-estimator",
+    reefer_inputs: [
+      "#pallet-quantity",
+      "#cargo-volume-cbm",
+      "#hold-capacity-cbft",
+      "#target-temperature",
+      "#ventilation-rate",
+      "#controlled-atmosphere",
+      "#reefer-plugs",
+      "#boxes-quantity",
+      "#auxiliary-genset-cost"
+    ],
+    rutas_inputs: ["#port-ballast", "#port-pol", "#port-pod", "#dist-ballast", "#dist-laden", "#dist-total"],
+    buque_inputs: ["#vessel-identity-imo", "#vessel-dwt", "#spd-ballast", "#spd-laden"],
+    costes_inputs: ["#fuel-vlsfo-price", "#fuel-lsmgo-price", "#pda-pol", "#pda-pod"],
+    metricas_kpi: [
+      "#exec-tce",
+      "#exec-buy-freight",
+      "#exec-sell-freight",
+      "#exec-charterer-profit",
+      "#exec-spread-mt",
+      "#break-even-freight",
+      "#total-voyage-costs"
+    ],
+    inputs: [
+      "#pallet-quantity",
+      "#cargo-volume-cbm",
+      "#hold-capacity-cbft",
+      "#target-temperature",
+      "#ventilation-rate",
+      "#controlled-atmosphere",
+      "#reefer-plugs",
+      "#boxes-quantity",
+      "#auxiliary-genset-cost",
+      "#port-ballast",
+      "#port-pol",
+      "#port-pod",
+      "#dist-ballast",
+      "#dist-laden",
+      "#dist-total",
+      "#vessel-identity-imo",
+      "#vessel-dwt",
+      "#spd-ballast",
+      "#spd-laden",
+      "#fuel-vlsfo-price",
+      "#fuel-lsmgo-price",
+      "#pda-pol",
+      "#pda-pod",
+      "#rate-load",
+      "#rate-disch",
+      "#freight-buy",
+      "#freight-sell"
+    ],
+    metricas: [
+      "#exec-tce",
+      "#exec-buy-freight",
+      "#exec-sell-freight",
+      "#exec-charterer-profit",
+      "#exec-spread-mt",
+      "#break-even-freight",
+      "#total-voyage-costs"
+    ]
+  },
+  dossiers: {
+    contenedor: "#view-dossiers",
+    inputs: ["#dossiers-search"],
+    metricas: ["#dossiers-count", "#dossiers-table-body"]
+  },
+  decisiones: {
+    contenedor: "#view-decisiones",
+    inputs: [
+      "#input-pol",
+      "#input-pod",
+      "#input-cargoQty",
+      "#input-fleteEstimado",
+      "#input-breakEven",
+      "#input-loadRate",
+      "#input-dischargeRate",
+      "#input-jwlaPremiumUSD",
+      "#input-ballastDays"
+    ],
+    metricas: [
+      "#display-all-in-gross",
+      "#display-net-freight",
+      "#val-financial-margin",
+      "#val-laycan-buffer",
+      "#val-loadrate-required"
+    ]
+  },
+  compatibilidad: {
+    contenedor: "#view-compatibilidad",
+    inputs: [
+      "#compat-header-volume",
+      "#compat-header-pol",
+      "#compat-header-pod",
+      "#compat-header-laycan",
+      "#compat-header-loading-rate"
+    ],
+    metricas: [
+      "#hero-compatibility-score",
+      "#hero-vessel-name",
+      "#hero-technical-justification",
+      "#panel-radar-live",
+      "#panel-neon-db"
+    ],
+    acciones: ["#btn-bloquear-fletamento", "#btn-activar-due-diligence"]
+  },
+  tracking: {
+    contenedor: "#tracking-live-overlay",
+    inputs: [
+      "#tracking-live-contract-ref",
+      "#tracking-input-vessel",
+      "#tracking-input-pol",
+      "#tracking-input-pod",
+      "#tracking-input-cargo"
+    ],
+    metricas: [
+      "#tracking-map-route-distance",
+      "#tracking-ais-vessel",
+      "#tracking-ais-position",
+      "#tracking-alert-count"
+    ]
+  },
+  densidad: {
+    contenedor: "#view-ais",
+    inputs: ["#ais-vessel-search", "#fleet-intel-vessel-type"],
+    metricas: [
+      "#ais-density-count",
+      "#ais-supply-coefficient",
+      "#ais-rate-fair",
+      "#ais-rate-standard",
+      "#ais-rate-offmarket",
+      "#ais-vessels-tbody"
+    ]
+  },
+  auditoria: {
+    contenedor: "#view-auditor",
+    inputs: ["#fileUpload", "#recapInput", "#commercial-nlp-origin"],
+    metricas: [
+      "#audit-vessel-name-heading",
+      "#audit-vessel-owner",
+      "#audit-vessel-compat-score",
+      "#resProforma",
+      "#resRiesgos",
+      "#resClausulas",
+      "#resEstrategia"
+    ]
+  }
+};
+
+/**
  * Escáner DOM Dinámico y Universal.
  * Captura todos los campos interactivos, estados de UI (ej. modo OWN/CHR)
- * y tablas/tarjetas de resumen de carga refrigerada visibles en pantalla.
+ * y tablas/tarjetas de resumen de carga refrigerada visibles en pantalla,
+ * priorizando la jerarquía de lectura del diccionario REEFER_DOM_DICTIONARY.
  */
 export function scanActiveModule(doc = (typeof document !== "undefined" ? document : null), moduleInfo = null) {
   const info = moduleInfo || detectActiveModule(doc);
@@ -722,6 +884,8 @@ export function scanActiveModule(doc = (typeof document !== "undefined" ? docume
   const estadosUi = {
     modo: "owner",
   };
+  const metricasClaveVisibles = [];
+  const processedFieldElements = new Set();
 
   if (!doc || !container) {
     return {
@@ -732,6 +896,90 @@ export function scanActiveModule(doc = (typeof document !== "undefined" ? docume
       estados_ui: estadosUi,
       elementos_visibles: "Sin contenedor activo disponible para captura.",
     };
+  }
+
+  // 1.0 Extracción Prioritaria basada en REEFER_DOM_DICTIONARY
+  const normId = String(info.id || "").toLowerCase();
+  const dictKey = Object.keys(REEFER_DOM_DICTIONARY).find((k) => {
+    if (k === normId) return true;
+    if (k === "mapa" && (normId === "map" || normId === "mapa" || normId === "rutas")) return true;
+    if (k === "calculadora" && (normId === "estimator" || normId === "calculadora")) return true;
+    if (k === "densidad" && (normId === "ais" || normId === "densidad")) return true;
+    if (k === "auditoria" && (normId === "auditor" || normId === "auditoria")) return true;
+    return false;
+  });
+  const moduleConfig = dictKey ? REEFER_DOM_DICTIONARY[dictKey] : null;
+
+  if (moduleConfig) {
+    const targetInputs = [
+      ...(Array.isArray(moduleConfig.inputs) ? moduleConfig.inputs : []),
+      ...(Array.isArray(moduleConfig.reefer_inputs) ? moduleConfig.reefer_inputs : []),
+      ...(Array.isArray(moduleConfig.rutas_inputs) ? moduleConfig.rutas_inputs : []),
+      ...(Array.isArray(moduleConfig.buque_inputs) ? moduleConfig.buque_inputs : []),
+      ...(Array.isArray(moduleConfig.costes_inputs) ? moduleConfig.costes_inputs : []),
+    ];
+    const uniqueInputs = Array.from(new Set(targetInputs));
+
+    uniqueInputs.forEach((selector) => {
+      try {
+        const el = typeof doc.querySelector === "function" ? doc.querySelector(selector) : null;
+        if (!el) return;
+        processedFieldElements.add(el);
+
+        let fieldKey = "";
+        if (el.id && typeof doc.querySelector === "function") {
+          const associatedLabel = doc.querySelector(`label[for="${el.id}"]`);
+          if (associatedLabel && associatedLabel.textContent) {
+            fieldKey = associatedLabel.textContent.trim();
+          }
+        }
+        if (!fieldKey && el.closest) {
+          const parentLabel = el.closest("label");
+          if (parentLabel && parentLabel.textContent) {
+            fieldKey = parentLabel.textContent.replace(el.value || "", "").trim();
+          }
+        }
+        if (!fieldKey && el.getAttribute) {
+          fieldKey = el.getAttribute("aria-label") || el.getAttribute("title") || el.placeholder || el.name || el.dataset?.reefer || el.dataset?.field;
+        }
+        if (!fieldKey) {
+          fieldKey = selector;
+        }
+        fieldKey = fieldKey.replace(/[\r\n\t]+/g, " ").replace(/\s{2,}/g, " ").replace(/[:*]+$/, "").trim() || selector;
+
+        let val = "";
+        if (el.tagName?.toLowerCase() === "select") {
+          val = el.options?.[el.selectedIndex]?.text?.trim() || el.value || "";
+        } else if (el.type === "checkbox") {
+          val = el.checked ? "Sí (Activo)" : "No (Inactivo)";
+        } else if (el.type === "radio") {
+          if (el.checked) val = el.value || "Seleccionado";
+          else return;
+        } else {
+          val = el.value !== undefined ? String(el.value).trim() : (el.textContent?.trim() || "");
+        }
+
+        datosFormulario[fieldKey] = val;
+      } catch (_) {}
+    });
+
+    const targetMetrics = [
+      ...(Array.isArray(moduleConfig.metricas) ? moduleConfig.metricas : []),
+      ...(Array.isArray(moduleConfig.metricas_kpi) ? moduleConfig.metricas_kpi : []),
+    ];
+    const uniqueMetrics = Array.from(new Set(targetMetrics));
+
+    uniqueMetrics.forEach((selector) => {
+      try {
+        const el = typeof doc.querySelector === "function" ? doc.querySelector(selector) : null;
+        if (!el) return;
+        const rawText = el.innerText || el.textContent || "";
+        const cleanText = rawText.replace(/[\r\n\t]+/g, " ").replace(/\s{2,}/g, " ").trim();
+        if (cleanText) {
+          metricasClaveVisibles.push(` - ${selector}: ${cleanText}`);
+        }
+      } catch (_) {}
+    });
   }
 
   // 1. Estados de UI: Perspectiva OWN/CHR y toggles
@@ -754,11 +1002,12 @@ export function scanActiveModule(doc = (typeof document !== "undefined" ? docume
     }
   });
 
-  // 2. Valores de formulario: Inputs, Selects, Textareas
+  // 2. Valores de formulario: Inputs, Selects, Textareas (Red de seguridad / fallback)
   const fields = typeof container.querySelectorAll === "function"
     ? container.querySelectorAll("input, select, textarea")
     : [];
   fields.forEach((el) => {
+    if (processedFieldElements.has(el)) return;
     if (el.closest?.("#madre-drawer-panel") || el.closest?.(".madre-drawer")) return;
     if (el.type === "hidden" && !el.id?.includes("vessel") && !el.id?.includes("cargo") && !el.id?.includes("port") && !el.dataset?.reefer) return;
 
@@ -795,11 +1044,18 @@ export function scanActiveModule(doc = (typeof document !== "undefined" ? docume
       val = el.value !== undefined ? String(el.value).trim() : "";
     }
 
-    datosFormulario[fieldKey] = val;
+    if (!datosFormulario[fieldKey]) {
+      datosFormulario[fieldKey] = val;
+    }
   });
 
   // 3. Tablas y Tarjetas de Carga Refrigerada Visibles
   const visibleSummaryLines = [];
+
+  // Iniciar siempre listando las métricas clave del diccionario si existen
+  if (metricasClaveVisibles.length > 0) {
+    visibleSummaryLines.push(`[Métricas Clave]:\n${metricasClaveVisibles.join("\n")}`);
+  }
 
   const tables = typeof container.querySelectorAll === "function" ? container.querySelectorAll("table") : [];
   tables.forEach((tbl, idx) => {
