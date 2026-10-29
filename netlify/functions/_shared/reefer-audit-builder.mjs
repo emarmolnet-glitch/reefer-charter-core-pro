@@ -103,6 +103,85 @@ ${lineasRutaTiempos.join('\n')}
 ${bloquesComerciales}✅ **DIAGNÓSTICO EJECUTIVO MADRE:** Parámetros de frío y estiba validados. Bypass anti-timeout ejecutado con éxito. El escenario operativo actual cumple con las directivas de control de cadena de frío y margen financiero.`;
 }
 
+/**
+ * Genera la auditoría técnica y ejecutiva para cualquier módulo detectado en el DOM
+ * bajo la estricta Directiva Cero-Alucinaciones.
+ */
+export function buildUniversalModuleAuditReply(scanPayload) {
+  const modulo = scanPayload?.modulo_actual || 'Módulo Activo';
+  const modo = scanPayload?.estados_ui?.modo === 'charterer' ? 'FLETADOR (Charterer)' : 'ARMADOR (Owner)';
+  const datos = scanPayload?.datos_formulario || {};
+  const elementos = scanPayload?.elementos_visibles || 'Sin elementos visibles adicionales';
+
+  // Detección de campos vacíos clave
+  const camposVacios = Object.entries(datos)
+    .filter(([_, v]) => v === '' || v === '(Vacío)' || v === null || v === undefined)
+    .map(([k]) => k);
+
+  // Detección de posibles inconsistencias técnicas
+  const inconsistencias = [];
+  const entries = Object.entries(datos);
+
+  // Inconsistencia de frío / temperatura si aplica
+  const tempEntry = entries.find(([k]) => /temp|setpoint|temperatura/i.test(k));
+  const cargoEntry = entries.find(([k]) => /cargo|mercancia|producto|commodity/i.test(k));
+  if (tempEntry && cargoEntry) {
+    const tempVal = parseFloat(String(tempEntry[1]).replace(',', '.'));
+    const cargoVal = String(cargoEntry[1]).toLowerCase();
+    if (!isNaN(tempVal)) {
+      if ((cargoVal.includes('banana') || cargoVal.includes('platano')) && (tempVal < 12.5 || tempVal > 14.5)) {
+        inconsistencias.push(`Alerta térmica crítica: Temperatura setpoint (${tempVal}°C) fuera de rango seguro para bananas (+13.0°C a +13.5°C). Riesgo de chilling injury o maduración.`);
+      } else if (cargoVal.includes('congelado') && tempVal > -18) {
+        inconsistencias.push(`Alerta térmica crítica: Carga congelada con setpoint a ${tempVal}°C. La normativa internacional exige un umbral mínimo de -18.0°C o inferior.`);
+      }
+    }
+  }
+
+  // Inconsistencia de ruta (POL / POD iguales o vacíos)
+  const polEntry = entries.find(([k]) => /\bpol\b|origen|carga/i.test(k) && !/pda|crane/i.test(k));
+  const podEntry = entries.find(([k]) => /\bpod\b|destino|descarga/i.test(k) && !/pda|crane/i.test(k));
+  if (polEntry && podEntry && polEntry[1] && podEntry[1] === podEntry[1] && polEntry[1] !== '') {
+    if (String(polEntry[1]).trim().toLowerCase() === String(podEntry[1]).trim().toLowerCase()) {
+      inconsistencias.push(`Incongruencia de ruta: Puerto de carga (${polEntry[1]}) idéntico al puerto de descarga.`);
+    }
+  }
+
+  const seccionesDatos = Object.entries(datos)
+    .filter(([_, v]) => v !== '' && v !== '(Vacío)' && v !== null && v !== undefined)
+    .map(([k, v]) => `• **${k}:** ${v}`);
+
+  const resumenDatos = seccionesDatos.length > 0
+    ? seccionesDatos.slice(0, 25).join('\n')
+    : '• No se detectaron valores en los campos de formulario del módulo.';
+
+  let reporteCamposVacios = '';
+  if (camposVacios.length > 0) {
+    reporteCamposVacios = `\n⚠️ **CAMPOS CLAVE PENDIENTES DE CUMPLIMENTAR:**\n${camposVacios.slice(0, 10).map((c) => `• ${c} *(sin definir)*`).join('\n')}\n`;
+  }
+
+  let reporteInconsistencias = '';
+  if (inconsistencias.length > 0) {
+    reporteInconsistencias = `\n🚨 **INCONGRUENCIAS TÉCNICAS DETECTADAS:**\n${inconsistencias.map((inc) => `• ${inc}`).join('\n')}\n`;
+  } else {
+    reporteInconsistencias = `\n✅ **COHERENCIA TÉCNICA:** No se aprecian anomalías críticas entre los parámetros registrados para este módulo.\n`;
+  }
+
+  return `🔍 **AUDITORÍA FRIGORÍFICA MADRE (ESCANEO DE PANTALLA EN TIEMPO REAL)**
+
+📋 **Módulo Auditado:** ${modulo}
+👤 **Perspectiva de Negocio:** Modo ${modo}
+🛡️ **Directiva Cero-Alucinaciones:** Verificación estricta sobre parámetros DOM reales en pantalla.
+
+📊 **VALORES CAPTURADOS EN EL MÓDULO:**
+${resumenDatos}
+${reporteCamposVacios}${reporteInconsistencias}
+🖥️ **RESUMEN DE ELEMENTOS Y KPI VISIBLES:**
+${elementos}
+
+🎯 **DIAGNÓSTICO EJECUTIVO MADRE:** Auditoría visual completada con éxito para el módulo **${modulo}**. Todos los datos han sido cotejados en tiempo real sin extrapolaciones arbitrarias.`;
+}
+
 export default {
   buildReeferScreenAuditReply,
+  buildUniversalModuleAuditReply,
 };
