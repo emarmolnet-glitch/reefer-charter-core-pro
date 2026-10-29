@@ -712,12 +712,12 @@ export function TopNav() {
 
   return (
     <header
-      className="app-header bg-white border-b border-slate-200 px-4 py-2 md:px-6 flex items-center justify-between shadow-md shrink-0 no-print z-50"
+      className="app-header bg-white border-b border-slate-200 px-4 py-2 md:px-6 flex items-center justify-end md:justify-between shadow-md shrink-0 no-print z-50"
       role="banner"
       aria-label="Cabecera principal de navegación"
     >
       {/* IZQUIERDA: LOGO CORPORATIVO */}
-      <div className="header-left flex items-center gap-3 shrink-0">
+      <div className="header-left hidden md:flex items-center gap-3 shrink-0">
         <div className="bg-blue-600 p-0.5 rounded-lg text-white shadow-md flex items-center justify-center w-8 h-8 overflow-hidden">
           <img src="./assets/reefer-logo.jpg" alt="Reefer Charter Core PRO Logo" className="w-full h-full object-cover rounded-md" />
         </div>
@@ -730,11 +730,11 @@ export function TopNav() {
       </div>
 
       {/* CENTRO: STATUS BRIDGE, BUSCADOR IMO, VOYAGE REF */}
-      <div className="header-center flex items-center gap-2 md:gap-3 flex-1 justify-center max-w-3xl mx-2 md:mx-4">
+      <div className="header-center hidden md:flex items-center gap-2 md:gap-3 flex-1 justify-center max-w-3xl mx-2 md:mx-4">
         <div id="connection-status-root" className="shrink-0"></div>
 
         {/* BUSCADOR DIRECTO DE BUQUES */}
-        <div id="header-vessel-search-container" className="relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 border border-slate-300 text-slate-700 text-xs shadow-2xs flex-1 min-w-[160px] focus-within:ring-2 focus-within:ring-sky-500 focus-within:border-sky-500 transition-all">
+        <div id="header-vessel-search-container" className="relative hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 border border-slate-300 text-slate-700 text-xs shadow-2xs flex-1 min-w-[160px] focus-within:ring-2 focus-within:ring-sky-500 focus-within:border-sky-500 transition-all">
           <svg className="w-3.5 h-3.5 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -749,7 +749,7 @@ export function TopNav() {
         </div>
 
         {/* SELECTOR REFERENCIA DE VIAJE / EXPEDIENTE ACTIVO */}
-        <div id="header-voyage-ref-container" className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50/90 border border-blue-300 text-blue-900 text-xs font-mono shadow-xs shrink-0 transition-all hover:border-blue-400" title="Expediente Activo (project_ref)">
+        <div id="header-voyage-ref-container" className="hidden md:inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50/90 border border-blue-300 text-blue-900 text-xs font-mono shadow-xs shrink-0 transition-all hover:border-blue-400" title="Expediente Activo (project_ref)">
           <i className="fa-solid fa-folder-closed text-xs text-blue-600"></i>
           <span className="text-blue-800 font-sans text-[10px] uppercase font-black tracking-wider bg-blue-100 px-1.5 py-0.5 rounded border border-blue-200">Expediente:</span>
           <input
@@ -764,27 +764,27 @@ export function TopNav() {
         </div>
       </div>
 
-      {/* DERECHA: BOTONES DE ACCIÓN Y DISPARADOR MADRE */}
-      <div className="header-actions-right flex items-center gap-2 shrink-0">
+      {/* DERECHA: CONTENEDOR ÚNICO DE BOTONES DE ACCIÓN (MADRE, FAQ, OWN/CHR, COLAPSAR) */}
+      <div className="header-actions-right !flex items-center gap-1.5 shrink-0">
+        {/* DISPARADOR SUPERIOR MADRE (TOPBAR TRIGGER) */}
         <button
           id="madre-topbar-button"
           type="button"
           onClick={() => {
             if (window.MadrePanelUI?.toggle) {
-              window.MadrePanelUI.toggle();
+              window.MadrePanelUI.toggle({ userInitiated: true });
             } else {
               window.dispatchEvent(new CustomEvent('madre:toggle', { detail: { userInitiated: true } }));
             }
           }}
           aria-label="Abrir panel MADRE"
-          title="MADRE"
+          title="Cerebro Central MADRE"
           aria-expanded="false"
-          className="madre-topbar-btn relative flex items-center justify-center w-10 h-10 rounded-full p-0 bg-transparent border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-slate-900 group"
-          style={{ background: 'transparent', border: 'none', padding: 0 }}
+          className="madre-topbar-btn relative group flex items-center justify-center w-8 h-8 md:w-9 md:h-9 rounded-full border-2 border-slate-800 bg-slate-900 hover:scale-110 transition-transform duration-200 shadow-md cursor-pointer shrink-0"
         >
           <div
             id="madre-topbar-glow"
-            className="madre-topbar-glow absolute inset-0 rounded-full animate-pulse bg-cyan-500 blur-md pointer-events-none opacity-80"
+            className="madre-topbar-glow absolute inset-0 rounded-full animate-pulse bg-cyan-500 blur-md opacity-60 group-hover:opacity-100 transition-opacity pointer-events-none"
             style={{ display: 'none' }}
             aria-hidden="true"
           />
@@ -792,9 +792,82 @@ export function TopNav() {
             id="madre-topbar-img"
             src="/MADRE.png"
             alt="MADRE"
-            className="madre-topbar-img w-10 h-10 rounded-full relative z-10 object-contain transition-all duration-300 grayscale opacity-70 scale-100 hover:opacity-90"
+            className="madre-topbar-img w-full h-full rounded-full object-cover relative z-10 pointer-events-none transition-all duration-300 grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100"
           />
           <span className="sr-only"><span className="tracking-wide">MADRE</span></span>
+        </button>
+
+        {/* Botón FAQ / Manual */}
+        <button
+          id="btn-open-faq-modal"
+          type="button"
+          onClick={() => {
+            if (typeof window.openFaqModal === 'function') {
+              window.openFaqModal();
+            }
+          }}
+          className="inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-2 py-1 rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer h-8 shrink-0"
+          title="Manual de Usuario y Referencia Técnica (FAQ)"
+          aria-label="Abrir Manual de Usuario y FAQ"
+        >
+          <svg className="w-3.5 h-3.5 text-sky-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+          <span>FAQ</span>
+        </button>
+
+        {/* OWN / CHR Switch */}
+        <div id="global-view-mode-switch" className="relative z-20 inline-flex shrink-0 items-center gap-0.5 rounded-lg border border-slate-300 bg-slate-100 p-0.5 shadow-2xs h-8" role="group" aria-label="Perspectiva de negocio">
+          <button
+            type="button"
+            id="btn-view-mode-owner"
+            className="inline-flex w-8 sm:w-9 items-center justify-center rounded-md py-1 leading-none text-slate-700 font-bold"
+            onClick={() => {
+              if (typeof window.setGlobalViewMode === 'function') {
+                window.setGlobalViewMode('owner');
+              }
+            }}
+            aria-pressed="true"
+            title="Vista Armador (Shipowner)"
+          >
+            <span aria-hidden="true" className="text-[10px] font-bold tracking-wider uppercase">OWN</span>
+            <span className="sr-only">Vista Armador</span>
+          </button>
+          <button
+            type="button"
+            id="btn-view-mode-charterer"
+            className="inline-flex w-8 sm:w-9 items-center justify-center rounded-md py-1 leading-none text-slate-700 font-bold"
+            onClick={() => {
+              if (typeof window.setGlobalViewMode === 'function') {
+                window.setGlobalViewMode('charterer');
+              }
+            }}
+            aria-pressed="false"
+            title="Vista Fletador (Charterer)"
+          >
+            <span aria-hidden="true" className="text-[10px] font-bold tracking-wider uppercase">CHR</span>
+            <span className="sr-only">Vista Fletador</span>
+          </button>
+        </div>
+
+        {/* Botón Colapsar Cabecera de Navegación */}
+        <button
+          type="button"
+          id="btn-collapse-header"
+          className="header-toggle-collapse-btn inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded-lg border border-slate-300 bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 shadow-2xs cursor-pointer transition-all shrink-0 focus:outline-none"
+          onClick={() => {
+            if (typeof window.toggleHeaderVisibility === 'function') {
+              window.toggleHeaderVisibility();
+            }
+          }}
+          title="Ocultar barra de navegación (Alt+H)"
+          aria-label="Ocultar barra de navegación"
+          aria-expanded="true"
+        >
+          <i className="fa-solid fa-chevron-up text-xs" aria-hidden="true"></i>
+          <span className="sr-only">Ocultar navegación</span>
         </button>
       </div>
     </header>
