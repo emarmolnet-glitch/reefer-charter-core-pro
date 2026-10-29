@@ -674,6 +674,7 @@ export function GlobalMadreDrawer({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen]);
 
+ agent-madre-in-reefer-charter-f488
   // Reset pending state upon opening; Auto-focus ELIMINADO para evitar auto-zoom de pantalla y rotura de layout
   useEffect(() => {
     if (isOpen) {
@@ -682,6 +683,7 @@ export function GlobalMadreDrawer({
     }
   }, [isOpen]);
 
+ main
   // Auto-scroll whenever mensajes change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
