@@ -674,7 +674,6 @@ export function GlobalMadreDrawer({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen]);
 
- agent-madre-in-reefer-charter-f488
   // Reset pending state upon opening; Auto-focus ELIMINADO para evitar auto-zoom de pantalla y rotura de layout
   useEffect(() => {
     if (isOpen) {
@@ -683,7 +682,6 @@ export function GlobalMadreDrawer({
     }
   }, [isOpen]);
 
- main
   // Auto-scroll whenever mensajes change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -1057,7 +1055,7 @@ export function GlobalMadreDrawer({
 
           <aside
             id="madre-drawer-panel"
-            className="madre-drawer fixed top-0 left-0 bottom-0 w-full max-w-lg bg-slate-900 text-slate-100 shadow-2xl z-[2147483647] flex flex-col border-r border-slate-800 animate-in slide-in-from-left duration-300"
+            className={`madre-drawer fixed top-0 left-0 bottom-0 w-full max-w-lg bg-slate-900 text-slate-100 shadow-2xl z-[2147483647] flex flex-col border-r border-slate-800 animate-in slide-in-from-left duration-300 transform transition-transform ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
             style={{ backgroundColor: "#0f172a", color: "#f1f5f9", zIndex: 2147483647 }}
             role="dialog"
             aria-modal="true"
@@ -1262,7 +1260,7 @@ export function GlobalMadreDrawer({
                   value={inputTexto}
                   onChange={(e) => setInputTexto(e.target.value)}
                   placeholder="Pregunta a MADRE o escribe 'Escanear pantalla'..."
-                  className="madre-chat-input flex-1 min-w-0 px-3 py-2 text-xs bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                  className="madre-chat-input flex-1 min-w-0 px-3 py-2 text-[16px] md:text-xs bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
                 />
                 <button
                   id="madre-send-button"
