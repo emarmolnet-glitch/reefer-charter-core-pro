@@ -646,13 +646,6 @@ export function GlobalMadreDrawer({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen]);
 
-  // Focus input automatically upon opening
-  useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 150);
-    }
-  }, [isOpen]);
-
   // Auto-scroll whenever mensajes change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
