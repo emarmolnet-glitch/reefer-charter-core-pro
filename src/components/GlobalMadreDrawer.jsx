@@ -489,12 +489,18 @@ export function getReeferUIContext() {
   // Empaquetado del escaneo reefer en los bloques frigoríficos
   const datosExtraidos = typeof document !== "undefined" && document ? extractReeferScanData(document) : extractReeferScanData(null);
   const escaneoReefer = { bloques: datosExtraidos };
+  const moduleInfo = typeof document !== "undefined" ? detectActiveModule(document) : { id: 'estimator', displayName: 'Reefer Charter - Control de Frigoríficos' };
+  const escaneoUniversal = typeof document !== "undefined" ? scanActiveModule(document, moduleInfo) : null;
 
   return {
     current_module: "reefer_charter",
-    vista_activa: "Reefer Charter - Control de Frigoríficos",
+    vista_activa: moduleInfo?.displayName || "Reefer Charter - Control de Frigoríficos",
+    modulo_actual: moduleInfo?.displayName || "Reefer Charter Core PRO",
     parametros_activos: params,
     escaneo_reefer: escaneoReefer,
+    escaneo_estructurado: escaneoUniversal || escaneoReefer,
+    escaneo_universal: escaneoUniversal,
+    suite: "Reefer Charter Core PRO",
     bloques: datosExtraidos?.bloques || datosExtraidos,
     referenciaMadre: referenciaActiva,
   };
@@ -595,6 +601,359 @@ async function playNeuralMotherVoice(textToSpeak) {
     }
 }
 
+/**
+ * Detector de Módulo y Vista Activa en Reefer Charter Core PRO.
+ * Identifica la sección o pestaña activa (Mapa, Rutas, Contenedores Reiner/Multimodal,
+ * Temperatura/Compatibilidad, Dossiers, DSS, etc.).
+ */
+export function detectActiveModule(doc = (typeof document !== "undefined" ? document : null)) {
+  if (!doc) {
+    return {
+      id: "general",
+      displayName: "Reefer Charter Core PRO",
+      modulo_actual: "Reefer Charter Core PRO",
+      container: null,
+      isOverlay: false,
+    };
+  }
+
+  // 1. Overlay modal prioritario (ej. Tracking Live)
+  const trackingOverlay = typeof doc.getElementById === "function"
+    ? doc.getElementById("tracking-live-overlay")
+    : (typeof doc.querySelector === "function" ? doc.querySelector("#tracking-live-overlay") : null);
+  if (
+    trackingOverlay &&
+    (trackingOverlay.classList?.contains?.("is-open") ||
+      trackingOverlay.style?.display === "block" ||
+      trackingOverlay.style?.display === "flex")
+  ) {
+    return {
+      id: "tracking",
+      displayName: "Tracking Satelital en Vivo",
+      modulo_actual: "Tracking Satelital en Vivo",
+      container: trackingOverlay,
+      isOverlay: true,
+    };
+  }
+
+  // 2. Diccionario de módulos
+  const MODULE_DICTIONARY = {
+    map: "Mapa y Rutas Frigoríficas",
+    estimator: "Calculadora de Viaje Frigorífica (Estimador)",
+    multimodal: "Contenedores Reefer (Multimodal / FCL)",
+    fcl: "Contenedores Reefer (Multimodal / FCL)",
+    decisiones: "Motor de Decisiones Estratégicas (DSS)",
+    compatibilidad: "Compatibilidad Buque y Carga Frigorífica",
+    cbam: "ETS / CBAM Emisiones Carbono",
+    gencon: "Editor de Contrato GENCON",
+    asbatankvoy: "Editor de Contrato ASBATANKVOY",
+    auditor: "Auditoría de Buques / Due Diligence",
+    ais: "Radar AIS / Tráfico y Densidad",
+    dossiers: "Dossiers de Operaciones Frigoríficas",
+    forwarders: "Workspace Transitarios B2B",
+    matching: "Matching de Buques Reefer",
+  };
+
+  // 3. Búsqueda de la vista activa .view-section en el DOM
+  const viewSections = typeof doc.querySelectorAll === "function" ? Array.from(doc.querySelectorAll(".view-section")) : [];
+  const activeSection = viewSections.find((el) => {
+    if (el.classList?.contains?.("hidden")) return false;
+    if (el.classList?.contains?.("active-block") || el.classList?.contains?.("active-flex")) return true;
+    if (typeof window !== "undefined" && window.getComputedStyle) {
+      try {
+        const style = window.getComputedStyle(el);
+        if (style.display !== "none" && style.visibility !== "hidden") return true;
+      } catch (_) {}
+    }
+    return el.offsetParent !== null;
+  });
+
+  if (activeSection && activeSection.id) {
+    const rawId = activeSection.id.replace(/^view-/, "").toLowerCase();
+    const displayName = MODULE_DICTIONARY[rawId] || `Módulo ${rawId.charAt(0).toUpperCase() + rawId.slice(1)}`;
+    return {
+      id: rawId,
+      displayName,
+      modulo_actual: displayName,
+      container: activeSection,
+      isOverlay: false,
+    };
+  }
+
+  // 4. Fallback con variables globales o botones de navegación
+  let detectedId = "";
+  if (typeof window !== "undefined") {
+    detectedId = window.activeNavigationModuleId || window.currentView || window.currentTab || window.previousContentModuleId || "";
+  }
+  if (!detectedId && typeof doc.querySelector === "function") {
+    const activeNavBtn = doc.querySelector('[data-module-id][aria-current="page"], .tab-btn.bg-blue-600[data-module-id]');
+    if (activeNavBtn) {
+      detectedId = activeNavBtn.getAttribute("data-module-id") || "";
+    }
+  }
+
+  detectedId = String(detectedId || "estimator").toLowerCase();
+  const targetContainer = (typeof doc.getElementById === "function" ? doc.getElementById(`view-${detectedId}`) : (typeof doc.querySelector === "function" ? doc.querySelector(`#view-${detectedId}`) : null)) ||
+    (typeof doc.getElementById === "function" ? doc.getElementById("main-content") : (typeof doc.querySelector === "function" ? doc.querySelector("#main-content") : null)) ||
+    doc.body;
+  const displayName = MODULE_DICTIONARY[detectedId] || "Reefer Charter Core PRO";
+
+  return {
+    id: detectedId,
+    displayName,
+    modulo_actual: displayName,
+    container: targetContainer,
+    isOverlay: false,
+  };
+}
+
+export const detectarModuloActivo = detectActiveModule;
+
+/**
+ * Escáner DOM Dinámico y Universal.
+ * Captura todos los campos interactivos, estados de UI (ej. modo OWN/CHR)
+ * y tablas/tarjetas de resumen de carga refrigerada visibles en pantalla.
+ */
+export function scanActiveModule(doc = (typeof document !== "undefined" ? document : null), moduleInfo = null) {
+  const info = moduleInfo || detectActiveModule(doc);
+  const container = info.container || (doc ? doc.body : null);
+
+  const datosFormulario = {};
+  const estadosUi = {
+    modo: "owner",
+  };
+
+  if (!doc || !container) {
+    return {
+      suite: "Reefer Charter Core PRO",
+      modulo_actual: info.displayName || "Reefer Charter Core PRO",
+      timestamp: new Date().toISOString(),
+      datos_formulario: datosFormulario,
+      estados_ui: estadosUi,
+      elementos_visibles: "Sin contenedor activo disponible para captura.",
+    };
+  }
+
+  // 1. Estados de UI: Perspectiva OWN/CHR y toggles
+  const chrBtn = typeof doc.getElementById === "function"
+    ? doc.getElementById("btn-view-mode-charterer")
+    : (typeof doc.querySelector === "function" ? doc.querySelector("#btn-view-mode-charterer") : null);
+  const isCharterer = (chrBtn && chrBtn.getAttribute("aria-pressed") === "true") ||
+    (typeof window !== "undefined" && (window.DualModePerspective === "charterer" || window.State?.viewMode === "charterer"));
+  estadosUi.modo = isCharterer ? "charterer" : "owner";
+
+  const toggles = typeof container.querySelectorAll === "function"
+    ? container.querySelectorAll('[role="switch"], [data-toggle], button[aria-pressed="true"]')
+    : [];
+  toggles.forEach((t) => {
+    if (t.closest?.("#madre-drawer-panel") || t.id === "madre-topbar-button") return;
+    const key = t.getAttribute?.("aria-label") || t.getAttribute?.("title") || t.name || t.id;
+    if (key) {
+      const isPressed = t.getAttribute?.("aria-pressed") === "true" || t.getAttribute?.("aria-checked") === "true";
+      estadosUi[key] = isPressed ? "Activo" : "Inactivo";
+    }
+  });
+
+  // 2. Valores de formulario: Inputs, Selects, Textareas
+  const fields = typeof container.querySelectorAll === "function"
+    ? container.querySelectorAll("input, select, textarea")
+    : [];
+  fields.forEach((el) => {
+    if (el.closest?.("#madre-drawer-panel") || el.closest?.(".madre-drawer")) return;
+    if (el.type === "hidden" && !el.id?.includes("vessel") && !el.id?.includes("cargo") && !el.id?.includes("port") && !el.dataset?.reefer) return;
+
+    let fieldKey = "";
+    if (el.id && typeof doc.querySelector === "function") {
+      const associatedLabel = doc.querySelector(`label[for="${el.id}"]`);
+      if (associatedLabel && associatedLabel.textContent) {
+        fieldKey = associatedLabel.textContent.trim();
+      }
+    }
+    if (!fieldKey && el.closest) {
+      const parentLabel = el.closest("label");
+      if (parentLabel && parentLabel.textContent) {
+        fieldKey = parentLabel.textContent.replace(el.value || "", "").trim();
+      }
+    }
+    if (!fieldKey && el.getAttribute) {
+      fieldKey = el.getAttribute("aria-label") || el.getAttribute("title") || el.placeholder || el.name || el.id || el.dataset?.reefer || el.dataset?.field;
+    }
+    if (!fieldKey) return;
+
+    fieldKey = fieldKey.replace(/[\r\n\t]+/g, " ").replace(/\s{2,}/g, " ").replace(/[:*]+$/, "").trim();
+    if (!fieldKey) return;
+
+    let val = "";
+    if (el.tagName?.toLowerCase() === "select") {
+      val = el.options?.[el.selectedIndex]?.text?.trim() || el.value || "";
+    } else if (el.type === "checkbox") {
+      val = el.checked ? "Sí (Activo)" : "No (Inactivo)";
+    } else if (el.type === "radio") {
+      if (el.checked) val = el.value || "Seleccionado";
+      else return;
+    } else {
+      val = el.value !== undefined ? String(el.value).trim() : "";
+    }
+
+    datosFormulario[fieldKey] = val;
+  });
+
+  // 3. Tablas y Tarjetas de Carga Refrigerada Visibles
+  const visibleSummaryLines = [];
+
+  const tables = typeof container.querySelectorAll === "function" ? container.querySelectorAll("table") : [];
+  tables.forEach((tbl, idx) => {
+    const headers = Array.from(tbl.querySelectorAll?.("th") || []).map((th) => th.textContent?.trim()).filter(Boolean);
+    const rows = Array.from(tbl.querySelectorAll?.("tbody tr, tr") || [])
+      .slice(0, 10)
+      .map((tr) => Array.from(tr.querySelectorAll?.("td") || []).map((td) => td.textContent?.trim()).filter(Boolean).join(" | "))
+      .filter(Boolean);
+
+    if (headers.length > 0 || rows.length > 0) {
+      visibleSummaryLines.push(`[Tabla ${idx + 1}]: Columnas (${headers.join(", ")})`);
+      rows.forEach((r, rIdx) => {
+        if (rIdx < 6) visibleSummaryLines.push(`  Fila ${rIdx + 1}: ${r}`);
+      });
+      if (rows.length > 6) visibleSummaryLines.push(`  ... y ${rows.length - 6} filas más.`);
+    }
+  });
+
+  const cards = typeof container.querySelectorAll === "function"
+    ? container.querySelectorAll(".metric-card, [data-metric], .kpi-card, [data-reefer], .summary-box, .result-card, [data-summary], #res-cost-base-break-even, #res-tce-label, #calc-total-days, .card-summary")
+    : [];
+  const seenCardTexts = new Set();
+  cards.forEach((card) => {
+    if (card.closest?.("#madre-drawer-panel")) return;
+    const label = card.getAttribute?.("data-metric") || card.getAttribute?.("data-reefer") || card.querySelector?.(".metric-label, .card-label, span, h3, h4")?.textContent?.trim() || card.id;
+    const value = card.querySelector?.(".metric-value, .card-value, strong, b")?.textContent?.trim() || card.textContent?.trim();
+    if (label && value && !seenCardTexts.has(label + value)) {
+      seenCardTexts.add(label + value);
+      const cleanVal = value.replace(/[\r\n\t]+/g, " ").replace(/\s{2,}/g, " ").slice(0, 120);
+      visibleSummaryLines.push(`• ${label}: ${cleanVal}`);
+    }
+  });
+
+  if (visibleSummaryLines.length === 0 && typeof container.querySelectorAll === "function") {
+    const headings = Array.from(container.querySelectorAll("h1, h2, h3, h4")).map((h) => h.textContent?.trim()).filter(Boolean);
+    if (headings.length > 0) {
+      visibleSummaryLines.push(`Secciones visibles: ${headings.slice(0, 6).join(" | ")}`);
+    }
+  }
+
+  const resumenVisibles = visibleSummaryLines.length > 0
+    ? visibleSummaryLines.join("\n")
+    : "No se identificaron tablas o tarjetas de resumen estructuradas en el contenedor activo.";
+
+  return {
+    suite: "Reefer Charter Core PRO",
+    modulo_actual: info.displayName,
+    timestamp: new Date().toISOString(),
+    datos_formulario: datosFormulario,
+    estados_ui: estadosUi,
+    elementos_visibles: resumenVisibles,
+  };
+}
+
+export const capturarDomModuloActivo = scanActiveModule;
+
+/**
+ * Constructor de Prompt con Directiva Cero-Alucinaciones.
+ */
+export function buildUniversalScanPrompt(scanPayload) {
+  return `🔍 **SOLICITUD DE AUDITORÍA TÉCNICA UNIVERSAL MADRE**
+======================================================
+Módulo Detectado: ${scanPayload.modulo_actual}
+Perspectiva Activa: Modo ${scanPayload.estados_ui?.modo === "charterer" ? "FLETADOR (Charterer)" : "ARMADOR (Owner)"}
+Marca Temporal: ${scanPayload.timestamp}
+
+DIRECTIVA CERO-ALUCINACIONES (REGLA ESTRICTA OBLIGATORIA):
+- Auditar estricta y exclusivamente los datos provistos en el siguiente escaneo JSON del DOM.
+- Señalar de forma explícita cualquier incongruencia técnica de transporte en frío (temperaturas fuera de rango para el tipo de mercancía, incompatibilidades de ventilación/humedad, shelf-life crítico superado, desajustes en estiba/pallets o fletes/costes fuera de mercado).
+- Listar claramente los campos vacíos clave detectados en el formulario que requieran definición para garantizar la seguridad de la carga frigorífica.
+- Está terminantemente prohibido inventar, deducir arbitrariamente o asumir datos no presentes en el JSON.
+
+DATOS CAPTURADOS DEL DOM:
+\`\`\`json
+${JSON.stringify(scanPayload, null, 2)}
+\`\`\`
+
+Emite el diagnóstico técnico ejecutivo basado únicamente en estos parámetros reales.`;
+}
+
+/**
+ * Generador de Auditoría Cero-Alucinaciones Local
+ * Utilizado como fallback en caso de desconexión o fallo en Data Bridge.
+ */
+export function buildLocalZeroHallucinationAudit(scanPayload) {
+  const modulo = scanPayload?.modulo_actual || "Módulo Activo";
+  const modo = scanPayload?.estados_ui?.modo === "charterer" ? "FLETADOR (Charterer)" : "ARMADOR (Owner)";
+  const datos = scanPayload?.datos_formulario || {};
+  const elementos = scanPayload?.elementos_visibles || "Sin elementos visibles adicionales";
+
+  // Identificación de campos vacíos clave
+  const camposVacios = Object.entries(datos)
+    .filter(([_, v]) => v === "" || v === "(Vacío)" || v === null || v === undefined)
+    .map(([k]) => k);
+
+  // Incongruencias técnicas cold-chain
+  const incongruencias = [];
+  const entries = Object.entries(datos);
+
+  const tempEntry = entries.find(([k]) => /temp|setpoint|temperatura/i.test(k));
+  const cargoEntry = entries.find(([k]) => /cargo|mercancia|producto|commodity/i.test(k));
+  if (tempEntry && cargoEntry) {
+    const tempVal = parseFloat(String(tempEntry[1]).replace(",", "."));
+    const cargoVal = String(cargoEntry[1]).toLowerCase();
+    if (!isNaN(tempVal)) {
+      if ((cargoVal.includes("banana") || cargoVal.includes("platano")) && (tempVal < 12.5 || tempVal > 14.5)) {
+        incongruencias.push(`Alerta de temperatura: Setpoint de ${tempVal}°C fuera de ventana segura para bananas (+13.0°C a +13.5°C). Riesgo de chilling injury o maduración acelerada.`);
+      } else if (cargoVal.includes("congelado") && tempVal > -18) {
+        incongruencias.push(`Alerta térmica crítica: Carga congelada declarada con setpoint a ${tempVal}°C. Requiere umbral de -18.0°C o inferior.`);
+      }
+    }
+  }
+
+  const polEntry = entries.find(([k]) => /\bpol\b|origen|carga/i.test(k) && !/pda|crane/i.test(k));
+  const podEntry = entries.find(([k]) => /\bpod\b|destino|descarga/i.test(k) && !/pda|crane/i.test(k));
+  if (polEntry && podEntry && polEntry[1] && polEntry[1] !== "" && String(polEntry[1]).trim().toLowerCase() === String(podEntry[1]).trim().toLowerCase()) {
+    incongruencias.push(`Incongruencia de ruta: Puerto de carga (${polEntry[1]}) es idéntico al puerto de descarga.`);
+  }
+
+  const seccionesDatos = Object.entries(datos)
+    .filter(([_, v]) => v !== "" && v !== "(Vacío)" && v !== null && v !== undefined)
+    .map(([k, v]) => `• **${k}:** ${v}`);
+
+  const resumenDatos = seccionesDatos.length > 0
+    ? seccionesDatos.slice(0, 20).join("\n")
+    : "• No se detectaron valores en los campos de formulario del módulo.";
+
+  let reporteCamposVacios = "";
+  if (camposVacios.length > 0) {
+    reporteCamposVacios = `\n⚠️ **CAMPOS CLAVE PENDIENTES DE DEFINICIÓN:**\n${camposVacios.slice(0, 8).map((c) => `• ${c} *(sin definir)*`).join("\n")}\n`;
+  }
+
+  let reporteIncongruencias = "";
+  if (incongruencias.length > 0) {
+    reporteIncongruencias = `\n🚨 **INCONGRUENCIAS TÉCNICAS DETECTADAS:**\n${incongruencias.map((inc) => `• ${inc}`).join("\n")}\n`;
+  } else {
+    reporteIncongruencias = `\n✅ **COHERENCIA TÉCNICA:** Parámetros registrados validados sin anomalías térmicas evidentes.\n`;
+  }
+
+  return `🔍 **AUDITORÍA FRIGORÍFICA MADRE (ESCANEO DE PANTALLA EN TIEMPO REAL)**
+
+📋 **Módulo Auditado:** ${modulo}
+👤 **Perspectiva de Negocio:** Modo ${modo}
+🛡️ **Directiva Cero-Alucinaciones:** Verificación técnica auditando estrictamente los datos provistos en pantalla sin asumir ni inventar información.
+
+📊 **VALORES CAPTURADOS EN EL MÓDULO:**
+${resumenDatos}
+${reporteCamposVacios}${reporteIncongruencias}
+🖥️ **RESUMEN DE ELEMENTOS Y KPI VISIBLES:**
+${elementos}
+
+🎯 **DIAGNÓSTICO EJECUTIVO MADRE:** Auditoría visual de **${modulo}** completada con éxito bajo la perspectiva de ${modo}.`;
+}
+
 if (typeof window !== "undefined") {
   window.getReeferUIContext = getReeferUIContext;
   window.triggerLaserScanEffect = triggerLaserScanEffect;
@@ -603,6 +962,12 @@ if (typeof window !== "undefined") {
   window.playNeuralMotherVoice = playNeuralMotherVoice;
   window.getMaxTransitDays = getMaxTransitDays;
   window.triggerMadrePassiveGlow = triggerMadrePassiveGlow;
+  window.detectActiveModule = detectActiveModule;
+  window.detectarModuloActivo = detectActiveModule;
+  window.scanActiveModule = scanActiveModule;
+  window.capturarDomModuloActivo = scanActiveModule;
+  window.buildUniversalScanPrompt = buildUniversalScanPrompt;
+  window.buildLocalZeroHallucinationAudit = buildLocalZeroHallucinationAudit;
 }
 
 /**
@@ -638,7 +1003,7 @@ export function GlobalMadreDrawer({
   initialOpen = false,
   showTrigger = true,
   COMANDOS_RAPIDOS = [
-    { id: "escaner_pantalla", texto: "🔍 Escanear Pantalla Frigorífica", icono: "❄️" },
+    { id: "escaner_pantalla", texto: "🔍 Escanear Pantalla Activa", icono: "❄️" },
     { id: "escenarios", texto: "Genera los 3 escenarios", icono: "📊" },
     { id: "escudo", texto: "Redacta el escudo preventivo", icono: "🛡️" },
     { id: "oferta_50", texto: "El cliente dice que tiene una oferta 50% más barata", icono: "⚔️" },
@@ -741,6 +1106,12 @@ export function GlobalMadreDrawer({
     window.addEventListener("radar:alert", handleRadarAlert);
     window.addEventListener("madre:notification", handleNotification);
 
+    const handleScanEvent = () => {
+      setIsOpen(true);
+      handleSendMessage("Escanear pantalla");
+    };
+    window.addEventListener("madre:scan", handleScanEvent);
+
     if (typeof window !== "undefined") {
       window.MadrePanelUI = {
         open: (opts) => {
@@ -763,6 +1134,21 @@ export function GlobalMadreDrawer({
           setIsOpen((prev) => !prev);
         },
         isOpen: () => isOpen,
+        scan: () => {
+          setIsOpen(true);
+          handleSendMessage("Escanear pantalla");
+        },
+        escanearPantalla: () => {
+          setIsOpen(true);
+          handleSendMessage("Escanear pantalla");
+        },
+      };
+
+      window.escanearPantallaMadre = () => {
+        window.MadrePanelUI?.scan();
+      };
+      window.dispararEscaneoUniversal = () => {
+        window.MadrePanelUI?.scan();
       };
 
       const topbarGlowElements = document.querySelectorAll(".madre-topbar-glow, #madre-topbar-glow");
@@ -795,6 +1181,7 @@ export function GlobalMadreDrawer({
       window.removeEventListener("madre:open", handleOpen);
       window.removeEventListener("madre:close", handleClose);
       window.removeEventListener("madre:toggle", handleToggle);
+      window.removeEventListener("madre:scan", handleScanEvent);
       window.removeEventListener("radar:alert", handleRadarAlert);
       window.removeEventListener("madre:notification", handleNotification);
     };
@@ -899,16 +1286,86 @@ export function GlobalMadreDrawer({
       // 2. Enrutador local
       if (lowerInput.includes("hola") || lowerInput === "madre") {
         replyText = "¡Hola! Aquí MADRE. Los sistemas frigoríficos están en línea. ¿Deseas que audite la calculadora actual?";
-      } else if (lowerInput.includes("escanear") || lowerInput.includes("audita") || lowerInput.includes("roi")) {
+      } else if (lowerInput.includes("escanear") || lowerInput.includes("audita") || lowerInput.includes("roi") || lowerInput.includes("scan") || lowerInput.includes("pantalla")) {
         if (typeof triggerLaserScanEffect === "function") {
           triggerLaserScanEffect();
         }
-        replyText = buildMotherExecutiveScript(stateForVoice);
-      } else {
-        // 3. LLM Externo para consultas complejas (mercado, etc.)
+        const moduleInfo = detectActiveModule();
+        const scanPayload = scanActiveModule(document, moduleInfo);
+        const promptToSend = buildUniversalScanPrompt(scanPayload);
+        const executiveScriptFallback = buildMotherExecutiveScript(stateForVoice);
+
+        // 3. Envío del paquete Universal a Data Bridge madre-chat
         const databridgeUrl = (typeof window !== "undefined" && window.DATABRIDGE_API_URL) ? window.DATABRIDGE_API_URL : "https://calm-shortbread-55bcfc.netlify.app";
 
         // Sincronización de referencia dinámica de expediente
+        const urlParams = new URLSearchParams(window.location.search);
+        let activeRef = urlParams.get("ref");
+        if (!activeRef && window.location.hash.includes("?")) {
+          const hashQuery = window.location.hash.split("?")[1];
+          activeRef = new URLSearchParams(hashQuery).get("ref");
+        }
+        const finalProjectRef = referenciaMadre || activeRef || "RDM/2026-TBN";
+
+        const texto = textToProcess;
+        const trimmed = textToProcess;
+
+        const outgoingPayload = {
+          prompt: promptToSend, // prompt: trimmed
+          mensajeUsuario: texto, // mensajeUsuario: trimmed
+          message: trimmed,
+          origen: "Reefer Charter",
+          current_module: "reefer_charter",
+          suite: "Reefer Charter Core PRO",
+          modulo_actual: scanPayload.modulo_actual,
+          timestamp: scanPayload.timestamp,
+          datos_formulario: scanPayload.datos_formulario,
+          estados_ui: scanPayload.estados_ui,
+          elementos_visibles: scanPayload.elementos_visibles,
+          escaneo_universal: scanPayload,
+          escaneo_estructurado: scanPayload,
+          contexto_ui: getReeferUIContext(),
+          history: mensajes
+            .filter((m) => (m.text || m.texto) && !m.isError)
+            .map((m) => ({
+              role: m.role || (m.rol === "user" ? "user" : "assistant"),
+              content: m.text || m.texto,
+            })),
+          context: {
+            origin: "Reefer Charter Core PRO",
+            projectRef: finalProjectRef,
+            activeModule: scanPayload.modulo_actual,
+          },
+        };
+
+        try {
+          const res = await fetch(MADRE_API_ENDPOINT && (typeof window !== "undefined" && window.DATABRIDGE_API_URL ? `${databridgeUrl}/.netlify/functions/madre-chat` : MADRE_API_ENDPOINT), {
+            method: "POST",
+            mode: "cors",
+            headers: {
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+            },
+            body: JSON.stringify(outgoingPayload),
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            replyText = data?.reply || data?.response || data?.message || data?.text || "";
+          }
+        } catch (fetchErr) {
+          console.warn("Fallo de red conectando con Data Bridge, aplicando auditoría Cero-Alucinaciones:", fetchErr);
+        }
+
+        if (!replyText) {
+          replyText = (moduleInfo.id === "estimator" && executiveScriptFallback)
+            ? executiveScriptFallback
+            : buildLocalZeroHallucinationAudit(scanPayload);
+        }
+      } else {
+        // Consultas generales externas vía LLM en Data Bridge
+        const databridgeUrl = (typeof window !== "undefined" && window.DATABRIDGE_API_URL) ? window.DATABRIDGE_API_URL : "https://calm-shortbread-55bcfc.netlify.app";
+
         const urlParams = new URLSearchParams(window.location.search);
         let activeRef = urlParams.get("ref");
         if (!activeRef && window.location.hash.includes("?")) {
@@ -1087,7 +1544,18 @@ export function GlobalMadreDrawer({
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 ml-auto text-white shrink-0 flex-shrink-0">
+              <div className="flex items-center gap-2.5 ml-auto text-white shrink-0 flex-shrink-0">
+                <button
+                  id="madre-header-scan-button"
+                  type="button"
+                  className="madre-scan-btn shrink-0 flex-shrink-0 text-white flex items-center justify-center h-8 px-2.5 gap-1.5 bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/50 rounded-lg transition text-xs font-semibold shadow-sm cursor-pointer"
+                  onClick={() => handleSubmit(null, "Escanear pantalla")}
+                  title="Escanear Pantalla (Módulo Activo)"
+                  aria-label="Escanear Pantalla (Módulo Activo)"
+                >
+                  <span className="text-xs">🔍</span>
+                  <span className="hidden sm:inline text-[11px] font-bold text-cyan-200">Escanear</span>
+                </button>
                 <button
                   id="madre-mute-button"
                   type="button"

@@ -647,7 +647,7 @@ export function useHeaderVisibility(defaultVisible = true) {
 
 import { ProjectProvider, ProjectContext, useProject, useProjectRef, generateRandomProjectRef } from './context/ProjectContext.jsx';
 import { useReeferAutoSizing } from './hooks/useReeferAutoSizing.js';
-import { GlobalMadreDrawer, MadrePanel, buildMotherExecutiveScript, playNeuralMotherVoice } from './components/GlobalMadreDrawer.jsx';
+import { GlobalMadreDrawer, MadrePanel, buildMotherExecutiveScript, playNeuralMotherVoice, detectActiveModule, scanActiveModule, buildUniversalScanPrompt, buildLocalZeroHallucinationAudit } from './components/GlobalMadreDrawer.jsx';
 
 export function AppLayout({ children }) {
   const [currentView, setCurrentView] = useState(() => (typeof window !== 'undefined' ? window.currentView || '' : ''));
@@ -772,7 +772,7 @@ export function TopNav() {
           type="button"
           onClick={() => {
             if (window.MadrePanelUI?.toggle) {
-              window.MadrePanelUI.toggle({ userInitiated: true });
+              window.MadrePanelUI.toggle();
             } else {
               window.dispatchEvent(new CustomEvent('madre:toggle', { detail: { userInitiated: true } }));
             }
@@ -877,5 +877,5 @@ export function TopNav() {
 export { HashRouter, HashRouter as BrowserRouter };
 export { ProjectProvider, ProjectContext, useProject, useProjectRef, generateRandomProjectRef };
 export { default as VoyageExecutiveReportModal, buildVoyageStowagePlan } from './components/VoyageExecutiveReportModal.jsx';
-export { GlobalMadreDrawer, MadrePanel, buildMotherExecutiveScript, playNeuralMotherVoice };
+export { GlobalMadreDrawer, MadrePanel, buildMotherExecutiveScript, playNeuralMotherVoice, detectActiveModule, scanActiveModule, buildUniversalScanPrompt, buildLocalZeroHallucinationAudit };
 
