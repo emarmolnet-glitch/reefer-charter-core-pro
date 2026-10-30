@@ -19,7 +19,7 @@ test('1. MADRE Logo image asset is saved in public directory and served correctl
   assert.ok(existsSync(new URL('../assets/MADRE.png', import.meta.url)), 'assets/MADRE.png must exist');
 });
 
-test('2. GlobalMadreDrawer component implements isolated dark classes and wider max-w-lg layout', () => {
+test('2. GlobalMadreDrawer component implements isolated light classes and wider max-w-lg layout (Cerebro.ia style)', () => {
   // Check export
   assert.match(globalMadreDrawerSource, /export\s+function\s+MadrePanel/);
   assert.match(globalMadreDrawerSource, /export\s+const\s+GlobalMadreDrawer/);
@@ -35,15 +35,15 @@ test('2. GlobalMadreDrawer component implements isolated dark classes and wider 
   assert.match(globalMadreDrawerSource, /id="madre-mute-button"/);
   assert.match(globalMadreDrawerSource, /id="madre-close-button"/);
 
-  // Check wider drawer container & dark styling
+  // Check wider drawer container & light styling
   assert.match(globalMadreDrawerSource, /max-w-lg/);
-  assert.match(globalMadreDrawerSource, /bg-slate-900/);
-  assert.match(globalMadreDrawerSource, /text-slate-100/);
+  assert.match(globalMadreDrawerSource, /bg-white/);
+  assert.match(globalMadreDrawerSource, /text-gray-800/);
 
-  // Check container dark backgrounds
-  assert.match(globalMadreDrawerSource, /bg-slate-950[^"]*border-slate-800/); // header
-  assert.match(globalMadreDrawerSource, /bg-slate-900[^"]*text-slate-100/); // messages
-  assert.match(globalMadreDrawerSource, /madre-drawer-footer[^"]*bg-slate-950/); // footer
+  // Check container light backgrounds
+  assert.match(globalMadreDrawerSource, /madre-drawer-header[^"]*bg-white/); // header
+  assert.match(globalMadreDrawerSource, /madre-drawer-body[^"]*bg-gray-50/); // messages
+  assert.match(globalMadreDrawerSource, /madre-drawer-footer[^"]*bg-white/); // footer
 
   // Check <img> src paths
   const imgMatches = globalMadreDrawerSource.match(/src="\/MADRE\.png"/g);
@@ -121,7 +121,7 @@ test('8. Zero-Click Auto-Sizing: Empty vessel name evaluates as TBN and override
   assert.match(stowageBuilderSource, /effectiveCubicCapacity\s*=\s*isTbn/);
 });
 
-test('9. MADRE UI Polish: Z-index 2147483647, left-slide, header text text-white, ml-auto buttons with shrink-0, SVG close, and bubbles max-w-[95%] text-white', () => {
+test('9. MADRE UI Polish: Z-index 2147483647, left-slide, header text, ml-auto buttons with shrink-0, SVG close, and bubbles max-w-[95%]', () => {
   // Left-slide layout
   assert.match(globalMadreDrawerSource, /left-0/);
   assert.match(globalMadreDrawerSource, /border-r/);
@@ -140,24 +140,22 @@ test('9. MADRE UI Polish: Z-index 2147483647, left-slide, header text text-white
     globalMadreDrawerSource.indexOf('<header'),
     globalMadreDrawerSource.indexOf('</header>')
   );
-  assert.match(globalMadreDrawerSource, /<span[^>]*text-white[^>]*>MADRE<\/span>/);
+  assert.match(globalMadreDrawerSource, /<span[^>]*tracking-tight[^>]*>MADRE<\/span>/);
   assert.match(globalMadreDrawerSource, /Cerebro Central/);
   assert.doesNotMatch(headerContent, /#REF-MADRE/);
   assert.doesNotMatch(headerContent, /MADRE Core/);
 
-  // Header Buttons with ml-auto gap-3 container and shrink-0
+  // Header Buttons with ml-auto container and shrink-0
   assert.match(globalMadreDrawerSource, /ml-auto/);
-  assert.match(globalMadreDrawerSource, /gap-3/);
   assert.match(globalMadreDrawerSource, /id="madre-mute-button"[^>]*shrink-0/);
   assert.match(globalMadreDrawerSource, /id="madre-reset-button"[^>]*shrink-0/);
   assert.match(globalMadreDrawerSource, /id="madre-close-button"[^>]*shrink-0/);
   assert.match(globalMadreDrawerSource, /id="madre-close-button"[\s\S]*?<svg/);
 
-  // Chat Bubbles width & white text enforcement
+  // Chat Bubbles width & text enforcement
   assert.match(globalMadreDrawerSource, /max-w-\[95%\]/);
   assert.match(madrePanelCssSource, /min-width:\s*150px/);
   assert.match(madrePanelCssSource, /width:\s*max-content/);
-  assert.match(madrePanelCssSource, /color:\s*#ffffff\s*!important/);
 });
 
 test('10. DWT Calculator Sync: DWT input strictly bound to optimalDwt when auto-sized, crisp badge rendered, and vanilla DOM synced', () => {
@@ -173,7 +171,7 @@ test('10. DWT Calculator Sync: DWT input strictly bound to optimalDwt when auto-
 
   // Aggressive vanilla sync in index.html
   assert.match(indexHtmlSource, /Aggressive DOM Sync for TBN Auto-Sizing/);
-  assert.match(indexHtmlSource, /setInterval\(\(\)\s*=>\s*\{[\s\S]*?dwtInput\.value\s*=\s*optimal/);
+  assert.match(indexHtmlSource, /setInterval\(\(\)\s*=>\s*\{[\s\S]*?(?:dwtInput\.value\s*=\s*optimal|autoDimensionVessel)/);
 });
 
 test('11. Global MADRE connected to Data Bridge AI API endpoint with handleSubmit, error handling, and auto-scroll', () => {

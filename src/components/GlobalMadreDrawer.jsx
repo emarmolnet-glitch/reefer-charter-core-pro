@@ -1750,7 +1750,7 @@ export function GlobalMadreDrawer({
           onClick={() => setIsMadreOpen(!isMadreOpen)}
           aria-label="Abrir panel MADRE"
           title={isMadreOpen || isListening ? "MADRE activa" : "MADRE"}
-          className="madre-topbar-btn relative flex items-center justify-center w-10 h-10 rounded-full p-0 bg-transparent border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-slate-900 group"
+          className="madre-topbar-btn relative flex items-center justify-center w-10 h-10 rounded-full p-0 bg-transparent border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-white group"
         >
           {(isMadreOpen || isListening) && (
             <div
@@ -1792,19 +1792,19 @@ export function GlobalMadreDrawer({
             <aside
               ref={dragNodeRef}
               id="madre-drawer-panel"
-              className="madre-drawer fixed bottom-4 right-4 z-50 z-[2147483647] w-[450px] max-w-lg bg-white shadow-2xl rounded-lg overflow-hidden flex flex-col bg-slate-900 text-slate-100 border border-slate-700"
-              style={{ backgroundColor: "#0f172a", color: "#f1f5f9", zIndex: 2147483647 }}
+              className="madre-drawer fixed bottom-4 right-4 z-50 z-[2147483647] w-[450px] max-w-lg bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col text-gray-800"
+              style={{ backgroundColor: "#ffffff", color: "#1f2937", zIndex: 2147483647 }}
               role="dialog"
               aria-modal="true"
               aria-label="Panel Inteligente MADRE"
             >
               {/* Barra de Título (Drag Handle) */}
               <header
-                className="madre-drawer-header madre-drag-handle cursor-move select-none flex items-center justify-between p-3.5 bg-slate-950 border-b border-slate-800 text-white"
-                style={{ backgroundColor: "#020617", color: "#f8fafc" }}
+                className="madre-drawer-header madre-drag-handle cursor-move select-none flex items-center justify-between p-3.5 bg-white border-b border-gray-100 text-gray-800"
+                style={{ backgroundColor: "#ffffff", color: "#1f2937" }}
               >
                 <div className="madre-drawer-title-wrap flex items-center gap-2.5 pointer-events-none select-none">
-                  <div className="madre-avatar-icon flex items-center justify-center w-7 h-7 rounded-full overflow-hidden bg-cyan-950/60 border border-cyan-500/40 shrink-0 flex-shrink-0">
+                  <div className="madre-avatar-icon flex items-center justify-center w-7 h-7 rounded-full overflow-hidden bg-sky-50 border border-sky-100 shrink-0 flex-shrink-0">
                     <img
                       src="/MADRE.png"
                       alt="MADRE"
@@ -1812,40 +1812,40 @@ export function GlobalMadreDrawer({
                     />
                   </div>
                   <div>
-                    <h2 className="madre-title-text text-xs md:text-sm font-bold text-white flex items-center gap-1.5">
-                      <span className="text-white font-bold tracking-tight">MADRE</span>
-                      <span className="madre-badge-ref text-[9px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                    <h2 className="madre-title-text text-xs md:text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                      <span className="text-gray-900 font-bold tracking-tight">MADRE</span>
+                      <span className="madre-badge-ref text-[9px] font-mono px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-200">
                         Cerebro Central
                       </span>
                     </h2>
-                    <p className="madre-subtitle-text text-[10px] text-slate-400 truncate max-w-[140px]">
+                    <p className="madre-subtitle-text text-[10px] text-gray-500 truncate max-w-[140px]">
                       Widget Flotante Arrastrable
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 ml-auto text-white shrink-0 flex-shrink-0 no-drag">
+                <div className="flex items-center gap-1.5 ml-auto text-gray-600 shrink-0 flex-shrink-0 no-drag">
                   {/* Botón de Escanear Pantalla */}
                   <button
                     id="madre-header-scan-button"
                     type="button"
-                    className="madre-scan-btn shrink-0 flex-shrink-0 text-white flex items-center justify-center h-7 px-2.5 gap-1 bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/50 rounded-lg transition text-xs font-semibold shadow-sm cursor-pointer"
+                    className="madre-scan-btn shrink-0 flex-shrink-0 bg-white hover:bg-gray-100 text-gray-600 border border-gray-200 rounded-md transition text-xs font-semibold shadow-sm cursor-pointer flex items-center justify-center h-7 px-2.5 gap-1"
                     onClick={handleScan}
                     title="Escanear Pantalla (Módulo Activo)"
                     aria-label="Escanear Pantalla (Módulo Activo)"
                   >
                     <span className="text-xs">🔍</span>
-                    <span className="text-[11px] font-bold text-cyan-200 whitespace-nowrap">Escanear Pantalla</span>
+                    <span className="text-[11px] font-medium text-gray-700 whitespace-nowrap">Escanear Pantalla</span>
                   </button>
 
                   {/* Botón de Voz (Altavoz) */}
                   <button
                     id="madre-mute-button"
                     type="button"
-                    className={`madre-mute-btn shrink-0 flex-shrink-0 text-white flex items-center justify-center w-7 h-7 rounded-md transition cursor-pointer ${
+                    className={`madre-mute-btn shrink-0 flex-shrink-0 bg-transparent hover:bg-gray-100 text-gray-600 flex items-center justify-center w-7 h-7 rounded-md transition cursor-pointer border-0 ${
                       isMuted
-                        ? "text-rose-400 hover:text-rose-300 hover:bg-slate-800"
-                        : "text-white hover:text-cyan-300 hover:bg-slate-800"
+                        ? "text-rose-500 hover:text-rose-600"
+                        : "text-gray-600 hover:text-gray-800"
                     }`}
                     onClick={handleMuteToggle}
                     title={isMuted ? "Activar voz de MADRE" : "Silenciar voz de MADRE"}
@@ -1858,7 +1858,7 @@ export function GlobalMadreDrawer({
                   <button
                     id="madre-reset-button"
                     type="button"
-                    className="madre-reset-btn shrink-0 flex-shrink-0 text-white flex items-center justify-center w-7 h-7 p-1 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition text-xs cursor-pointer"
+                    className="madre-reset-btn shrink-0 flex-shrink-0 bg-transparent hover:bg-gray-100 text-gray-600 flex items-center justify-center w-7 h-7 p-1 rounded-md transition text-xs cursor-pointer border-0"
                     onClick={handleReset}
                     title="Reiniciar conversación"
                     aria-label="Reiniciar conversación"
@@ -1870,7 +1870,7 @@ export function GlobalMadreDrawer({
                   <button
                     id="madre-close-button"
                     type="button"
-                    className="madre-close-btn shrink-0 flex-shrink-0 text-white flex items-center justify-center w-7 h-7 rounded-md hover:text-slate-200 hover:bg-slate-800 transition cursor-pointer"
+                    className="madre-close-btn shrink-0 flex-shrink-0 bg-transparent hover:bg-gray-100 text-gray-600 hover:text-gray-800 flex items-center justify-center w-7 h-7 rounded-md transition cursor-pointer border-0"
                     onClick={() => setIsMadreOpen(false)}
                     aria-label="Cerrar panel MADRE"
                     title="Cerrar"
@@ -1886,18 +1886,18 @@ export function GlobalMadreDrawer({
               {/* Área de Chat y Altura Máxima */}
               <div
                 id="madre-messages-container"
-                className="madre-drawer-body flex-1 overflow-y-auto max-h-[60vh] p-3.5 space-y-3 bg-slate-900 text-slate-100"
-                style={{ backgroundColor: "#0f172a", color: "#f1f5f9", maxHeight: "60vh" }}
+                className="madre-drawer-body flex-1 overflow-y-auto max-h-[60vh] p-3.5 space-y-3 bg-gray-50 text-gray-800"
+                style={{ backgroundColor: "#f9fafb", color: "#1f2937", maxHeight: "60vh" }}
               >
                 {mensajes.length === 0 ? (
-                  <div className="madre-empty-state text-center py-6 px-3 text-slate-400">
+                  <div className="madre-empty-state text-center py-6 px-3 text-gray-500">
                     <div className="madre-empty-icon flex items-center justify-center mb-2">
                       <img src="/MADRE.png" alt="MADRE" className="w-10 h-10 rounded-full object-contain opacity-80" />
                     </div>
-                    <h3 className="madre-empty-title text-xs font-bold text-slate-200 mb-1">
+                    <h3 className="madre-empty-title text-xs font-bold text-gray-800 mb-1">
                       Cerebro Frigorífico Activo
                     </h3>
-                    <p className="madre-empty-desc text-[11px] text-slate-400 max-w-xs mx-auto leading-relaxed mb-3">
+                    <p className="madre-empty-desc text-[11px] text-gray-500 max-w-xs mx-auto leading-relaxed mb-3">
                       Escáner visual de pantalla listo para capturar en tiempo real las variables de temperatura, ventilación, pallets y costes refrigerados.
                     </p>
                     <button
@@ -1917,21 +1917,23 @@ export function GlobalMadreDrawer({
                       }`}
                     >
                       <div
-                        className={`madre-bubble p-3 text-xs leading-relaxed max-w-[95%] text-white rounded-2xl whitespace-pre-wrap ${
+                        className={`madre-bubble p-3 text-xs leading-relaxed max-w-[95%] rounded-2xl whitespace-pre-wrap ${
                           msg.rol === "user"
-                            ? "bg-cyan-600 text-white rounded-br-sm shadow-md min-w-[150px] w-max max-w-[95%] text-left"
+                            ? "bg-blue-50 text-gray-800 border border-blue-100 rounded-br-sm shadow-sm min-w-[150px] w-max max-w-[95%] text-left"
                             : msg.isError
-                            ? "bg-red-950 text-red-200 border border-red-800 rounded-bl-sm"
-                            : "bg-slate-800 border border-slate-700 text-white !text-white rounded-bl-sm shadow-md"
+                            ? "bg-red-50 text-red-700 border border-red-200 rounded-bl-sm shadow-sm"
+                            : "bg-white border border-gray-200 text-gray-800 rounded-bl-sm shadow-sm"
                         }`}
                         style={
                           msg.rol === "user"
-                            ? { minWidth: "150px", width: "max-content", maxWidth: "95%", textAlign: "left", color: "#ffffff" }
-                            : { color: "#ffffff" }
+                            ? { minWidth: "150px", width: "max-content", maxWidth: "95%", textAlign: "left", color: "#1f2937", backgroundColor: "#eff6ff" }
+                            : msg.isError
+                            ? { color: "#b91c1c", backgroundColor: "#fef2f2" }
+                            : { color: "#1f2937", backgroundColor: "#ffffff" }
                         }
                       >
-                        <div className="madre-bubble-meta flex items-center justify-between text-[10px] opacity-70 mb-1">
-                          <span className="font-semibold">{msg.autor}</span>
+                        <div className="madre-bubble-meta flex items-center justify-between text-[10px] text-gray-400 mb-1">
+                          <span className="font-semibold text-gray-600">{msg.autor}</span>
                           <span>{msg.timestamp}</span>
                         </div>
                         <div className="whitespace-pre-wrap break-words">{msg.texto || msg.text}</div>
@@ -1942,54 +1944,30 @@ export function GlobalMadreDrawer({
                 {loading && (
                   <div
                     id="madre-loading-indicator"
-                    className="flex items-center gap-3 p-2.5 mx-2 mb-2 rounded-xl bg-slate-800/60 border border-dashed border-cyan-500/40 text-xs text-cyan-300"
+                    className="flex items-center gap-3 p-2.5 mx-2 mb-2 rounded-xl bg-white border border-dashed border-sky-300 text-xs text-sky-700 shadow-sm"
                   >
-                    <div className="madre-radar-spinner w-3.5 h-3.5 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin"></div>
-                    <span className="text-[11px]">MADRE está auditando los parámetros frigoríficos...</span>
+                    <div className="madre-radar-spinner w-3.5 h-3.5 rounded-full border-2 border-sky-600 border-t-transparent animate-spin"></div>
+                    <span className="text-[11px] font-medium">MADRE está auditando los parámetros frigoríficos...</span>
                   </div>
                 )}
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Comandos Rápidos */}
-              <div
-                className="madre-quick-commands-bar p-2.5 bg-slate-950/90 border-t border-slate-800"
-                style={{ backgroundColor: "#020617", color: "#f8fafc" }}
-              >
-                <span className="madre-quick-title text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
-                  ⚡ Comandos Rápidos (1-Clic)
-                </span>
-                <div className="madre-quick-buttons-row flex flex-wrap gap-1">
-                  {COMANDOS_RAPIDOS.map((cmd) => (
-                    <button
-                      key={cmd.id}
-                      type="button"
-                      disabled={loading}
-                      onClick={() => handleQuickCommandClick(cmd)}
-                      className="madre-quick-btn flex items-center gap-1 text-left px-2 py-1 rounded bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-200 text-[11px] transition hover:border-cyan-500/50 hover:text-cyan-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                    >
-                      <span>{cmd.icono}</span>
-                      <span className="font-medium truncate max-w-[180px]">{cmd.texto}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Input y Footer Fijo en la parte inferior */}
               <footer
-                className="madre-drawer-footer relative p-2.5 bg-slate-950 border-t border-slate-800 flex-shrink-0"
-                style={{ backgroundColor: "#020617", color: "#f8fafc" }}
+                className="madre-drawer-footer relative p-2.5 bg-white border-t border-gray-100 flex-shrink-0"
+                style={{ backgroundColor: "#ffffff", color: "#1f2937" }}
               >
                 {isListening && (
                   <div
                     id="madre-voice-status"
-                    className="madre-voice-status absolute bottom-full left-2.5 right-2.5 mb-2 px-2.5 py-1.5 rounded-md text-[11px] flex items-center justify-between border bg-slate-900/95 border-cyan-500/50 text-cyan-200 backdrop-blur-md shadow-lg z-20 pointer-events-auto"
+                    className="madre-voice-status absolute bottom-full left-2.5 right-2.5 mb-2 px-2.5 py-1.5 rounded-md text-[11px] flex items-center justify-between border bg-white/95 border-sky-300 text-sky-700 backdrop-blur-md shadow-lg z-20 pointer-events-auto"
                   >
                     <span className="flex items-center gap-1.5 font-medium">
-                      <span className="inline-block w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+                      <span className="inline-block w-2 h-2 rounded-full bg-sky-500 animate-ping"></span>
                       <span id="madre-voice-status-text">🎙️ Escuchando Wake Word...</span>
                     </span>
-                    <span id="madre-voice-transcript" className="italic truncate max-w-[180px] text-[10px] opacity-80"></span>
+                    <span id="madre-voice-transcript" className="italic truncate max-w-[180px] text-[10px] text-gray-500"></span>
                   </div>
                 )}
                 <form onSubmit={handleSubmit} className="madre-input-form flex items-center gap-2 w-full">
@@ -1997,7 +1975,7 @@ export function GlobalMadreDrawer({
                     id="madre-mic-button"
                     type="button"
                     onClick={handleMicClick}
-                    className={`madre-mic-btn flex-shrink-0 shrink-0 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 transition flex items-center justify-center gap-1.5 cursor-pointer ${isListening ? "ring-2 ring-cyan-400 text-cyan-300" : ""}`}
+                    className={`madre-mic-btn flex-shrink-0 shrink-0 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-gray-200 bg-white hover:bg-gray-100 text-gray-600 transition flex items-center justify-center gap-1.5 cursor-pointer ${isListening ? "ring-2 ring-sky-500 text-sky-600" : ""}`}
                     title="Activar escucha de voz"
                     aria-label="Activar escucha de voz"
                   >
@@ -2010,13 +1988,13 @@ export function GlobalMadreDrawer({
                     value={inputTexto}
                     onChange={(e) => setInputTexto(e.target.value)}
                     placeholder="Pregunta a MADRE o escribe 'Escanear pantalla'..."
-                    className="madre-chat-input flex-1 min-w-0 px-3 py-1.5 text-xs bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500"
+                    className="madre-chat-input flex-1 min-w-0 px-3 py-1.5 text-xs bg-white border border-gray-200 text-gray-800 placeholder-gray-400 rounded-lg focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
                   />
                   <button
                     id="madre-send-button"
                     type="submit"
                     disabled={loading || !inputTexto.trim()}
-                    className="madre-send-btn flex-shrink-0 shrink-0 px-3.5 py-1.5 text-xs font-bold bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed shadow cursor-pointer"
+                    className="madre-send-btn flex-shrink-0 shrink-0 px-3.5 py-1.5 text-xs font-bold bg-[#0e1b2a] hover:bg-gray-800 text-white rounded-lg transition disabled:opacity-40 disabled:cursor-not-allowed shadow-sm cursor-pointer"
                   >
                     Enviar
                   </button>
