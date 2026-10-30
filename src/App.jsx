@@ -652,6 +652,7 @@ import { GlobalMadreDrawer, MadrePanel, buildMotherExecutiveScript, playNeuralMo
 export function AppLayout({ children }) {
   const [currentView, setCurrentView] = useState(() => (typeof window !== 'undefined' ? window.currentView || '' : ''));
   const { isHeaderVisible, toggleHeader } = useHeaderVisibility();
+  const [isMadreOpen, setIsMadreOpen] = useState(false);
 
   useSeaCharterSync();
   useUrlImoAutoLookup();
@@ -665,6 +666,20 @@ export function AppLayout({ children }) {
     };
     window.addEventListener('navigation:view-change', handleViewChange);
     return () => window.removeEventListener('navigation:view-change', handleViewChange);
+  }, []);
+
+  useEffect(() => {
+    const handleMadreToggle = () => setIsMadreOpen((prev) => !prev);
+    const handleMadreOpen = () => setIsMadreOpen(true);
+    const handleMadreClose = () => setIsMadreOpen(false);
+    window.addEventListener('madre:toggle', handleMadreToggle);
+    window.addEventListener('madre:open', handleMadreOpen);
+    window.addEventListener('madre:close', handleMadreClose);
+    return () => {
+      window.removeEventListener('madre:toggle', handleMadreToggle);
+      window.removeEventListener('madre:open', handleMadreOpen);
+      window.removeEventListener('madre:close', handleMadreClose);
+    };
   }, []);
 
   return (
@@ -684,7 +699,7 @@ export function AppLayout({ children }) {
       ) : (
         children
       )}
-      <GlobalMadreDrawer showTrigger={false} />
+      <GlobalMadreDrawer showTrigger={false} isMadreOpen={isMadreOpen} setIsMadreOpen={setIsMadreOpen} />
     </div>
   );
 }
@@ -704,6 +719,7 @@ export default function App(props) {
  * vessel search input, and the active project reference input.
  */
 export function TopNav() {
+  const [isMadreOpen, setIsMadreOpen] = useState(false);
   const { activeProjectRef, setActiveProjectRef } = useProject();
 
   const handleRefChange = (e) => {
@@ -771,6 +787,7 @@ export function TopNav() {
           id="madre-topbar-button"
           type="button"
           onClick={() => {
+            setIsMadreOpen(!isMadreOpen);
             if (window.MadrePanelUI?.toggle) {
               window.MadrePanelUI.toggle();
             } else {
@@ -779,13 +796,13 @@ export function TopNav() {
           }}
           aria-label="Abrir panel MADRE"
           title="Cerebro Central MADRE"
-          aria-expanded="false"
+          aria-expanded={isMadreOpen ? "true" : "false"}
           className="madre-topbar-btn relative group flex items-center justify-center w-8 h-8 md:w-9 md:h-9 rounded-full border-2 border-slate-800 bg-slate-900 hover:scale-110 transition-transform duration-200 shadow-md cursor-pointer shrink-0"
         >
           <div
             id="madre-topbar-glow"
             className="madre-topbar-glow absolute inset-0 rounded-full animate-pulse bg-cyan-500 blur-md opacity-60 group-hover:opacity-100 transition-opacity pointer-events-none"
-            style={{ display: 'none' }}
+            style={{ display: isMadreOpen ? 'block' : 'none' }}
             aria-hidden="true"
           />
           <img

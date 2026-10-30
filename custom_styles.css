@@ -75,27 +75,27 @@ div[id*="container"],
   transition: opacity 0.3s ease;
 }
 
-/* 3. Panel Lateral */
+/* 3. Panel Flotante Arrastrable (Widget Flotante Cerebro.ia) */
 .madre-drawer,
 #madre-drawer-panel {
   position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 100% !important;
+  bottom: 1rem;
+  right: 1rem;
+  width: 450px !important;
   max-width: 32rem !important; /* max-w-lg (512px) */
   background-color: #0f172a !important;
   color: #f1f5f9 !important;
-  border-right: 1px solid var(--madre-border);
-  box-shadow: 10px 0 35px -5px rgba(0, 0, 0, 0.75);
+  border: 1px solid var(--madre-border);
+  border-radius: 0.75rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75);
   z-index: 2147483647 !important;
   display: flex;
   flex-direction: column;
-  animation: madre-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  overflow: hidden;
 }
 @keyframes madre-slide-in {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(0); }
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* 4. Encabezado */
