@@ -588,6 +588,16 @@ async function playNeuralMotherVoice(textToSpeak) {
             body: JSON.stringify({ text: textToSpeak })
         });
         if (!response.ok) throw new Error('Error TTS');
+        const contentType = response.headers.get("content-type") || response.headers.get("Content-Type");
+        if (contentType && contentType.includes("application/json")) {
+            const data = await response.json();
+            if (data.fallback_to_browser) {
+                const utterance = new SpeechSynthesisUtterance(data.text_to_speak);
+                utterance.lang = 'es-ES';
+                window.speechSynthesis.speak(utterance);
+                return; // Finaliza la ejecución para evitar el EncodingError
+            }
+        }
         const arrayBuffer = await response.arrayBuffer();
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         const audioCtx = new AudioContext();
