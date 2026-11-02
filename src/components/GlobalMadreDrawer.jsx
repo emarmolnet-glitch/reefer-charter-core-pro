@@ -598,8 +598,8 @@ async function playNeuralMotherVoice(textToSpeak) {
             }
         }
         if (!response.ok) throw new Error('Error TTS');
-        const contentType = response.headers.get("content-type") || response.headers.get("Content-Type");
-        if (contentType && contentType.includes("application/json")) {
+        const ttsContentType = response.headers.get("content-type") || response.headers.get("Content-Type");
+        if (ttsContentType && ttsContentType.includes("application/json")) {
             const data = await response.json();
             if (data.fallback_to_browser) {
                 const utterance = new SpeechSynthesisUtterance(data.text_to_speak);
