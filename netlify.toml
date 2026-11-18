@@ -122,6 +122,11 @@
   force = true
 
 [[redirects]]
+  from = "/api/radar/live"
+  to = "/.netlify/functions/radar-live"
+  status = 200
+
+[[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200

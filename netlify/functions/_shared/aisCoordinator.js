@@ -578,45 +578,56 @@ export function createAisCoordinator({
       const zoneLatitude = Number(latitude.toFixed(RADAR_COORDINATE_PRECISION));
       const zoneLongitude = Number(longitude.toFixed(RADAR_COORDINATE_PRECISION));
       const radarTtlMs = configuredTtl("DATALASTIC_RADAR_CACHE_TTL_MS", RADAR_TTL_MS);
-      return execute({
-        cacheKey: `radar/v2/${zoneLatitude}_${zoneLongitude}_${radius}nm.json`,
-        ttlMs: radarTtlMs,
-        softStaleTtlMs: radarTtlMs + RADAR_SOFT_STALE_WINDOW_MS,
-        staleTtlMs: RADAR_STALE_TTL_MS,
-        providerCall: (activeFetch) => fetchDatalastic("vessel_inradius", {
-          lat: zoneLatitude,
-          lon: zoneLongitude,
-          radius,
-        }, activeFetch),
-        normalize: async (payload) => {
-          const radarVessels = normalizeRadarTraffic(payload);
-          try {
-            const enriched = await enrichRadarVessels(radarVessels);
-            return {
-              data: enriched.vessels,
-              sourceCounts: enriched.counts,
-            };
-          } catch (error) {
-            console.warn(
-              "[ais-coordinator] Neon enrichment unavailable; caching Datalastic snapshot.",
-              error instanceof Error ? error.message : String(error),
-            );
-            return {
-              data: radarVessels,
-              sourceCounts: {
-                liveRadar: radarVessels.length,
-                technicalMatches: 0,
-              },
-            };
-          }
-        },
-        formatValue: (value) => ({
-          data: Array.isArray(value?.data) ? value.data : [],
-          sourceCounts: value?.sourceCounts ?? { liveRadar: 0, technicalMatches: 0 },
-        }),
-        scheduleRefresh: options.scheduleRefresh,
-        consumption: { module: "Tracking / Radar", action: "Ejecutar barrido AIS por radio" },
-      });
+      try {
+        const result = await execute({
+          cacheKey: `radar/v2/${zoneLatitude}_${zoneLongitude}_${radius}nm.json`,
+          ttlMs: radarTtlMs,
+          softStaleTtlMs: radarTtlMs + RADAR_SOFT_STALE_WINDOW_MS,
+          staleTtlMs: RADAR_STALE_TTL_MS,
+          providerCall: (activeFetch) => fetchDatalastic("vessel_inradius", {
+            lat: zoneLatitude,
+            lon: zoneLongitude,
+            radius,
+          }, activeFetch),
+          normalize: async (payload) => {
+            const radarVessels = normalizeRadarTraffic(payload);
+            try {
+              const enriched = await enrichRadarVessels(radarVessels);
+              return {
+                data: enriched.vessels,
+                sourceCounts: enriched.counts,
+              };
+            } catch (error) {
+              console.warn(
+                "[ais-coordinator] Neon enrichment unavailable; caching Datalastic snapshot.",
+                error instanceof Error ? error.message : String(error),
+              );
+              return {
+                data: radarVessels,
+                sourceCounts: {
+                  liveRadar: radarVessels.length,
+                  technicalMatches: 0,
+                },
+              };
+            }
+          },
+          formatValue: (value) => ({
+            data: Array.isArray(value?.data) ? value.data : [],
+            sourceCounts: value?.sourceCounts ?? { liveRadar: 0, technicalMatches: 0 },
+          }),
+          scheduleRefresh: options.scheduleRefresh,
+          consumption: { module: "Tracking / Radar", action: "Ejecutar barrido AIS por radio" },
+        });
+
+        if (!result?.data || result.data.length === 0) {
+          console.info("[ais-coordinator] Datalastic devolvió 0 buques, conmutando a AISStream + Neon fallback");
+          return await fetchAisStreamAndNeonFallback({ lat: zoneLatitude, lon: zoneLongitude, radius });
+        }
+        return result;
+      } catch (error) {
+        console.warn("[ais-coordinator] Conmutando a AISStream + Neon fallback ante error de Datalastic:", error?.message || error);
+        return await fetchAisStreamAndNeonFallback({ lat: zoneLatitude, lon: zoneLongitude, radius });
+      }
     },
 
     async getVesselParticulars(imoValue) {
@@ -650,6 +661,289 @@ export async function getRadarTraffic(lat, lon, radius = DEFAULT_RADAR_RADIUS_NM
 
 export async function getVesselParticulars(imo) {
   return coordinator().getVesselParticulars(imo);
+}
+
+export async function persistMerchantFleetInNeon(vessels, pool) {
+  const list = Array.isArray(vessels) ? vessels : [];
+  if (list.length === 0) return 0;
+  let activePool = pool;
+  if (!activePool) {
+    const dbUrl = Netlify.env.get("DATABASE_URL") ?? Netlify.env.get("NETLIFY_DATABASE_URL") ?? Netlify.env.get("NETLIFY_DB_URL");
+    if (!dbUrl) return 0;
+    const database = getDatabase({ connectionString: dbUrl });
+    activePool = database.pool;
+  }
+  if (!activePool) return 0;
+
+  const STRICT_NOISE_RE = /\b(fishing|pesquero|pesca|trawler|tug|tugboat|remolcador|remolque|pusher|passenger|cruise|ferry|pleasure|yacht|sailing|dredger|vts|mark|point|danger|buoy|boya|military|sar|rescue|pilot|workboat|other|unknown)\b/i;
+  const STRICT_CARGO_RE = /\b(bulk|bulker|cargo|carguero|coaster|cabotaje|container|tanker|petrolero|quimiquero|heavy load|heavy lift|break bulk|breakbulk|ro-ro|roro|cement|cementero|clinker|mpp|mpv|mmpp|freighter|merchant|refrigerated cargo|reefer|frigorifico|fruit carrier)\b/i;
+
+  let savedCount = 0;
+  for (const ship of list) {
+    try {
+      const rawType = String(ship.type || ship.classes || ship.vessel_type || ship.type_name || ship.vesselType || ship.vesselClass || ship.shipType || '').trim().toLowerCase();
+      const numType = Number(ship.type || ship.shipType || ship.ShipType);
+
+      if (STRICT_NOISE_RE.test(rawType)) continue;
+      if (Number.isFinite(numType) && numType > 0) {
+        if ((numType >= 20 && numType < 70) || numType >= 90) continue;
+      }
+
+      const isCargoType = STRICT_CARGO_RE.test(rawType) || (Number.isFinite(numType) && ((numType >= 70 && numType <= 79) || (numType >= 80 && numType <= 89) || numType === 71 || numType === 81));
+      let dwt = Number(ship.dwt || ship.DWT || ship.deadweight) || null;
+      let loa = Number(ship.loa || ship.loa_meters || ship.loaMeters || ship.length) || null;
+      let beam = Number(ship.beam || ship.beam_meters || ship.beamMeters || ship.width) || null;
+      let draught = Number(ship.draught || ship.draft || ship.draft_meters || ship.draftMeters || ship.MaximumStaticDraught) || null;
+
+      // Calcular DWT paramétrico cuando falte DWT
+      if ((!dwt || dwt <= 0) && loa && beam && draught && loa > 0 && beam > 0 && draught > 0) {
+        dwt = Math.round(loa * beam * draught * 0.68);
+      }
+
+      if (!isCargoType && (!dwt || dwt < 500)) continue;
+
+      const imoClean = String(ship.imo || ship.imo_number || ship.IMO || '').replace(/\D/g, '');
+      const mmsiClean = String(ship.mmsi || ship.MMSI || '').replace(/\D/g, '');
+      const imoNum = Number(imoClean);
+
+      const vesselName = String(ship.name || ship.vesselName || ship.vessel_name || ship.ShipName || (imoNum > 1000000 ? `IMO ${imoNum}` : (mmsiClean ? `MMSI ${mmsiClean}` : 'COMMERCIAL VESSEL'))).trim().toUpperCase();
+      const vesselType = String(ship.type || ship.classes || ship.vessel_type || ship.type_name || ship.vesselType || ship.vesselClass || 'GENERAL CARGO').trim().toUpperCase();
+      const lat = Number(ship.lat ?? ship.latitude);
+      const lon = Number(ship.lon ?? ship.lng ?? ship.longitude);
+      const validLat = Number.isFinite(lat) && lat >= -90 && lat <= 90 ? lat : null;
+      const validLon = Number.isFinite(lon) && lon >= -180 && lon <= 180 ? lon : null;
+
+      if (imoNum > 1000000) {
+        await activePool.query(`
+          INSERT INTO vessels_master (
+            imo_number, vessel_name, vessel_type, dwt, mmsi, latitude, longitude, draft_meters, loa_meters, beam_meters,
+            process_status, audit_status, validation_status, fecha_ultima_actualizacion
+          )
+          VALUES ($1::integer, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'COMPLETED', 'VALIDATED', 'VALIDATED', NOW())
+          ON CONFLICT (imo_number) DO UPDATE SET
+            vessel_name = EXCLUDED.vessel_name,
+            vessel_type = COALESCE(EXCLUDED.vessel_type, vessels_master.vessel_type),
+            dwt = COALESCE(EXCLUDED.dwt, vessels_master.dwt),
+            mmsi = COALESCE(EXCLUDED.mmsi, vessels_master.mmsi),
+            latitude = COALESCE(EXCLUDED.latitude, vessels_master.latitude),
+            longitude = COALESCE(EXCLUDED.longitude, vessels_master.longitude),
+            draft_meters = COALESCE(EXCLUDED.draft_meters, vessels_master.draft_meters),
+            loa_meters = COALESCE(EXCLUDED.loa_meters, vessels_master.loa_meters),
+            beam_meters = COALESCE(EXCLUDED.beam_meters, vessels_master.beam_meters),
+            fecha_ultima_actualizacion = NOW()
+        `, [imoNum, vesselName, vesselType, dwt, mmsiClean || null, validLat, validLon, draught, loa, beam]);
+        savedCount++;
+      } else if (mmsiClean.length === 9) {
+        await activePool.query(`
+          UPDATE vessels_master SET
+            vessel_name = $1,
+            vessel_type = COALESCE($2, vessel_type),
+            dwt = COALESCE($3, dwt),
+            latitude = COALESCE($4, latitude),
+            longitude = COALESCE($5, longitude),
+            draft_meters = COALESCE($6, draft_meters),
+            loa_meters = COALESCE($7, loa_meters),
+            beam_meters = COALESCE($8, beam_meters),
+            fecha_ultima_actualizacion = NOW()
+          WHERE mmsi = $9
+        `, [vesselName, vesselType, dwt, validLat, validLon, draught, loa, beam, mmsiClean]);
+      }
+    } catch (err) {
+      console.warn("[persistMerchantFleetInNeon] Error indexing vessel:", err?.message || err);
+    }
+  }
+  return savedCount;
+}
+
+export async function fetchAisStreamAndNeonFallback({ lat, lon, radius = 30, timeoutMs = 3500 } = {}) {
+  const latitude = Number(lat) || 0;
+  const longitude = Number(lon) || 0;
+  const r = Math.max(5, Math.min(100, Number(radius) || 30));
+
+  const deltaLat = r / 60;
+  const deltaLon = r / (60 * Math.max(0.2, Math.cos((latitude * Math.PI) / 180)));
+  const swLat = Number(Math.max(-90, latitude - deltaLat).toFixed(4));
+  const swLon = Number(Math.max(-180, longitude - deltaLon).toFixed(4));
+  const neLat = Number(Math.min(90, latitude + deltaLat).toFixed(4));
+  const neLon = Number(Math.min(180, longitude + deltaLon).toFixed(4));
+  const boundingBoxes = [[[swLat, swLon], [neLat, neLon]]];
+
+  const apiKey = String(env("AISSTREAM_API_KEY") || env("AISTREAM_API_KEY") || "").trim();
+  const endpoint = String(env("AISSTREAM_WS_URL") || "wss://stream.aisstream.io/v0/stream").trim();
+
+  const collectedMap = new Map();
+
+  let WSClient = typeof globalThis.WebSocket !== "undefined" ? globalThis.WebSocket : null;
+  if (!WSClient) {
+    try {
+      const wsMod = await import("ws");
+      WSClient = wsMod.default || wsMod.WebSocket || wsMod;
+    } catch {}
+  }
+
+  if (apiKey && WSClient) {
+    try {
+      await new Promise((resolve) => {
+        let socket = null;
+        let settled = false;
+        const timer = setTimeout(() => {
+          if (!settled) {
+            settled = true;
+            try { if (socket?.terminate) socket.terminate(); else socket?.close?.(); } catch {}
+            resolve();
+          }
+        }, timeoutMs);
+
+        try {
+          socket = new WSClient(endpoint);
+
+          const onOpen = () => {
+            try {
+              socket.send(JSON.stringify({
+                APIKey: apiKey,
+                BoundingBoxes: boundingBoxes,
+                FilterMessageTypes: ["PositionReport", "ShipStaticData"],
+              }));
+            } catch {}
+          };
+
+          const onMsg = (rawEvt) => {
+            try {
+              const rawStr = typeof rawEvt === "string" ? rawEvt : (rawEvt?.data !== undefined ? (typeof rawEvt.data === "string" ? rawEvt.data : rawEvt.data?.toString?.()) : rawEvt?.toString?.());
+              if (!rawStr) return;
+              const parsed = JSON.parse(rawStr);
+              const meta = parsed.MetaData || parsed.metadata || {};
+              const msg = parsed.Message || parsed.message || {};
+              const pos = msg.PositionReport || msg.StandardClassBPositionReport || msg.ExtendedClassBPositionReport || {};
+              const st = msg.ShipStaticData || {};
+              const mmsi = String(meta.MMSI || meta.mmsi || pos.UserID || '').replace(/\D/g, '');
+              if (!mmsi) return;
+
+              const existing = collectedMap.get(mmsi) || { mmsi };
+              const dim = st.Dimension || {};
+              const loaA = Number(dim.A) || 0;
+              const loaB = Number(dim.B) || 0;
+              const beamC = Number(dim.C) || 0;
+              const beamD = Number(dim.D) || 0;
+              const loa = (loaA + loaB) > 0 ? (loaA + loaB) : existing.loa;
+              const beam = (beamC + beamD) > 0 ? (beamC + beamD) : existing.beam;
+              const draught = Number(st.MaximumStaticDraught) || Number(pos.Draught) || existing.draught;
+              const imo = String(st.ImoNumber || meta.IMO || existing.imo || '').replace(/\D/g, '');
+
+              collectedMap.set(mmsi, {
+                ...existing,
+                imo: imo || existing.imo,
+                name: String(meta.ShipName || st.Name || existing.name || `MMSI ${mmsi}`).trim(),
+                latitude: Number(pos.Latitude ?? meta.latitude ?? existing.latitude),
+                longitude: Number(pos.Longitude ?? meta.longitude ?? existing.longitude),
+                speed: Number(pos.Sog ?? existing.speed ?? 0),
+                sog: Number(pos.Sog ?? existing.speed ?? 0),
+                speedKnots: Number(pos.Sog ?? existing.speed ?? 0),
+                cog: Number(pos.Cog ?? existing.cog ?? 0),
+                heading: Number(pos.TrueHeading ?? existing.heading ?? 0),
+                navStatus: pos.NavigationalStatus !== undefined ? String(pos.NavigationalStatus) : existing.navStatus,
+                destination: st.Destination ? String(st.Destination).trim() : existing.destination,
+                vesselType: st.Type !== undefined ? String(st.Type) : existing.vesselType,
+                loa,
+                beam,
+                draught,
+                source: "AISSTREAM_LIVE",
+                sourceOrigin: "AISSTREAM_LIVE",
+              });
+            } catch {}
+          };
+
+          const onErr = () => {
+            if (!settled) { settled = true; clearTimeout(timer); resolve(); }
+          };
+
+          const onClose = () => {
+            if (!settled) { settled = true; clearTimeout(timer); resolve(); }
+          };
+
+          if (typeof socket.on === "function") {
+            socket.on("open", onOpen);
+            socket.on("message", onMsg);
+            socket.on("error", onErr);
+            socket.on("close", onClose);
+          } else {
+            socket.onopen = onOpen;
+            socket.onmessage = onMsg;
+            socket.onerror = onErr;
+            socket.onclose = onClose;
+          }
+        } catch {
+          if (!settled) { settled = true; clearTimeout(timer); resolve(); }
+        }
+      });
+    } catch (wsErr) {
+      console.warn("[ais-coordinator] AISStream WebSocket fallback error:", wsErr?.message || wsErr);
+    }
+  }
+
+  const liveVessels = Array.from(collectedMap.values()).filter(v => Number.isFinite(v.latitude) && Number.isFinite(v.longitude));
+
+  // Enriquecer con Neon vessels_master
+  let enriched = null;
+  try {
+    enriched = await enrichDatalasticRadarVessels(liveVessels);
+  } catch (err) {
+    console.warn("[ais-coordinator] Neon enrichment for AISStream failed:", err?.message || err);
+  }
+
+  let finalVessels = enriched?.vessels ?? liveVessels;
+
+  // Si no se capturaron buques por WebSocket, consultar directamente vessels_master en Neon
+  if (finalVessels.length === 0) {
+    try {
+      const dbUrl = Netlify.env.get("DATABASE_URL") ?? Netlify.env.get("NETLIFY_DATABASE_URL") ?? Netlify.env.get("NETLIFY_DB_URL");
+      if (dbUrl) {
+        const database = getDatabase({ connectionString: dbUrl });
+        const res = await database.pool.query(`
+          SELECT imo_number, mmsi, vessel_name, dwt, vessel_type, draft_meters, loa_meters, beam_meters, flag, latitude, longitude
+          FROM vessels_master
+          WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+            AND latitude BETWEEN $1 AND $2
+            AND longitude BETWEEN $3 AND $4
+            AND dwt > 500
+          LIMIT 50
+        `, [swLat, neLat, swLon, neLon]);
+        finalVessels = res.rows.map(r => ({
+          imo: String(r.imo_number),
+          mmsi: String(r.mmsi || ''),
+          name: r.vessel_name,
+          vesselName: r.vessel_name,
+          dwt: Number(r.dwt),
+          vesselType: r.vessel_type,
+          draftMeters: Number(r.draft_meters),
+          maxDraught: Number(r.draft_meters),
+          loaMeters: Number(r.loa_meters),
+          beamMeters: Number(r.beam_meters),
+          latitude: Number(r.latitude),
+          longitude: Number(r.longitude),
+          flag: r.flag,
+          source: "NEON_VESSELS_MASTER",
+          sourceOrigin: "NEON_VESSELS_MASTER",
+        }));
+      }
+    } catch (neonErr) {
+      console.warn("[ais-coordinator] Direct Neon fallback error:", neonErr?.message || neonErr);
+    }
+  }
+
+  return {
+    data: finalVessels,
+    sourceCounts: {
+      liveRadar: finalVessels.length,
+      technicalMatches: enriched?.counts?.technicalMatches ?? finalVessels.length,
+    },
+    meta: {
+      source: "aisstream-neon-fallback",
+      cacheStatus: "FALLBACK_LIVE",
+      circuitBreaker: "DATALASTIC_FAILOVER",
+      fetchedAt: new Date().toISOString(),
+    },
+  };
 }
 
 export function getAisConsumptionSnapshot() {

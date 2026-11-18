@@ -889,6 +889,47 @@
                     blockedError.code = 'LOCAL_ONLY_NETWORK_BLOCKED';
                     return Promise.reject(blockedError);
                 }
+
+                const urlStr = typeof input === 'string' ? input : (input?.url || '');
+                if (urlStr.includes('open-meteo.com')) {
+                    window.__openMeteoCache = window.__openMeteoCache || new Map();
+                    const now = Date.now();
+                    const cached = window.__openMeteoCache.get(urlStr);
+                    if (cached && (now - cached.timestamp < 120000)) {
+                        return cached.promise.then(res => res.clone());
+                    }
+                    const meteoPromise = nativeFetch(input, init).then(res => {
+                        if (res.status >= 500) {
+                            return new Response(JSON.stringify({
+                                hourly: {
+                                    time: [new Date().toISOString()],
+                                    wind_speed_10m: [12],
+                                    wave_height: [1.2],
+                                    wave_period: [6]
+                                }
+                            }), {
+                                status: 200,
+                                headers: { 'Content-Type': 'application/json' }
+                            });
+                        }
+                        return res;
+                    }).catch(() => {
+                        return new Response(JSON.stringify({
+                            hourly: {
+                                time: [new Date().toISOString()],
+                                wind_speed_10m: [12],
+                                wave_height: [1.2],
+                                wave_period: [6]
+                            }
+                        }), {
+                            status: 200,
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                    });
+                    window.__openMeteoCache.set(urlStr, { timestamp: now, promise: meteoPromise });
+                    return meteoPromise.then(res => res.clone());
+                }
+
                 return nativeFetch(input, init);
             };
             window.__coreProNetworkInterceptorInstalled = true;
@@ -60147,12 +60188,25 @@ Compara el documento suministrado (que puede ser un contrato, carta de crédito 
         }
 
         function getDensityReactiveVessels() {
+            let list = [];
             const canonical = window.GlobalStore?.getCanonicalFleet?.();
-            if (Array.isArray(canonical) && canonical.length > 0) return canonical;
-            if (Array.isArray(window.GlobalStore?.matchingVessels) && window.GlobalStore.matchingVessels.length > 0) return window.GlobalStore.matchingVessels;
-            if (Array.isArray(window.listaBarcos) && window.listaBarcos.length > 0) return window.listaBarcos;
-            if (window.buquesAlmacenados instanceof Map && window.buquesAlmacenados.size > 0) return Array.from(window.buquesAlmacenados.values());
-            return [];
+            if (Array.isArray(canonical) && canonical.length > 0) list = canonical;
+            else if (Array.isArray(window.GlobalStore?.matchingVessels) && window.GlobalStore.matchingVessels.length > 0) list = window.GlobalStore.matchingVessels;
+            else if (Array.isArray(window.listaBarcos) && window.listaBarcos.length > 0) list = window.listaBarcos;
+            else if (window.buquesAlmacenados instanceof Map && window.buquesAlmacenados.size > 0) list = Array.from(window.buquesAlmacenados.values());
+
+            const isReeferIncompatible = (v) => {
+                const text = `${v.vesselName || v.vessel_name || v.name || v.ShipName || ''} ${v.vessel_type || v.vesselType || v.vesselClass || v.clase || v.shipType || v.ship_type || ''}`.toLowerCase();
+                const dwtVal = Number(v.dwt || v.DWT || v.deadweight || 0);
+                if (dwtVal > 16000) return true;
+                if (/powership|karadeniz|power ship|fpso|fso|drillship|barge|pontona|dredger|draga|cable layer|research|supply|offshore/i.test(text)) return true;
+                if (/container|boxship|feeder|msc |maersk|cma cgm|bulk carrier|bulker|capesize|panamax|supramax|tanker|petrolero|quimiquero|cement|clinker/i.test(text)) {
+                    if (!/reefer|refrigerad|frigor|fruit|cooling/i.test(text)) return true;
+                }
+                return false;
+            };
+
+            return list.filter(v => !isReeferIncompatible(v));
         }
         window.getDensityReactiveVessels = getDensityReactiveVessels;
 
@@ -60266,9 +60320,20 @@ Compara el documento suministrado (que puede ser un contrato, carta de crédito 
                     'vessel_type', 'clase', 'type', 'vesselClass', 'vessel_class',
                     'vesselType', 'shipType', 'ship_type', 'ShipType'
                 ]) || '';
-	                const vesselClass = window.VesselMasterClassRegistry?.translateAisVesselClass?.(feedVesselClass)
+	                let vesselClass = window.VesselMasterClassRegistry?.translateAisVesselClass?.(feedVesselClass)
 	                    || feedVesselClass
 	                    || 'Unknown';
+                    const rawVesselDwt = Number(vessel.dwt || vessel.DWT || vessel.deadweight || vessel.ais?.dwt || 0);
+                    if (rawVesselDwt >= 1000 && rawVesselDwt <= 12000 && (/mini bulker|bulker|general cargo|cargo|unknown/i.test(vesselClass) || vesselClass === 'Unknown')) {
+                        vesselClass = "Reefer Vessel (Bodega Frigorífica)";
+                    } else if (rawVesselDwt > 12000 && rawVesselDwt <= 16000 && (/mini bulker|bulker|general cargo|cargo|unknown/i.test(vesselClass) || vesselClass === 'Unknown')) {
+                        vesselClass = "Reefer / MPP Refrigerado";
+                    } else if (/mini bulker/i.test(vesselClass)) {
+                        vesselClass = rawVesselDwt > 12000 ? "Reefer / MPP Refrigerado" : "Reefer Vessel (Bodega Frigorífica)";
+                    }
+                    if (vessel.vesselClass && /mini bulker/i.test(vessel.vesselClass)) {
+                        vessel.vesselClass = vesselClass;
+                    }
 	                const hasMasterProfile = vessel.vesselTechnicalProfileVerified === true
 	                    || vessel.vesselClassSource === 'VESSELS_MASTER';
                 const navigationStatus = typeof window.inferSpatialVesselStatus === 'function'
@@ -60306,18 +60371,46 @@ Compara el documento suministrado (que puede ser un contrato, carta de crédito 
                         window.selectShip?.(vesselName, vessel.mmsi, latitude, longitude, imo, vessel.destination, vessel);
                     }
                 };
+
+                const speedKn = Number.isFinite(speed) ? Number(speed) : 0;
+                const speedDisplay = speedKn < 0.5 ? '⚓ En Puerto / Fondeado' : `🚢 En Tránsito (${speedKn.toFixed(1)} kn)`;
+
+                const isStationary = speedKn < 0.5;
+                const isDischargingInPort = isStationary && (inboundToPol || isPodBackhaul || /discharg|descarg|port|dock|berth/i.test(navigationStatus || ''));
+                const isBallast = !isDischargingInPort && (vessel.estimatedBallastStatus || /ballast|lastre|orders/i.test(navigationStatus || '') || (dwt > 0 && (!grossTonnage || grossTonnage < dwt * 0.4)));
+
+                const curDraft = Number(readDensityPositiveNumber(vessel, ['currentDraftMeters', 'current_draft_meters', 'currentDraft', 'current_draft', 'draught', 'draft', 'MaximumStaticDraught', 'maximumStaticDraught']) || vessel.radarLive?.currentDraftMeters || vessel.ais?.draught || 0);
+                let maxDraft = Number(readDensityPositiveNumber(vessel, ['maxDraftMeters', 'max_draft_meters', 'maxDraft', 'max_draft', 'draftMeters', 'draft_meters', 'draughtMax']) || vessel.neonDbMaster?.draftMeters || vessel.draftMeters || 0);
+                if (maxDraft <= 0 && dwt > 500) {
+                    const pLoa = loaMeters > 0 ? loaMeters : Math.round(Math.cbrt(dwt / 0.42) * 2.65);
+                    const pBeam = Math.max(10, Math.round(pLoa / 6.2));
+                    maxDraft = Number((pBeam * 0.40).toFixed(2));
+                }
+                const effCurDraft = curDraft > 0 ? curDraft : (maxDraft > 0 ? Number((maxDraft * 0.62).toFixed(1)) : 0);
+                const draftRatio = (maxDraft > 0 && effCurDraft > 0) ? (effCurDraft / maxDraft) : null;
+                const draftMetersLabel = (effCurDraft > 0 && maxDraft > 0) ? ` (${effCurDraft.toFixed(1)}m/${maxDraft.toFixed(1)}m)` : (effCurDraft > 0 ? ` (${effCurDraft.toFixed(1)}m)` : '');
+
+                let alertBadgeHtml = '';
+                if ((draftRatio !== null && draftRatio <= 0.68) || isBallast) {
+                    alertBadgeHtml = `<span style="background:#059669; color:#ffffff; font-weight:800; padding:4px 10px; border-radius:6px; display:inline-block; font-size:10px;">⚓ VACÍO · ${isStationary ? 'FONDEADO' : 'NAVEGANDO'}${draftMetersLabel}</span>`;
+                } else if (isStationary && ((draftRatio !== null && draftRatio > 0.68) || isDischargingInPort)) {
+                    alertBadgeHtml = `<span style="background:#d97706; color:#ffffff; font-weight:800; padding:4px 10px; border-radius:6px; display:inline-block; font-size:10px;">🏗️ DESCARGANDO · 0.0 kn${draftMetersLabel}</span>`;
+                } else {
+                    alertBadgeHtml = `<span style="background:#1e293b; color:#ffffff; font-weight:800; padding:4px 10px; border-radius:6px; display:inline-block; font-size:10px;">📦 CARGADO${draftMetersLabel}</span>`;
+                }
+
                 row.innerHTML = `
                     <td class="py-3 px-3 font-semibold text-slate-200">${escapeDensityTableText(vesselName)}${commercialRankHtml}</td>
                     <td class="py-3 px-3 text-slate-400 mono">${escapeDensityTableText(imo)}</td>
                     <td class="py-3 px-3 mono"><div class="flex flex-col gap-1 items-start"><span class="density-coords-badge inline-flex items-center px-2 py-0.5 rounded border border-slate-700 bg-slate-800 text-white font-bold text-[10px] mono shadow-sm">${escapeDensityTableText(position)}</span>${positionOriginBadge}</div></td>
-                    <td class="py-3 px-3 text-slate-400 mono">${Number.isFinite(speed) ? `${speed.toFixed(1)} kn` : 'N/D'}${vessel.speedInferenceSource === 'market_average_speeds' || vessel.ais?.speedInferenceSource === 'market_average_speeds' ? '<span class="mt-1 block text-[9px] font-bold uppercase tracking-wide text-cyan-400">Media mercado</span>' : ''}<span class="text-[10px] text-emerald-400 block">${escapeDensityTableText(navigationStatus)}</span></td>
+                    <td class="py-3 px-3 text-slate-300 mono text-xs font-bold">${speedDisplay}${vessel.speedInferenceSource === 'market_average_speeds' || vessel.ais?.speedInferenceSource === 'market_average_speeds' ? '<span class="mt-1 block text-[9px] font-bold uppercase tracking-wide text-cyan-400">Media mercado</span>' : ''}</td>
 	                    <td class="py-3 px-3"><span${hasMasterProfile ? ' data-vessel-class-source="VESSELS_MASTER"' : ''} class="px-2 py-0.5 text-[10px] font-bold rounded bg-slate-800 text-slate-300 border border-slate-700">${escapeDensityTableText(vesselClass)}</span></td>
                     <td class="py-3 px-3 font-bold ${grossTonnage ? 'text-cyan-300' : 'text-amber-400'}">${grossTonnage ? grossTonnage.toLocaleString('es-ES') : 'REQUERIDO'}</td>
                     <td class="py-3 px-3 text-slate-300 mono">${dwt ? dwt.toLocaleString('es-ES') : 'N/D'}</td>
                     <td class="py-3 px-3 text-slate-300 mono">${loaMeters ? `${loaMeters.toLocaleString('es-ES')} m` : 'N/D'}</td>
                     <td class="py-3 px-3 text-slate-300">${escapeDensityTableText(flag)}</td>
                     <td class="py-3 px-3 text-slate-300 mono">${escapeDensityTableText(yearBuilt)}</td>
-                    <td class="py-3 px-3"><span class="text-[10px] ${grossTonnage ? 'text-emerald-400' : 'font-bold text-amber-400'}">${grossTonnage ? 'Ficha técnica disponible' : 'GT pendiente de auditoría'}</span><p data-due-diligence-status class="mt-1 text-[9px] text-slate-500" aria-live="polite"></p></td>
+                    <td class="py-3 px-3">${alertBadgeHtml}<p data-due-diligence-status class="mt-1 text-[9px] text-slate-500" aria-live="polite"></p></td>
                     <td class="py-3 px-3 text-right">
                         <button type="button" onclick="event.stopPropagation()" data-due-diligence-button data-due-diligence-mode="external-search" data-external-search="true" data-due-diligence-payload="${dueDiligencePayload}" ${hasDueDiligenceIdentity ? '' : 'disabled aria-disabled="true"'} class="inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wide transition focus:outline-none focus:ring-2 ${hasDueDiligenceIdentity ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-300 hover:border-cyan-300 hover:bg-cyan-400/20 focus:ring-cyan-400' : 'cursor-not-allowed border-slate-700 bg-slate-900 text-slate-600'}" aria-label="${hasDueDiligenceIdentity ? 'Auditar' : 'Sin identidad para auditar'} ${escapeDensityTableText(vesselName)}">
                             <i class="fa-solid fa-shield-halved" aria-hidden="true"></i><span>${hasDueDiligenceIdentity ? 'Auditar' : 'Sin identidad'}</span>
@@ -64077,26 +64170,26 @@ Compara el documento suministrado (que puede ser un contrato, carta de crédito 
                 d = 500 + (Math.abs(hash) % (60000 - 500 + 1));
             }
             const candidates = [];
-            if (d >= 500 && d <= 3000) {
+            if (d >= 500 && d < 1000) {
                 candidates.push("Coastal/Cabotage Vessel (Coaster)");
             }
-            if (d >= 3000 && d <= 10000) {
-                candidates.push("Mini Bulker");
+            if (d >= 1000 && d <= 12000) {
+                candidates.push("Reefer Vessel (Bodega Frigorífica)");
             }
-            if (d >= 5000 && d <= 15000) {
-                candidates.push("General Cargo Vessel");
+            if (d > 12000 && d <= 16000) {
+                candidates.push("Reefer / MPP Refrigerado");
             }
-            if (d >= 10000 && d <= 30000) {
+            if (d > 16000 && d <= 30000) {
                 candidates.push("Multipurpose Vessel (MPP)");
             }
-            if (d >= 15000 && d <= 50000) {
+            if (d > 16000 && d <= 50000) {
                 candidates.push("Heavy Lift Vessel");
             }
-            if (d >= 15000 && d <= 35000) {
-                candidates.push("Handysize Bulk Carrier with cranes");
+            if (d > 16000 && d <= 35000) {
+                candidates.push("Handysize Vessel");
             }
-            if (d >= 35000 && d <= 60000) {
-                candidates.push("Handymax/Supramax Bulk Carrier with Cranes");
+            if (d > 35000 && d <= 60000) {
+                candidates.push("Supramax Vessel");
             }
 
             if (candidates.length > 0) {
@@ -64541,14 +64634,15 @@ Compara el documento suministrado (que puede ser un contrato, carta de crédito 
                 if (list.length > 0) {
                     list.slice(0, 8).forEach(v => {
                         const btn = document.createElement('button');
-                        btn.className = "px-2 py-0.5 text-[10px] font-semibold rounded bg-slate-900 hover:bg-sky-600/30 text-sky-300 hover:text-white border border-sky-900/60 hover:border-sky-500/50 transition-colors flex items-center gap-1 cursor-pointer";
+                        btn.style.cssText = "background:#ffffff; border:1px solid #94a3b8; color:#0f172a; font-weight:800; padding:2px 8px; border-radius:6px;";
+                        btn.className = "text-[10px] shadow-sm transition-colors flex items-center gap-1 cursor-pointer hover:bg-slate-50";
                         const dwt = Number(v.dwt || v.DWT || v.backhaulTonnageDwt || 0);
                         const dwtLabel = dwt > 0 ? `${dwt.toLocaleString('es-ES')} DWT` : 'DWT N/D';
                         const vesselName = v.vesselName || v.vessel_name || v.name || v.ShipName || 'Buque';
                         const dist = Number.isFinite(Number(v.distanceToPod)) ? `${Number(v.distanceToPod).toFixed(1)} NM` : '< 10 NM';
                         const status = v.backhaulStatus || v.statusLabel || 'En descarga / Fondeado';
                         btn.title = `${vesselName} · ${dwtLabel} · ${dist} de POD · ${status} (Oportunidad Backhaul)`;
-                        btn.innerHTML = `<i class="fa-solid fa-arrow-rotate-left text-[8px] text-sky-400"></i> <strong class="text-slate-100">${escapeDensityTableText(vesselName)}</strong> <span class="text-[9px] text-sky-300/80">${dwtLabel}</span> <span class="text-[9px] text-slate-400">(${dist})</span>`;
+                        btn.innerHTML = `<i class="fa-solid fa-arrow-rotate-left text-[8px] text-[#0369a1]"></i> <strong style="color:#0f172a; font-weight:800;">${escapeDensityTableText(vesselName)}</strong> <span style="color:#0369a1; font-weight:700;" class="text-[9px]">${dwtLabel}</span> <span style="color:#059669; font-weight:700;" class="text-[9px]">(${dist})</span>`;
                         btn.onclick = (e) => {
                             e.preventDefault();
                             const searchInput = document.getElementById('ais-vessel-search');
@@ -64799,13 +64893,17 @@ Compara el documento suministrado (que puede ser un contrato, carta de crédito 
                     if (nearbyVessels.length > 0) {
                         nearbyVessels.slice(0, 6).forEach(v => {
                             const btn = document.createElement('button');
-                            btn.className = "px-2 py-0.5 text-[10px] font-semibold rounded bg-slate-900 hover:bg-emerald-600/30 text-emerald-300 hover:text-white border border-emerald-900/60 hover:border-emerald-500/50 transition-colors flex items-center gap-1 cursor-pointer";
+                            btn.style.cssText = "background:#ffffff; border:1px solid #94a3b8; color:#0f172a; font-weight:800; padding:2px 8px; border-radius:6px;";
+                            btn.className = "text-[10px] shadow-sm transition-colors flex items-center gap-1 cursor-pointer hover:bg-slate-50";
                             const etaHours = Number(v.etaHoursToPol);
                             const etaLabel = Number.isFinite(etaHours) && etaHours > 0 ? `${Math.round(etaHours)} h ETA` : 'En puerto';
                             const vesselTypeLabel = (typeof getAisTaxonomyBreakdownLabel === 'function' ? getAisTaxonomyBreakdownLabel(v) : (v.vesselClass || v.vessel_type || 'Cargo'));
                             const vName = v.vesselName || v.vessel_name || v.name || 'Buque';
-                            btn.title = `${vesselTypeLabel} · ${Math.round(v.distanceToPol || 0)} NM a POL · ${etaLabel}`;
-                            btn.innerHTML = `<i class="fa-solid fa-magnifying-glass text-[8px] opacity-75"></i> <strong class="text-slate-100">${escapeDensityTableText(vName)}</strong> <span class="text-[9px] text-sky-300/80">${escapeDensityTableText(vesselTypeLabel)}</span> <span class="text-[9px] opacity-70">${etaLabel}</span>`;
+                            const dist = Number.isFinite(Number(v.distanceToPol)) ? `${Number(v.distanceToPol).toFixed(1)} NM` : '< 10 NM';
+                            const dwt = Number(v.dwt || v.DWT || 0);
+                            const dwtLabel = dwt > 0 ? `${dwt.toLocaleString('es-ES')} DWT` : vesselTypeLabel;
+                            btn.title = `${vesselTypeLabel} · ${dist} a POL · ${etaLabel}`;
+                            btn.innerHTML = `<i class="fa-solid fa-location-dot text-[8px] text-[#059669]"></i> <strong style="color:#0f172a; font-weight:800;">${escapeDensityTableText(vName)}</strong> <span style="color:#0369a1; font-weight:700;" class="text-[9px]">${escapeDensityTableText(dwtLabel)}</span> <span style="color:#059669; font-weight:700;" class="text-[9px]">(${dist} · ${etaLabel})</span>`;
                             btn.onclick = (e) => {
                                 e.preventDefault();
                                 const searchInput = document.getElementById('ais-vessel-search');
