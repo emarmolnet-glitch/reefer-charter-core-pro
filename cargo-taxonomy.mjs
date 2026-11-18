@@ -251,11 +251,12 @@ export function filterCommercialVessels(vessels) {
 
 function cargoAllowsDesign(cargoTypeId, design) {
   if (design.nonCargo || design.tug || design.passenger) return false;
-  if (["10", "20", "30", "40", "50", "60"].includes(cargoTypeId) && (design.tanker || design.container)) return false;
-  if (design.declaredType === "unknown" || !design.declaredType) return true;
-  if (cargoTypeId === "10" || cargoTypeId === "20" || cargoTypeId === "30") {
-    return design.reefer || design.bulk || design.general || design.multipurpose;
+  if (["10", "20", "30"].includes(cargoTypeId)) {
+    if (design.container || design.bulk || design.tanker || design.cement || design.roro) return false;
+    return design.reefer || design.general || design.multipurpose;
   }
+  if (["40", "50", "60"].includes(cargoTypeId) && (design.tanker || design.container)) return false;
+  if (design.declaredType === "unknown" || !design.declaredType) return true;
   if (cargoTypeId === "70") return design.bulk || design.tanker || design.general;
   if (cargoTypeId === "80") return design.bulk || design.general || design.multipurpose || design.tanker;
   if (cargoTypeId === "90") return design.general || design.multipurpose || design.roro || design.bulk;
@@ -311,6 +312,9 @@ export function evaluateCargoVesselEligibility({
   const criticalReasons = [];
 
   if (!cargoAllowsDesign(normalizedCargoTypeId, design)) criticalReasons.push(`Diseño de buque incompatible: ${design.declaredType}`);
+  if (["10", "20", "30"].includes(normalizedCargoTypeId) && vesselDwt !== null && (vesselDwt < 1000 || vesselDwt > 18000)) {
+    criticalReasons.push(`DWT ${vesselDwt} MT fuera del rango operativo de buques frigoríficos de bodega (1.000 - 18.000 MT)`);
+  }
   if (cargoQuantity > 0 && vesselDwt === null) criticalReasons.push("DWT no disponible para validar capacidad");
   if (cargoQuantity > 0 && vesselDwt !== null && vesselDwt < cargoQuantity) criticalReasons.push(`DWT ${vesselDwt} MT inferior a la carga ${cargoQuantity} MT`);
   if (maxSuitableDwt !== null && vesselDwt !== null && vesselDwt > maxSuitableDwt) criticalReasons.push(`DWT ${vesselDwt} MT sobredimensionado para una operación de ${cargoQuantity} MT (MÁX ${Math.round((effectiveMaxDwtTolerance - 1) * 100)}% DE TOLERANCIA)`);

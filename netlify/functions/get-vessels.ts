@@ -4,6 +4,7 @@ import { filterVesselsByTaxonomies, parseRequestedTaxonomies } from "./_shared/a
 import { upsertRadarVesselsMaster } from "../../db/vessels-master-sync.js";
 import { evaluateCommercialTransitToPol, LONG_DISTANCE_TRANSIT_LABEL } from "./_shared/ais-commercial-transit.mjs";
 import { buildCommercialVesselRank, compareCommercialVesselRanks } from "./_shared/commercial-vessel-ranking.mjs";
+import { fetchAisStreamAndNeonFallback, persistMerchantFleetInNeon } from "./_shared/aisCoordinator.js";
 
 type VesselMessage = Record<string, unknown>;
 declare const process: { env: Record<string, string | undefined> };
@@ -1089,13 +1090,20 @@ export async function handleGetVessels(req: Request) {
   }
 
   if (forceLive) {
+    const lat = numberParam(url, ["lat", "latitude", "pol_lat", "sw_lat"], 0);
+    const lon = numberParam(url, ["lon", "lng", "longitude", "pol_lon", "sw_lon"], 0);
+    const radius = numberParam(url, ["radius", "radiusNm", "radius_nm"], 30);
+    const fallbackResult = await fetchAisStreamAndNeonFallback({ lat, lon, radius });
+    const liveVessels = Array.isArray(fallbackResult.data) ? fallbackResult.data : [];
+    void persistMerchantFleetInNeon(liveVessels).catch(() => {});
     return vesselsResponse({
-      success: false,
-      vessels: [],
-      source: "aisstream-client-only",
-      error: "AISSTREAM_BACKEND_DISABLED",
-      message: "Los barridos AISStream desde backend están deshabilitados. Radar usa exclusivamente Datalastic y Tracking abre AISStream en el navegador.",
-    }, { status: 410 });
+      success: true,
+      vessels: liveVessels,
+      source: "aisstream-live-sweep",
+      liveConnection: true,
+      updatedAt: Date.now(),
+      message: `Barrido AISStream completado con éxito (${liveVessels.length} buques detectados).`,
+    }, { status: 200 });
   }
 
   const storedVessels = await readStoredVesselMessages(Math.max(requestedQuantity, STORED_LOOKUP_LIMIT), url);

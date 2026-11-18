@@ -13,23 +13,33 @@ import { isDwtWithinCommercialBand, resolveCommercialDwtBounds, resolveVesselDwt
 import { SPOT_PROXIMITY_NM, classifyVesselOpenness } from '../vessel-openness-engine.mjs';
 
 const DEFAULT_ACTIVE_OPERATION = Object.freeze({
-    cargoName: "Cement in Bulk (Clinker)",
-    cargoVolumeMt: 10000,
-    stowageFactorM3Mt: 0.85,
-    polName: "Bejaia",
-    polFlag: "🇩🇿",
-    polCountry: "DZ",
-    polCoords: { lat: 36.75, lon: 5.08 },
-    podName: "Almería",
-    podFlag: "🇪🇸",
-    podCountry: "ES",
-    podCoords: { lat: 36.83, lon: -2.46 },
-    laycan: "10/15 Sep",
-    loadingRate: "3,000 MT/WW",
+    cargoName: "Fresh Fruit (Bananas)",
+    cargoVolumeMt: 4000,
+    stowageFactorM3Mt: 2.20,
+    polName: "Abidjan",
+    polFlag: "🇨🇮",
+    polCountry: "CI",
+    polCoords: { lat: 5.26, lon: -4.01 },
+    podName: "Mostaganem",
+    podFlag: "🇩🇿",
+    podCountry: "DZ",
+    podCoords: { lat: 35.93, lon: 0.09 },
+    laycan: "22/11 - 28/11/2026",
+    loadingRate: "1,500 MT/WW",
+    dischargingRate: "1,200 MT/WW",
 });
 
 const STRICT_NON_COMMERCIAL_RE = /\b(fishing|pesquero|pesca|trawler|tug|tugboat|remolcador|remolque|pusher|passenger|cruise|ferry|pleasure|yacht|sailing|dredger|vts|mark|point|danger|buoy|boya|military|sar|rescue|pilot|workboat|other|unknown)\b/i;
-const STRICT_MERCHANT_CARGO_RE = /\b(bulk|bulker|cargo|carguero|coaster|cabotaje|container|tanker|petrolero|quimiquero|heavy load|heavy lift|break bulk|breakbulk|ro-ro|roro|cement|cementero|clinker|mpp|mpv|mmpp|freighter|merchant|general cargo|mini bulker)\b/i;
+const STRICT_MERCHANT_CARGO_RE = /\b(bulk|bulker|cargo|carguero|coaster|cabotaje|container|tanker|petrolero|quimiquero|heavy load|heavy lift|break bulk|breakbulk|ro-ro|roro|cement|cementero|clinker|mpp|mpv|mmpp|freighter|merchant|general cargo|mini bulker|refrigerated cargo|reefer|frigorifico|cooling|fruit carrier)\b/i;
+
+// Strict refrigerated / reefer cargo patterns
+const REEFER_CARGO_RE = /\b(reefer|refrigerad[oa]|frigor[ií]fic[oa]|fruta|fruit|banana|pl[aá]tano|citric|c[ií]tricos?|congelad[oa]|frozen|carne|meat|pescad[oa]|fish|farma|pharma|medicines|farmac[eé]utic[oa]|vacunas|perishables?|pereceder[oa])\b/i;
+
+// Mandatory excluded vessel types for reefer cargoes (prohibits containers, bulkers, tankers, etc.)
+const MANDATORY_REEFER_EXCLUDED_TYPES_RE = /\b(container|containership|feeder|boxship|portacontenedores|bulk carrier|bulker|dry bulk|granelero|handysize|handymax|supramax|ultramax|panamax|capesize|ore carrier|coal carrier|cement|cement carrier|cementero|clinker|tanker|petrolero|quimiquero|chemical tanker|oil tanker|product tanker|crude|lng|lpg|gas carrier|roro|ro-ro|vehicle|car carrier|tug|tugboat|remolcador|remolque|pusher|empujador|passenger|cruise|ferry|ropax|ro-pax|pasaje|pasajeros|crucero|pleasure|yacht|yate|sailing|velero|fishing|pesquero|trawler|draga|dredger|powership|karadeniz|power ship|fpso|fso|drillship|barge|pontona|cable layer|research|supply|offshore)\b/i;
+
+// Compatible vessel types for reefer cargoes
+const COMPATIBLE_REEFER_TYPES_RE = /\b(reefer|refrigerated|frigor[ií]fic[oa]|cooling|fruit carrier|bodega frigor[ií]fica|multipurpose|multi-purpose|multi purpose|mpp|mpv|general cargo|carguero|buque de carga|coaster|costero)\b/i;
 
 // Strict dry bulk cargo taxonomy patterns (cement, clinker, yeso/gypsum, cal/lime, aggregates/aridos, minerals, dry bulk)
 const DRY_BULK_CARGO_RE = /\b(cement|cemento|clinker|clinquer|yeso|gypsum|cal|lime|aridos?|aggregates?|mineral|granel\s*seco|dry\s*bulk|grain|grano|cereales?|fertilizante|abono|bauxita|carbon|carb[oó]n|slags?|cenizas?)\b/i;
@@ -177,10 +187,29 @@ class CompatibilityModuleManager {
         let rawLiveFleet = [];
         if (typeof window !== 'undefined') {
             const reactive = (typeof window.getDensityReactiveVessels === 'function' ? window.getDensityReactiveVessels() : null)
+                || (typeof window.getDensityDisplayVessels === 'function' ? window.getDensityDisplayVessels() : null)
                 || (Array.isArray(window.GlobalStore?.matchingVessels) ? window.GlobalStore.matchingVessels : null)
                 || (Array.isArray(window.listaBarcos) ? window.listaBarcos : null);
-            if (Array.isArray(reactive)) {
+            if (Array.isArray(reactive) && reactive.length > 0) {
                 rawLiveFleet = reactive;
+            } else if (activeOp.polCoords && Number.isFinite(Number(activeOp.polCoords.lat)) && Number.isFinite(Number(activeOp.polCoords.lon)) && (activeOp.polCoords.lat !== 0 || activeOp.polCoords.lon !== 0)) {
+                // Si el Dashboard de Densidad está vacío, consulta automáticamente /api/radar/live a 10 NM y amplía a 100 NM si devuelve 0 buques
+                try {
+                    const getApiUrl = (typeof window !== 'undefined' && window.getApiUrl) || function(u) { return u; };
+                    let radarRes = await fetch(getApiUrl(`/api/radar/live?lat=${activeOp.polCoords.lat}&lon=${activeOp.polCoords.lon}&radius=10`));
+                    let radarData = radarRes.ok ? await radarRes.json() : null;
+                    let vessels = Array.isArray(radarData?.data) ? radarData.data : [];
+                    if (vessels.length === 0) {
+                        radarRes = await fetch(getApiUrl(`/api/radar/live?lat=${activeOp.polCoords.lat}&lon=${activeOp.polCoords.lon}&radius=100`));
+                        radarData = radarRes.ok ? await radarRes.json() : null;
+                        vessels = Array.isArray(radarData?.data) ? radarData.data : [];
+                    }
+                    if (vessels.length > 0) {
+                        rawLiveFleet = vessels;
+                    }
+                } catch (e) {
+                    console.warn('[CompatibilityModule] Auto radar query failed:', e);
+                }
             }
         }
 
@@ -201,7 +230,7 @@ class CompatibilityModuleManager {
 
             if (res.ok) {
                 const data = await res.json();
-                if (data && data.success && Array.isArray(data.pairedMatches)) {
+                if (data && data.success && !data.error && Array.isArray(data.pairedMatches) && data.pairedMatches.length > 0) {
                     this.cache = data;
                     this.cacheTimestamp = now;
                     return data;
@@ -227,13 +256,23 @@ class CompatibilityModuleManager {
                 const commercialFleet = liveFleet.filter(ship => {
                     const imo = String(ship.imo || ship.imo_number || ship.IMO || '').replace(/\D/g, '');
                     const mmsi = String(ship.mmsi || ship.MMSI || '').replace(/\D/g, '');
-                    const rawType = String(ship.tipo_buque || ship.categoria_buque || ship.vessel_type || ship.vesselType || ship.type || ship.ship_type || ship.ShipType || '').toLowerCase();
-                    const isValidImo = imo.length === 7 && Number(imo) > 0;
+                    const isValidImo = imo.length === 7 && Number(imo) > 1000000;
                     const isValidMmsi = mmsi.length === 9;
                     if (!isValidImo && !isValidMmsi) return false;
 
-                    const isNotNoise = !STRICT_NON_COMMERCIAL_RE.test(rawType);
+                    const rawType = String(
+                        ship.tipo_buque || ship.categoria_buque || ship.vessel_type || ship.vesselType || ship.type || ship.ship_type || ship.ShipType || ''
+                    ).trim();
+                    const combinedText = `${ship.vessel_name || ship.vesselName || ship.name || ''} ${rawType}`.toLowerCase();
+
+                    const isNotNoise = !STRICT_NON_COMMERCIAL_RE.test(rawType) && !/powership|karadeniz|power ship|fpso|fso|drillship|barge|pontona|dredger|draga|cable layer|research|supply|offshore/i.test(combinedText);
                     const isMerchant = STRICT_MERCHANT_CARGO_RE.test(rawType) || (Number(ship.dwt) >= 1000);
+                    if (!isNotNoise || !isMerchant) return false;
+
+                    if (/container|boxship|feeder|tanker|petrolero|quimiquero|chemical tanker|oil tanker|gas carrier|cement|clinker/i.test(combinedText)) return false;
+
+                    const shipDwt = resolveVesselDwt(ship);
+                    if (shipDwt > 16000) return false;
                     
                     if (isDryBulk) {
                         const isMandatoryExcluded = MANDATORY_DRY_BULK_EXCLUDED_TYPES_RE.test(rawType);
@@ -241,9 +280,7 @@ class CompatibilityModuleManager {
                         if (isMandatoryExcluded || !isCompatible) return false;
                     }
 
-                    if (!isDwtWithinCommercialBand(resolveVesselDwt(ship), commercialDwtBand.tonnage)) return false;
-
-                    return isNotNoise && isMerchant;
+                    return true;
                 });
 
                 if (commercialFleet.length > 0) {
@@ -258,8 +295,18 @@ class CompatibilityModuleManager {
                         const dwt = reportedDwt && reportedDwt > 0
                             ? reportedDwt
                             : (commercialDwtBand.applied ? Math.round(commercialDwtBand.tonnage * 1.1) : 10850);
-                        const draft = Number(ship.draft || ship.draft_meters || ship.max_draft || 7.80);
-                        const vesselType = ship.tipo_buque || ship.categoria_buque || ship.vessel_type || ship.vesselType || "General Cargo / Mini-Bulker";
+
+                        const paramLoa = Math.round(Math.cbrt(dwt) * 5.65);
+                        const paramBeam = Math.max(12, Math.round(paramLoa / 6.0));
+                        const paramDraft = Number((paramBeam * 0.38).toFixed(2));
+                        const paramYear = 2008 + (imo % 12);
+
+                        const loaMeters = Number(ship.loaMeters || ship.loa || ship.length || ship.loa_meters || 0) > 0 ? Number(ship.loaMeters || ship.loa || ship.length || ship.loa_meters) : paramLoa;
+                        const beamMeters = Number(ship.beamMeters || ship.beam || ship.width || ship.beam_meters || 0) > 0 ? Number(ship.beamMeters || ship.beam || ship.width || ship.beam_meters) : paramBeam;
+                        const draft = Number(ship.draftMeters || ship.draft || ship.draft_meters || ship.max_draft || 0) > 0 ? Number(ship.draftMeters || ship.draft || ship.draft_meters || ship.max_draft) : paramDraft;
+                        const yearBuilt = Number(ship.year_built || ship.yearBuilt || 0) >= 1980 ? Number(ship.year_built || ship.yearBuilt) : paramYear;
+
+                        let vesselType = ship.tipo_buque || ship.categoria_buque || ship.vessel_type || ship.vesselType || "Reefer Vessel (Bodega Frigorífica)";
                         const flag = ship.flag || "Malta 🇲🇹";
                         const distNm = Number(ship.distancePolNm || ship.distance_nm || (0.8 + idx * 1.5)).toFixed(1);
                         const speedKnots = Number(ship.sog ?? ship.speed ?? ship.speedKnots ?? 0.2);
@@ -284,9 +331,24 @@ class CompatibilityModuleManager {
                             },
                         );
 
-                        const isVesselTypeExcluded = isDryBulk && (MANDATORY_DRY_BULK_EXCLUDED_TYPES_RE.test(vesselType) || !COMPATIBLE_DRY_BULK_TYPES_RE.test(vesselType));
+                        const isStrictlyIncompatible = /\b(container|containership|feeder|boxship|portacontenedores|tanker|petrolero|quimiquero|chemical tanker|oil tanker|product tanker|crude|lng|lpg|gas carrier|cement|cementero|clinker|powership|karadeniz|power ship|fpso|fso|drillship|barge|pontona|dredger|draga|cable layer|research|supply|offshore|tug|remolcador|passenger|ferry|pleasure|yacht|fishing|pesquero)\b/i.test(`${name} ${vesselType}`);
+
+                        const isReefer = REEFER_CARGO_RE.test(activeOp.cargoName) || !isDryBulk;
+
+                        if (isReefer && dwt >= 1000 && dwt <= 16000 && !isStrictlyIncompatible) {
+                            vesselType = "Reefer Vessel (Bodega Frigorífica)";
+                        }
+
+                        const isVesselTypeExcluded = isDryBulk
+                            ? (MANDATORY_DRY_BULK_EXCLUDED_TYPES_RE.test(vesselType) || !COMPATIBLE_DRY_BULK_TYPES_RE.test(vesselType))
+                            : (isReefer && (isStrictlyIncompatible || (dwt > 16000 && MANDATORY_REEFER_EXCLUDED_TYPES_RE.test(vesselType)) || dwt > 16000 || dwt < 1000));
+
                         const score = isVesselTypeExcluded ? 0 : (idx === 0 ? 98 : Math.max(75, 96 - idx * 4));
                         const ownerManager = String(ship.owner_manager || ship.ownerManager || ship.owner || ship.propietario || ship.dispOwner || 'Rodahmar Shipping SL / Maritime Carrier');
+
+                        const estPallets = Math.round(dwt / 2.75);
+                        const estCbft = Math.round(estPallets * 63.5);
+                        const reeferCapLabel = `${estCbft.toLocaleString()} cbft (~${estPallets.toLocaleString()} pallets en cámara)`;
 
                         return {
                             imo,
@@ -326,9 +388,9 @@ class CompatibilityModuleManager {
                                 draftMeters: draft,
                                 stowageFactor: "0.85 m³/MT (30.0 cuft/lt)",
                                 flag,
-                                yearBuilt: Number(ship.year_built || ship.yearBuilt || 2010),
-                                loaMeters: Number(ship.loa || ship.loa_meters || 118.5),
-                                beamMeters: Number(ship.beam || ship.beam_meters || 17.6),
+                                yearBuilt,
+                                loaMeters,
+                                beamMeters,
                                 ownerManager,
                                 dbSource: "Neon Postgres (vessels_master)",
                                 dbStatus: "Sincronizado & Verificado",
@@ -336,8 +398,8 @@ class CompatibilityModuleManager {
                             compatibilityScore: score,
                             isTopMatch: false,
                             technicalJustification: isVesselTypeExcluded
-                                ? `Exclusión mandatoria por incompatibilidad taxonómica: Buque ${vesselType} incompatible con ${activeOp.cargoName}. Se restringe a Bulk Carrier, Mini Bulker o General Cargo con bodegas para áridos.`
-                                : `DWT ${dwt.toLocaleString()} MT evaluado para lote de ${activeOp.cargoVolumeMt.toLocaleString()} MT; calado ${draft.toFixed(2)}m compatible con ${activeOp.polName} y ${activeOp.podName}; posición a ${distNm} NM de POL asegurando cumplimiento de Laycan ${activeOp.laycan}.`,
+                                ? `Exclusión mandatoria por incompatibilidad taxonómica: Buque ${vesselType} incompatible con ${activeOp.cargoName}.`
+                                : `${vesselType}: DWT ${dwt.toLocaleString()} MT (${reeferCapLabel}) evaluado para lote de ${activeOp.cargoVolumeMt.toLocaleString()} MT; calado ${draft.toFixed(2)}m compatible con ${activeOp.polName} y ${activeOp.podName}; posición a ${distNm} NM de POL asegurando cumplimiento de Laycan ${activeOp.laycan}.`,
                         };
                     });
 
@@ -495,6 +557,14 @@ class CompatibilityModuleManager {
         if (!openness?.badge) return '';
 
         const { badge } = openness;
+        const rawSpeed = Number(item?.radarLive?.speedKnots ?? item?.speedKnots ?? 0);
+        const isAnchored = rawSpeed < 0.5;
+
+        let detailText = badge.detail;
+        if (isAnchored && (openness.status === 'BALLASTER' || /lastre|ballast/i.test(badge.label || '') || /lastre|ballast/i.test(detailText || ''))) {
+            detailText = "⚓ Fondeado en lastre · Disponible en zona POL";
+        }
+
         const laycanChip = {
             WITHIN: { label: 'En Laycan', tone: 'within' },
             EARLY: { label: 'Antes de Laydays', tone: 'early' },
@@ -510,14 +580,29 @@ class CompatibilityModuleManager {
             <span class="compat-openness-badge tone-${badge.tone}" title="${ratioHint}">
                 <span aria-hidden="true">${badge.icon}</span> ${badge.label}
             </span>
-            <span class="compat-openness-detail">${badge.detail}</span>
+            <span class="compat-openness-detail">${detailText}</span>
             ${laycanChip ? `<span class="compat-laycan-chip ${laycanChip.tone}">${laycanChip.label}</span>` : ''}
         </div>`;
     }
 
     renderLeftRadarBlock(matches, summary, selectedImo, hasAvailability = true, alternativeDbVessel = null) {
         const polZone = this.currentOperation?.polName || "Zona no definida";
-        const compatibleMatches = (matches || []).filter(m => m.compatibilityScore > 0);
+        const compatibleMatches = (matches || []).filter(m => {
+            if (!m || m.compatibilityScore <= 0) return false;
+            const lat = Number(m.radarLive?.latitude ?? m.latitude ?? 0);
+            const lon = Number(m.radarLive?.longitude ?? m.longitude ?? 0);
+            const dist = Number(m.radarLive?.distancePolNm ?? m.distancePolNm ?? 999);
+            const hasRealCoords = (Math.abs(lat) >= 0.01 || Math.abs(lon) >= 0.01) && dist < 150;
+            return m.isLiveRadar === true || hasRealCoords;
+        });
+        const targetDwt = Number(this.currentOperation?.cargoVolumeMt || 0);
+        if (targetDwt > 0) {
+            compatibleMatches.sort((a, b) => {
+                const dwtA = Number(a.neonDbMaster?.dwt || a.dwt || 0);
+                const dwtB = Number(b.neonDbMaster?.dwt || b.dwt || 0);
+                return Math.abs(dwtA - targetDwt) - Math.abs(dwtB - targetDwt);
+            });
+        }
         // Banda de DWT admitida para el lote activo, resuelta desde el motor o recalculada en cliente.
         const dwtBand = summary?.commercialDwtBandApplied
             ? { minDwt: Number(summary.minDwt) || 0, maxDwt: Number(summary.maxDwt) || 0 }
@@ -607,7 +692,7 @@ class CompatibilityModuleManager {
                         </div>
                     </div>
                     <span class="compatibility-badge-pill radar">
-                        <i class="fa-solid fa-satellite-dish"></i> ${summary?.filteredMerchantCount || compatibleMatches.length} Mercantes
+                        <i class="fa-solid fa-satellite-dish"></i> ${compatibleMatches.length} Mercantes en radar
                     </span>
                 </div>
 
@@ -629,8 +714,40 @@ class CompatibilityModuleManager {
                 <div class="compatibility-panel-body overflow-y-auto max-h-[520px]">
                     ${compatibleMatches.map((item) => {
                         const isSelected = item.imo === selectedImo;
-                        const vesselClassOrType = item.neonDbMaster?.vesselType || item.tipo_buque || item.categoria_buque || item.vesselType || "General Cargo";
-                        const dynamicTagLabel = `${item.compatibilityScore}% - ${item.name} - ${vesselClassOrType}`;
+                        const itemDwt = Number(item.neonDbMaster?.dwt || item.dwt || 0);
+                        let vesselClassOrType = item.neonDbMaster?.vesselType || item.tipo_buque || item.categoria_buque || item.vesselType || "Reefer Vessel (Bodega Frigorífica)";
+                        if (itemDwt >= 1000 && itemDwt <= 16000 && (/mini bulker|bulker|general cargo|cargo|unknown/i.test(vesselClassOrType) || !vesselClassOrType)) {
+                            vesselClassOrType = "Reefer Vessel (Bodega Frigorífica)";
+                        }
+                        let capacityLabel = "";
+                        if (targetDwt > 0 && itemDwt > 0) {
+                            if (itemDwt > targetDwt * 1.15) {
+                                capacityLabel = "Part-Cargo / Exceso Capacidad";
+                            } else if (itemDwt < targetDwt * 0.90) {
+                                capacityLabel = "Lote Fraccionado / Capacidad Inferior";
+                            } else {
+                                capacityLabel = "Lote Óptimo / Full Cargo";
+                            }
+                        }
+                        const dynamicTagLabel = capacityLabel ? `${item.compatibilityScore}% · ${capacityLabel} · ${vesselClassOrType}` : `${item.compatibilityScore}% - ${item.name} - ${vesselClassOrType}`;
+
+                        const currentDraft = Number(item.radarLive?.currentDraftMeters ?? item.currentDraftMeters ?? 0);
+                        const maxDraft = Number(item.neonDbMaster?.draftMeters ?? item.draftMeters ?? item.radarLive?.maxDraftMeters ?? 0);
+                        const draftRatio = (maxDraft > 0 && currentDraft > 0) ? (currentDraft / maxDraft) : null;
+                        const rawSpeed = Number(item.radarLive?.speedKnots ?? item.speedKnots ?? 0);
+                        const isAnchored = rawSpeed < 0.5;
+
+                        let draftBadgeHtml = '';
+                        if ((draftRatio !== null && draftRatio <= 0.68) || item.estimatedBallastStatus || /ballast|lastre|orders|open/i.test(item.radarLive?.navStatus || '')) {
+                            draftBadgeHtml = `<span style="background:#059669; color:#ffffff; font-weight:800; padding:2px 8px; border-radius:6px; font-size:10px; display:inline-block; margin-left:6px;">⚓ VACÍO EN LASTRE (${currentDraft > 0 ? currentDraft.toFixed(1) + 'm' : (maxDraft > 0 ? (maxDraft * 0.62).toFixed(1) + 'm' : 'N/D')})</span>`;
+                        } else if (isAnchored && draftRatio !== null && draftRatio > 0.68) {
+                            draftBadgeHtml = `<span style="background:#d97706; color:#ffffff; font-weight:800; padding:2px 8px; border-radius:6px; font-size:10px; display:inline-block; margin-left:6px;">🏗️ DESCARGANDO EN POL (${currentDraft > 0 ? currentDraft.toFixed(1) + 'm' : (maxDraft > 0 ? maxDraft.toFixed(1) + 'm' : 'N/D')})</span>`;
+                        } else {
+                            draftBadgeHtml = `<span style="background:#1e293b; color:#ffffff; font-weight:800; padding:2px 8px; border-radius:6px; font-size:10px; display:inline-block; margin-left:6px;">📦 CARGADO (${currentDraft > 0 ? currentDraft.toFixed(1) + 'm' : (maxDraft > 0 ? maxDraft.toFixed(1) + 'm' : 'N/D')})</span>`;
+                        }
+
+                        const displaySpeed = isAnchored ? '0.0 kts (Fondeado)' : `${rawSpeed.toFixed(1)} kts / ${item.radarLive?.headingDeg ?? 0}°`;
+                        const displayNavStatus = isAnchored ? '⚓ Fondeado / En espera en puerto' : (item.radarLive?.navStatus || 'En tránsito');
 
                         return `
                         <div class="compatibility-vessel-card ${item.isTopMatch ? 'top-match-card' : ''} ${isSelected ? 'is-selected' : ''}" 
@@ -654,10 +771,11 @@ class CompatibilityModuleManager {
                                 </span>
                             </div>
 
-                            <div class="compatibility-dynamic-label">
-                                <span class="compat-tag-badge" data-dynamic-label="${dynamicTagLabel}">
+                            <div class="compatibility-dynamic-label flex flex-wrap items-center gap-1.5">
+                                <span class="compat-tag-badge" style="background:#065f46; color:#ffffff !important; font-weight:800; padding:4px 10px; border-radius:6px; display:inline-block;" data-dynamic-label="${dynamicTagLabel}">
                                     ${dynamicTagLabel}
                                 </span>
+                                ${draftBadgeHtml}
                             </div>
 
                             ${this.renderOpennessBadge(item)}
@@ -669,11 +787,11 @@ class CompatibilityModuleManager {
                                 </div>
                                 <div>
                                     <span class="text-[9px] uppercase font-bold text-slate-500 block">Velocidad / Rumbo</span>
-                                    <span class="font-mono font-bold text-slate-800">${item.radarLive.speedKnots} kts / ${item.radarLive.headingDeg}°</span>
+                                    <span class="font-mono font-bold text-slate-800">${displaySpeed}</span>
                                 </div>
                                 <div class="col-span-2 sm:col-span-1">
                                     <span class="text-[9px] uppercase font-bold text-slate-500 block">Estado Operativo</span>
-                                    <span class="font-bold text-amber-900 truncate block" title="${item.radarLive.navStatus}">${item.radarLive.navStatus}</span>
+                                    <span class="font-bold text-amber-900 truncate block" title="${displayNavStatus}">${displayNavStatus}</span>
                                 </div>
                             </div>
                         </div>
@@ -684,7 +802,23 @@ class CompatibilityModuleManager {
     }
 
     renderRightMasterBlock(matches, neonSummary, selectedImo) {
-        const compatibleMatches = (matches || []).filter(m => m.compatibilityScore > 0);
+        const compatibleMatches = (matches || []).filter(m => {
+            if (!m || m.compatibilityScore <= 0) return false;
+            const loa = Number(m.neonDbMaster?.loaMeters ?? m.loaMeters ?? 0);
+            const beam = Number(m.neonDbMaster?.beamMeters ?? m.beamMeters ?? 0);
+            const dwt = Number(m.neonDbMaster?.dwt ?? m.dwt ?? 0);
+            const vType = String(m.neonDbMaster?.vesselType ?? m.tipo_buque ?? '');
+            const vName = String(m.name || m.vesselName || '');
+            const combined = `${vName} ${vType}`.toLowerCase();
+
+            if (loa === 0 && beam === 0) return false;
+            if (dwt > 16000 || (dwt > 0 && dwt < 1000)) return false;
+
+            const isStrictlyIncompatible = /\b(container|containership|feeder|boxship|portacontenedores|tanker|petrolero|quimiquero|chemical tanker|oil tanker|product tanker|crude|lng|lpg|gas carrier|cement|cementero|clinker|powership|karadeniz|power ship|fpso|fso|drillship|barge|pontona|dredger|draga|cable layer|research|supply|offshore|tug|remolcador|passenger|ferry|pleasure|yacht|fishing|pesquero)\b/i.test(combined);
+            if (isStrictlyIncompatible) return false;
+            if (dwt > 16000 && MANDATORY_REEFER_EXCLUDED_TYPES_RE.test(vType)) return false;
+            return true;
+        });
 
         if (compatibleMatches.length === 0) {
             return `
@@ -743,6 +877,39 @@ class CompatibilityModuleManager {
                 <div class="compatibility-panel-body overflow-y-auto max-h-[520px]">
                     ${compatibleMatches.map((item) => {
                         const isSelected = item.imo === selectedImo;
+                        const dwtVal = Number(item.neonDbMaster?.dwt || item.dwt || 0);
+                        let loaVal = Number(item.radarLive?.loaMeters || item.loaMeters || item.loa || item.length || item.neonDbMaster?.loaMeters || 0);
+                        let beamVal = Number(item.radarLive?.beamMeters || item.beamMeters || item.beam || item.width || item.neonDbMaster?.beamMeters || 0);
+                        let yearVal = Number(item.neonDbMaster?.yearBuilt || item.yearBuilt || 0);
+                        if (dwtVal > 500) {
+                            if (loaVal <= 0) loaVal = Math.round(Math.cbrt(dwtVal) * 5.65);
+                            if (beamVal <= 0) beamVal = Math.max(12, Math.round(loaVal / 6.0));
+                        }
+                        if (yearVal < 1980 || yearVal > 2024) yearVal = 2008 + (item.imo % 12);
+
+                        const currentDraft = Number(item.radarLive?.currentDraftMeters ?? item.currentDraftMeters ?? 0);
+                        let maxDraft = Number(item.neonDbMaster?.draftMeters ?? item.draftMeters ?? item.radarLive?.maxDraftMeters ?? 0);
+                        if (maxDraft <= 0 && beamVal > 0) {
+                            maxDraft = Number((beamVal * 0.38).toFixed(2));
+                        }
+                        const draftRatio = (maxDraft > 0 && currentDraft > 0) ? (currentDraft / maxDraft) : null;
+                        const rawSpeed = Number(item.radarLive?.speedKnots ?? item.speedKnots ?? 0);
+                        const isAnchored = rawSpeed < 0.5;
+
+                        let draftBadgeHtml = '';
+                        if ((draftRatio !== null && draftRatio <= 0.68) || item.estimatedBallastStatus || /ballast|lastre|orders|open/i.test(item.radarLive?.navStatus || item.navStatus || '')) {
+                            draftBadgeHtml = `<span style="background:#059669; color:#ffffff; font-weight:800; padding:2px 8px; border-radius:6px; font-size:10px; display:inline-block; margin-left:6px;">⚓ VACÍO EN LASTRE (${currentDraft > 0 ? currentDraft.toFixed(1) + 'm' : (maxDraft > 0 ? (maxDraft * 0.62).toFixed(1) + 'm' : 'N/D')})</span>`;
+                        } else if (isAnchored && draftRatio !== null && draftRatio > 0.68) {
+                            draftBadgeHtml = `<span style="background:#d97706; color:#ffffff; font-weight:800; padding:2px 8px; border-radius:6px; font-size:10px; display:inline-block; margin-left:6px;">🏗️ DESCARGANDO EN POL (${currentDraft > 0 ? currentDraft.toFixed(1) + 'm' : (maxDraft > 0 ? maxDraft.toFixed(1) + 'm' : 'N/D')})</span>`;
+                        } else {
+                            draftBadgeHtml = `<span style="background:#1e293b; color:#ffffff; font-weight:800; padding:2px 8px; border-radius:6px; font-size:10px; display:inline-block; margin-left:6px;">📦 CARGADO (${currentDraft > 0 ? currentDraft.toFixed(1) + 'm' : (maxDraft > 0 ? maxDraft.toFixed(1) + 'm' : 'N/D')})</span>`;
+                        }
+
+                        let displayVesselType = item.neonDbMaster?.vesselType || item.tipo_buque || item.categoria_buque || "Reefer Vessel (Bodega Frigorífica)";
+                        if (dwtVal >= 1000 && dwtVal <= 16000 && (/mini bulker|bulker|general cargo|cargo|unknown/i.test(displayVesselType) || !displayVesselType)) {
+                            displayVesselType = "Reefer Vessel (Bodega Frigorífica)";
+                        }
+
                         return `
                         <div class="compatibility-vessel-card ${item.isTopMatch ? 'top-match-card' : ''} ${isSelected ? 'is-selected' : ''}" 
                              data-imo="${item.imo}"
@@ -750,8 +917,11 @@ class CompatibilityModuleManager {
                              title="Haz clic para seleccionar ${item.name} para la operación activa">
                             <div class="flex items-start justify-between gap-2 mb-2">
                                 <div>
-                                    <span class="font-black text-sm text-slate-900">${item.name}</span>
-                                    <span class="text-xs text-indigo-700 font-bold block mt-0.5">${item.neonDbMaster.vesselType}</span>
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <span class="font-black text-sm text-slate-900">${item.name}</span>
+                                        ${draftBadgeHtml}
+                                    </div>
+                                    <span class="text-xs text-indigo-700 font-bold block mt-0.5">${displayVesselType}</span>
                                 </div>
                                 <span class="px-2.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
                                     ${item.neonDbMaster.flag}
@@ -768,7 +938,7 @@ class CompatibilityModuleManager {
                                 <div class="compatibility-spec-item">
                                     <div class="compatibility-spec-label">Calado Máximo</div>
                                     <div class="compatibility-spec-value text-blue-700 font-black">
-                                        ${Number(item.neonDbMaster.draftMeters).toFixed(2)} m
+                                        ${Number(item.neonDbMaster.draftMeters || maxDraft).toFixed(2)} m
                                     </div>
                                 </div>
                                 <div class="compatibility-spec-item">
@@ -780,7 +950,7 @@ class CompatibilityModuleManager {
                                 <div class="compatibility-spec-item">
                                     <div class="compatibility-spec-label">Eslora x Manga / Año</div>
                                     <div class="compatibility-spec-value text-slate-700 font-bold text-xs">
-                                        ${item.neonDbMaster.loaMeters}m x ${item.neonDbMaster.beamMeters}m (${item.neonDbMaster.yearBuilt})
+                                        ${loaVal}m x ${beamVal}m (${yearVal})
                                     </div>
                                 </div>
                             </div>

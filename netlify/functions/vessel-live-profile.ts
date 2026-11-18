@@ -143,6 +143,16 @@ export function normalizeAisStreamSnapshot(value: unknown): UnknownRecord {
   const latitude = numberValue(scopes, ["Latitude", "latitude", "lat"]);
   const longitude = numberValue(scopes, ["Longitude", "longitude", "lon", "lng"]);
   const mmsi = digitsOnly(firstValue(scopes, ["MMSI", "mmsi", "UserID", "userId"]));
+  const dim = asRecord(staticData.Dimension || message.Dimension || root.Dimension);
+  const dimA = numberValue([dim], ["A"]) || 0;
+  const dimB = numberValue([dim], ["B"]) || 0;
+  const dimC = numberValue([dim], ["C"]) || 0;
+  const dimD = numberValue([dim], ["D"]) || 0;
+  const loa = (dimA + dimB) > 0 ? (dimA + dimB) : numberValue(scopes, ["loa", "loaMeters", "loa_meters", "Length", "length"]);
+  const beam = (dimC + dimD) > 0 ? (dimC + dimD) : numberValue(scopes, ["beam", "beamMeters", "beam_meters", "Width", "width"]);
+  const draught = numberValue(scopes, ["MaximumStaticDraught", "maximumStaticDraught", "draught", "Draught", "draft", "Draft", "currentDraft"]);
+  const navigationalStatus = firstValue(scopes, ["NavigationalStatus", "navigationalStatus", "navStatus", "nav_status"]);
+
   return {
     name: textValue(scopes, ["ShipName", "shipName", "vesselName", "vessel_name", "Name", "name"]),
     imo: digitsOnly(firstValue(scopes, ["IMO", "imo", "ImoNumber", "imoNumber", "imo_number"])) || null,
@@ -155,13 +165,23 @@ export function normalizeAisStreamSnapshot(value: unknown): UnknownRecord {
     cog: numberValue(scopes, ["Cog", "COG", "cog", "CourseOverGround", "courseOverGround", "course"]),
     heading: numberValue(scopes, ["TrueHeading", "trueHeading", "Heading", "heading"]),
     timestamp: textValue(scopes, ["time_utc", "timestamp", "Timestamp", "receivedAt"]),
+    loa,
+    beam,
+    draught,
+    draft: draught,
+    MaximumStaticDraught: draught,
+    navigationalStatus: navigationalStatus !== null ? String(navigationalStatus) : null,
+    navStatus: navigationalStatus !== null ? String(navigationalStatus) : null,
     rawData: root,
   };
 }
 
-async function fetchAisStreamSnapshot(mmsi: string, timeoutMs = 4_000): Promise<UnknownRecord | null> {
+async function fetchAisStreamSnapshot(target: string | number[][][], timeoutMs = 4_000): Promise<UnknownRecord | null> {
   const apiKey = String(process.env.AISSTREAM_API_KEY || process.env.AISTREAM_API_KEY || "").trim();
-  if (!apiKey || !/^\d{9}$/.test(mmsi)) return null;
+  if (!apiKey) return null;
+  const isMmsi = typeof target === "string" && /^\d{9}$/.test(target);
+  const isBbox = Array.isArray(target) && target.length > 0;
+  if (!isMmsi && !isBbox) return null;
   const endpoint = String(process.env.AISSTREAM_WS_URL || "wss://stream.aisstream.io/v0/stream").trim();
   const WebSocketClient = createRequire(`${process.cwd()}/package.json`)("ws") as AisStreamSocketConstructor;
 
@@ -189,17 +209,20 @@ async function fetchAisStreamSnapshot(mmsi: string, timeoutMs = 4_000): Promise<
     try {
       socket = new WebSocketClient(endpoint);
       socket.on("open", () => {
-        socket?.send(JSON.stringify({
+        const payload: Record<string, unknown> = {
           APIKey: apiKey,
-          BoundingBoxes: [[[-90, -180], [90, 180]]],
+          BoundingBoxes: isBbox ? target : [[[-90, -180], [90, 180]]],
           FilterMessageTypes: ["PositionReport", "ShipStaticData"],
-          FiltersShipMMSI: [mmsi],
-        }));
+        };
+        if (isMmsi) {
+          payload.FiltersShipMMSI = [target];
+        }
+        socket?.send(JSON.stringify(payload));
       });
       socket.on("message", (data) => {
         try {
           const incoming = normalizeAisStreamSnapshot(JSON.parse(String(data)));
-          if (digitsOnly(incoming.mmsi) !== mmsi) return;
+          if (isMmsi && digitsOnly(incoming.mmsi) !== target) return;
           snapshot = {
             ...snapshot,
             ...Object.fromEntries(Object.entries(incoming).filter(([, fieldValue]) => fieldValue !== null && fieldValue !== "")),
